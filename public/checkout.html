@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Checkout — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/cart.html">← Back to bag</a>
+    <div class="eyebrow">Almost yours</div>
+    <h1 id="pageTitle">Checkout.</h1>
+  </div>
+</header>
+
+<main>
+  <div class="page">
+    <div class="wrap" id="checkoutRoot"></div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const FREE_ABOVE = 1500;
+const SHIP = 99;
+const root = AV.qs('#checkoutRoot');
+
+async function init() {
+  const cart = AV.getCart();
+  if (!cart.length) {
+    root.innerHTML = '<div class="empty">Your bag is empty.<br><a class="btn btn-light" href="/shop.html">Browse the collection</a></div>';
+    AV.qs('#pageTitle').textContent = 'Your bag is empty.';
+    return;
+  }
+
+  const user = await AV.me();
+  if (!user) {
+    root.innerHTML = `
+      <div class="gate">
+        <div class="eyebrow">Sign in to continue</div>
+        <h2>You're almost<br>there.</h2>
+        <p class="lead" style="margin:16px auto 30px">Log in or create an account to place your order and keep track of it afterwards.</p>
+        <a class="btn btn-light" href="/account.html?view=login&next=/checkout.html">Sign in</a>
+        <div style="margin-top:10px"><a class="btn btn-ghost" href="/account.html?view=register&next=/checkout.html">Create an account</a></div>
+      </div>`;
+    return;
+  }
+
+  const subtotal = AV.cartSubtotal();
+  const shipping = subtotal >= FREE_ABOVE ? 0 : SHIP;
+  const total = subtotal + shipping;
+
+  const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+
+  root.innerHTML = `
+  <div class="checkout-grid">
+    <form id="payForm" novalidate>
+      <div class="eyebrow">Contact</div>
+      <div class="form-grid">
+        <label>Full name<input name="name" required value="${AV.esc(name)}"></label>
+        <label>Email<input type="email" name="email" required value="${AV.esc(user.email || '')}"></label>
+        <label class="full">Phone<input name="phone" value="${AV.esc(user.phone || '')}" placeholder="+91 …"></label>
+      </div>
+
+      <div class="eyebrow" style="margin-top:42px">Shipping address</div>
+      <div class="form-grid">
+        <label class="full">Address line 1<input name="line1" required></label>
+        <label class="full">Address line 2<input name="line2"></label>
+        <label>City<input name="city" required></label>
+        <label>State<input name="state" required></label>
+        <label>Pincode<input name="pincode" required minlength="4" maxlength="10"></label>
+        <label>Country<input name="country" value="India"></label>
+      </div>
+
+      <div class="eyebrow" style="margin-top:42px">Payment</div>
+      <div class="pay-opts">
+        <label class="pay-opt"><input type="radio" name="pay" value="upi" checked><span><b>UPI</b><small>Pay instantly via UPI</small></span></label>
+        <label class="pay-opt"><input type="radio" name="pay" value="card"><span><b>Card</b><small>Credit/debit card</small></span></label>
+        <label class="pay-opt"><input type="radio" name="pay" value="cod"><span><b>Cash on delivery</b><small>Pay when it arrives</small></span></label>
+      </div>
+
+      <p class="form-msg" id="payMsg"></p>
+      <button class="btn btn-light btn-block" type="submit">Place order · ${AV.formatPrice(total)}</button>
+    </form>
+
+    <aside class="summary">
+      <h3>Order summary</h3>
+      ${cart.map((i) => `<div class="row"><span>${AV.esc(i.name)} × ${i.quantity}</span><span>${AV.formatPrice(i.price * i.quantity)}</span></div>`).join('')}
+      <div class="row"><span>Subtotal</span><span>${AV.formatPrice(subtotal)}</span></div>
+      <div class="row"><span>Shipping</span><span>${shipping ? AV.formatPrice(shipping) : 'Free'}</span></div>
+      <div class="row total"><span>Total</span><span>${AV.formatPrice(total)}</span></div>
+    </aside>
+  </div>`;
+
+  AV.qsa('.pay-opt').forEach((o) => o.addEventListener('click', () => {
+    o.querySelector('input').checked = true;
+    AV.qsa('.pay-opt').forEach((x) => x.classList.toggle('selected', x === o));
+  }));
+  AV.qsa('.pay-opt').forEach((o) => o.classList.toggle('selected', o === AV.qs('.pay-opt')));
+
+  const form = AV.qs('#payForm');
+  const msg = AV.qs('#payMsg');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const f = form.elements;
+    const items = cart.map((i) => ({
+      slug: i.slug,
+      name: i.name,
+      image: i.image || null,
+      price: i.price,
+      quantity: i.quantity,
+    }));
+    msg.className = 'form-msg';
+    try {
+      AV.setBusy(btn, true);
+      const env = await AV.api.post('/api/orders', {
+        items,
+        paymentMethod: f.pay.value,
+        customer: { name: f.name.value.trim(), email: f.email.value.trim(), phone: f.phone.value.trim() },
+        shippingAddress: {
+          line1: f.line1.value.trim(),
+          line2: f.line2.value.trim(),
+          city: f.city.value.trim(),
+          state: f.state.value.trim(),
+          pincode: f.pincode.value.trim(),
+          country: f.country.value.trim() || 'India',
+        },
+      });
+      AV.clearCart();
+      const number = env.data?.orderNumber || '';
+      location.href = `/order.html?number=${encodeURIComponent(number)}`;
+    } catch (err) {
+      msg.classList.add('show', 'err');
+      msg.textContent = AV.firstErr(err);
+      AV.setBusy(btn, false);
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>

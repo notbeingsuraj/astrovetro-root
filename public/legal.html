@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Good to know — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/index.html">← Home</a>
+    <div class="eyebrow">Good to know</div>
+    <h1 id="docTitle">Good to know.</h1>
+  </div>
+</header>
+
+<main>
+  <div class="page">
+    <div class="wrap legal">
+
+      <section id="shipping">
+        <h2>Shipping</h2>
+        <p>Orders are shipped across India in 2–3 working days from the workshop. Shipping is free on orders of ₹1,500 and above; below that a flat ₹99 is added at checkout. Each piece is wrapped by hand in tissue with a small care note.</p>
+      </section>
+
+      <section id="returns">
+        <h2>Returns &amp; exchanges</h2>
+        <p>Crystals are natural objects, and slight variations are part of their character. If a piece arrives damaged or is not as described, write to us within 7 days of delivery at hello@astrovetro.com and we will happily replace it or refund you in full.</p>
+        <ul>
+          <li>Return requests within 7 days of delivery.</li>
+          <li>Items should be returned in their original packaging.</li>
+          <li>Refunds are issued within 5–7 working days of receiving the return.</li>
+          <li>Readings are not refundable once booked and held, but can be rescheduled with notice.</li>
+        </ul>
+      </section>
+
+      <section id="privacy">
+        <h2>Privacy</h2>
+        <p>Astro Vetro collects only what we need to serve you: your name, email, delivery address and order history. We use this to process orders, confirm readings and — only if you choose — to send occasional journal letters. We never sell your data.</p>
+        <p>You can unsubscribe from the newsletter at any time by writing to hello@astrovetro.com or using the unsubscribe link on an email.</p>
+      </section>
+
+      <section id="terms">
+        <h2>Terms</h2>
+        <p>By placing an order you agree that prices are shown in Indian rupees, payment is due at checkout, and a product becomes yours once it has shipped and been marked delivered. Readings are held as bookings and confirmed by email.</p>
+        <p>Crystal and tarot guidance is offered as reflection and ritual, not medical, legal or financial advice. Take what serves you, and leave the rest.</p>
+      </section>
+
+      <section id="faq">
+        <h2>FAQ</h2>
+        <p><b>How long does shipping take?</b><br>2–3 working days within India, with free delivery above ₹1,500.</p>
+        <p><b>Can I change my order after placing it?</b><br>Yes — as long as it has not yet shipped. Write to hello@astrovetro.com with your order number.</p>
+        <p><b>How are readings held?</b><br>Online readings happen over video. We agree on a time by email after you request a booking, then send the link.</p>
+        <p><b>Which payment methods do you accept?</b><br>UPI, cards and cash on delivery.</p>
+      </section>
+
+      <p class="note" style="margin-top:50px">Questions? <a href="/index.html#contact" style="color:var(--sand);border-bottom:1px dotted var(--line)">Get in touch</a> — we read every message.</p>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const doc = new URLSearchParams(location.search).get('doc');
+const titles = { shipping: 'Shipping', returns: 'Returns', privacy: 'Privacy', terms: 'Terms', faq: 'FAQ' };
+if (doc && titles[doc]) {
+  AV.qs('#docTitle').textContent = titles[doc] + '.';
+  const el = document.getElementById(doc);
+  if (el) el.scrollIntoView({ block: 'start' });
+}
+</script>
+</body>
+</html>

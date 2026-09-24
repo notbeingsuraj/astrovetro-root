@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Readings — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/index.html">← Home</a>
+    <div class="eyebrow">Tarot readings</div>
+    <h1>A moment to<br>look inward.</h1>
+    <p class="sub">Personal tarot readings designed to help you explore questions, patterns and possibilities with greater clarity.</p>
+  </div>
+</header>
+
+<main>
+  <div class="page">
+    <div class="wrap service-grid js-load" id="serviceGrid"></div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const grid = AV.qs('#serviceGrid');
+
+(async () => {
+  grid.innerHTML = '';
+  try {
+    const env = await AV.api.get('/api/services?limit=50');
+    const services = (env.data || []).filter((s) => s.available !== false);
+    if (!services.length) {
+      grid.innerHTML = '<div class="empty">Readings are full right now — write to us and we will find you a slot.</div>';
+      return;
+    }
+    grid.innerHTML = services
+      .map((s) => `
+        <div class="service-card">
+          <div>
+            <div class="dur">${AV.esc(s.format || 'online')} · ${s.duration || ''} min</div>
+            <h3>${AV.esc(s.name)}</h3>
+          </div>
+          <p>${AV.esc(s.shortDescription || s.description || '')}</p>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="price">${AV.formatPrice(s.price)}</span>
+            <a class="btn btn-outline btn-sm" href="/booking.html?slug=${encodeURIComponent(s.slug)}">Book</a>
+          </div>
+        </div>`)
+      .join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Account — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/index.html">← Home</a>
+    <div class="eyebrow">Your space</div>
+    <h1 id="pageTitle">Account.</h1>
+    <p class="sub" id="pageSub">Your orders, readings and details in one place.</p>
+  </div>
+</header>
+
+<main>
+  <div class="page">
+    <div class="wrap" id="accountRoot"></div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const root = AV.qs('#accountRoot');
+const params = new URLSearchParams(location.search);
+let view = params.get('view') || 'overview';
+const next = params.get('next') || '/account.html';
+
+async function init() {
+  const user = await AV.me();
+  if (!user) return renderAuth();
+  AV.setUser(user);
+  document.title = `Hi, ${user.firstName} — Astro Vetro`;
+  AV.qs('#pageTitle').textContent = `${user.firstName}'s space.`;
+  renderTabs(user);
+}
+
+function renderTabs(user) {
+  const tabs = [
+    ['overview', 'Overview'],
+    ['orders', 'Orders'],
+    ['bookings', 'Readings'],
+    ['profile', 'Profile'],
+    ['password', 'Password'],
+  ];
+  if (user.role === 'admin') tabs.push(['admin', 'Admin']);
+  view = tabs.some(([k]) => k === view) ? view : 'overview';
+  root.innerHTML = `<div class="tabs" id="acctTabs">${tabs
+    .map(([k, l]) => `<button class="tab${k === view ? ' active' : ''}" data-view="${k}">${l}</button>`)
+    .join('')}</div>
+    <div id="acctPane"></div>`;
+  const pane = AV.qs('#acctPane');
+  AV.qs('#acctTabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-view]');
+    if (!b) return;
+    view = b.dataset.view;
+    history.replaceState(null, '', `/account.html?view=${view}`);
+    AV.qsa('.tab').forEach((x) => x.classList.toggle('active', x === b));
+    route(user, pane);
+  });
+  route(user, pane);
+}
+
+async function route(user, pane) {
+  pane.innerHTML = '<div class="empty">Loading…</div>';
+  if (view === 'overview') await overview(user, pane);
+  else if (view === 'orders') await orders(user, pane);
+  else if (view === 'bookings') await bookings(user, pane);
+  else if (view === 'profile') profile(user, pane);
+  else if (view === 'password') password(user, pane);
+  else if (view === 'admin') {
+    pane.innerHTML = '<div class="empty"><a class="btn btn-light" href="/admin.html">Open the admin desk →</a></div>';
+  }
+}
+
+/* ── Overview ─────────────────────────────────────────────────── */
+async function overview(user, pane) {
+  let s = { orderCount: 0, totalSpent: 0, bookingCount: 0 };
+  try {
+    s = (await AV.api.get('/api/users/me/summary')).data;
+  } catch (_e) { /* defaults */ }
+  pane.innerHTML = `
+    <div class="stat-grid" style="max-width:720px">
+      <div class="stat-card"><div class="n">${s.orderCount}</div><div class="l">Orders</div></div>
+      <div class="stat-card"><div class="n">${AV.formatPrice(s.totalSpent)}</div><div class="l">Lifetime c/o</div></div>
+      <div class="stat-card"><div class="n">${s.bookingCount}</div><div class="l">Readings</div></div>
+    </div>
+    <div class="notice" style="max-width:720px">Welcome back, ${AV.esc(user.firstName)}. Your next ritual is only a click away — visit the <a href="/shop.html">shop</a> or <a href="/readings.html">book a reading</a>.</div>`;
+}
+
+/* ── Orders ───────────────────────────────────────────────────── */
+async function orders(_user, pane) {
+  try {
+    const env = await AV.api.get('/api/orders?limit=50');
+    const list = env.data || [];
+    pane.innerHTML = list.length
+      ? `<div class="table-wrap"><table>
+          <thead><tr><th>Order</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>${list.map((o) => `
+            <tr>
+              <td><a href="/order.html?number=${encodeURIComponent(o.orderNumber)}">${AV.esc(o.orderNumber)}</a></td>
+              <td class="muted">${AV.formatDate(o.createdAt)}</td>
+              <td>${(o.items || []).reduce((n, i) => n + i.quantity, 0)}</td>
+              <td>${AV.formatPrice(o.total)}</td>
+              <td><span class="status-badge status-${AV.esc(o.status)}">${AV.esc(o.status)}</span></td>
+            </tr>`).join('')}
+          </tbody></table></div>`
+      : '<div class="empty">No orders yet.<br><a class="btn btn-light" href="/shop.html">Start with something small</a></div>';
+  } catch (e) {
+    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+/* ── Bookings ─────────────────────────────────────────────────── */
+async function bookings(_user, pane) {
+  try {
+    const env = await AV.api.get('/api/bookings?limit=50');
+    const list = env.data || [];
+    pane.innerHTML = list.length
+      ? `<div class="table-wrap"><table>
+          <thead><tr><th>Reading</th><th>Date</th><th>Time</th><th>For</th><th>Status</th></tr></thead>
+          <tbody>${list.map((b) => `
+            <tr>
+              <td>${AV.esc(b.serviceName)}</td>
+              <td class="muted">${AV.formatDate(b.preferredDate)}</td>
+              <td class="muted">${AV.esc(b.preferredTime || '—')}</td>
+              <td>${AV.esc(b.name)}</td>
+              <td><span class="status-badge status-${AV.esc(b.status)}">${AV.esc(b.status)}</span></td>
+            </tr>`).join('')}
+          </tbody></table></div>`
+      : '<div class="empty">No readings yet — a good moment to book one.<br><a class="btn btn-light" href="/readings.html">Book a reading</a></div>';
+  } catch (e) {
+    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+/* ── Profile ──────────────────────────────────────────────────── */
+function profile(user, pane) {
+  pane.innerHTML = `
+    <form id="profileForm" style="max-width:560px">
+      <p class="form-msg" id="profMsg"></p>
+      <div class="form-grid">
+        <label>First name<input name="firstName" required value="${AV.esc(user.firstName || '')}"></label>
+        <label>Last name<input name="lastName" required value="${AV.esc(user.lastName || '')}"></label>
+        <label class="full">Email<input type="email" value="${AV.esc(user.email || '')}" disabled></label>
+        <label>Phone<input name="phone" value="${AV.esc(user.phone || '')}"></label>
+        <label>City<input name="city" value="${AV.esc(user.city || '')}"></label>
+      </div>
+      <button class="btn btn-light" type="submit">Save changes</button>
+      <button class="btn btn-ghost" type="button" id="logoutBtn" style="margin-left:10px">Sign out</button>
+    </form>`;
+  const form = AV.qs('#profileForm');
+  const msg = AV.qs('#profMsg');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    msg.className = 'form-msg';
+    try {
+      AV.setBusy(btn, true);
+      const env = await AV.api.patch('/api/users/me', {
+        firstName: form.elements.firstName.value.trim(),
+        lastName: form.elements.lastName.value.trim(),
+        phone: form.elements.phone.value.trim() || null,
+        city: form.elements.city.value.trim() || null,
+      });
+      AV.setUser(env.data);
+      msg.classList.add('show', 'ok');
+      msg.textContent = 'Profile updated.';
+    } catch (err) {
+      msg.classList.add('show', 'err');
+      msg.textContent = AV.firstErr(err);
+    }
+    AV.setBusy(btn, false);
+  });
+  AV.qs('#logoutBtn').addEventListener('click', async () => {
+    try { await AV.api.post('/api/auth/logout'); } catch (_e) { /* ignore */ }
+    AV.setUser(null);
+    location.href = '/index.html';
+  });
+}
+
+/* ── Password ─────────────────────────────────────────────────── */
+function password(_user, pane) {
+  pane.innerHTML = `
+    <form id="pwForm" style="max-width:520px">
+      <p class="form-msg" id="pwMsg"></p>
+      <div class="form-grid">
+        <label class="full">Current password<input type="password" name="currentPassword" required></label>
+        <label class="full">New password<input type="password" name="newPassword" required minlength="8">
+          <small class="hint">At least 8 characters.</small></label>
+      </div>
+      <button class="btn btn-light" type="submit">Update password</button>
+    </form>`;
+  const form = AV.qs('#pwForm');
+  const msg = AV.qs('#pwMsg');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    msg.className = 'form-msg';
+    try {
+      AV.setBusy(btn, true);
+      await AV.api.post('/api/users/me/password', {
+        currentPassword: form.elements.currentPassword.value,
+        newPassword: form.elements.newPassword.value,
+      });
+      form.reset();
+      msg.classList.add('show', 'ok');
+      msg.textContent = 'Password changed.';
+    } catch (err) {
+      msg.classList.add('show', 'err');
+      msg.textContent = AV.firstErr(err);
+    }
+    AV.setBusy(btn, false);
+  });
+}
+
+/* ── Auth (login / register) ──────────────────────────────────── */
+function renderAuth() {
+  const mode = view === 'register' ? 'register' : 'login';
+  document.title = mode === 'register' ? 'Join Astro Vetro' : 'Sign in — Astro Vetro';
+  AV.qs('#pageTitle').textContent = mode === 'register' ? 'Join us.' : 'Welcome back.';
+  AV.qs('#pageSub').textContent = mode === 'register' ? 'Create an account for faster checkout.' : 'Sign in to see your orders and readings.';
+
+  root.innerHTML = `
+    <div style="max-width:520px">
+      <div class="tabs">
+        <button class="tab${mode === 'login' ? ' active' : ''}" data-mode="login">Sign in</button>
+        <button class="tab${mode === 'register' ? ' active' : ''}" data-mode="register">Create account</button>
+      </div>
+      ${mode === 'login' ? loginForm() : registerForm()}
+    </div>`;
+
+  AV.qsa('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+    const m = b.dataset.mode;
+    history.replaceState(null, '', `/account.html?view=${m}&next=${encodeURIComponent(next)}`);
+    renderAuth();
+  }));
+
+  const form = AV.qs('form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = AV.qs('.form-msg');
+    const btn = form.querySelector('button[type="submit"]');
+    msg.className = 'form-msg';
+    try {
+      AV.setBusy(btn, true);
+      const body = {};
+      Array.from(form.elements).forEach((el) => {
+        if (el.name) body[el.name] = el.value;
+      });
+      const env = await AV.api.post(mode === 'login' ? '/api/auth/login' : '/api/auth/register', body);
+      AV.setUser(env.data);
+      AV.toast(mode === 'login' ? 'Welcome back.' : 'Account created — welcome.', 'ok');
+      location.href = mode === 'login' ? next : '/account.html';
+    } catch (err) {
+      msg.classList.add('show', 'err');
+      msg.textContent = AV.firstErr(err);
+    }
+    AV.setBusy(btn, false);
+  });
+}
+
+function loginForm() {
+  return `
+  <form id="authForm" novalidate>
+    <p class="form-msg"></p>
+    <label>Email<input type="email" name="email" required></label>
+    <label>Password<input type="password" name="password" required></label>
+    <button class="btn btn-light" type="submit">Sign in</button>
+  </form>`;
+}
+function registerForm() {
+  return `
+  <form id="authForm" novalidate>
+    <p class="form-msg"></p>
+    <div class="form-grid">
+      <label>First name<input name="firstName" required></label>
+      <label>Last name<input name="lastName" required></label>
+    </div>
+    <label>Email<input type="email" name="email" required></label>
+    <label>Phone<input name="phone" placeholder="+91 …"></label>
+    <label>Password<input type="password" name="password" required minlength="8">
+      <small class="hint">At least 8 characters.</small></label>
+    <button class="btn btn-light" type="submit">Create account</button>
+  </form>`;
+}
+
+init();
+</script>
+</body>
+</html>

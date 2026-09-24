@@ -1,0 +1,822 @@
+:root {
+  --forest:#18372c;
+  --deep:#10261f;
+  --moss:#536b4e;
+  --sage:#87947b;
+  --olive:#9a9b69;
+  --cream:#f1eadc;
+  --sand:#d9cbb5;
+  --clay:#a76d4d;
+  --ink:#17221d;
+  --white:#faf8f1;
+  --brown:#3f3026;
+  --espresso:#2d241f;
+  --maroon:#4b2727;
+  --walnut:#5a4031;
+  --line:rgba(217,203,181,.24);
+  --ritual-gradient:linear-gradient(118deg,#10261f 0%,#18372c 45%,#4b3027 100%);
+}
+* {
+  box-sizing:border-box;
+}
+html {
+  scroll-behavior:smooth;
+}
+body {
+  margin:0;
+  background:var(--deep);
+  color:var(--white);
+  font-family:'DM Sans',sans-serif;
+  font-weight:300;
+}
+a {
+  color:inherit;
+  text-decoration:none;
+}
+button,input,textarea {
+  font:inherit;
+}
+::selection {
+  background:var(--clay);
+  color:var(--white);
+}
+.site-header {
+  position:sticky;
+  top:0;
+  z-index:50;
+  height:78px;
+  padding:0 4vw;
+  display:flex;
+  align-items:center;
+  gap:30px;
+  background:var(--ritual-gradient);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.logo {
+  font:400 29px 'Cormorant Garamond';
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+nav {
+  display:flex;
+  gap:30px;
+  margin:auto;
+  font-size:11px;
+  letter-spacing:.19em;
+  text-transform:uppercase;
+}
+nav a {
+  opacity:1;
+  color:var(--white);
+}
+nav a:hover {
+  color:var(--sand);
+}
+.header-actions {
+  display:flex;
+  gap:10px;
+}
+.icon {
+  width:37px;
+  height:37px;
+  border:1px solid var(--line);
+  border-radius:50%;
+  background:transparent;
+  color:var(--white);
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+}
+.menu {
+  display:none;
+}
+.hero {
+  position:relative;
+  min-height:720px;
+  display:flex;
+  align-items:flex-end;
+  overflow:hidden;
+  border-bottom:1px solid var(--line);
+}
+.hero-bg {
+  position:absolute;
+  inset:-8px;
+  filter:blur(5px);
+  transform:scale(1.02);
+  background:url('url('assets/image-1.jpg')') center/cover no-repeat;
+  filter:saturate(.88) contrast(1.03);
+}
+.hero::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  background:rgba(16,38,31,.08);
+}
+.hero-content {
+  position:relative;
+  z-index:2;
+  width:100%;
+  padding:100px 4vw 70px;
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(280px,.65fr);
+  gap:6vw;
+  align-items:end;
+}
+.kicker {
+  font-size:11px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--sand);
+  margin-bottom:20px;
+}
+.hero h1 {
+  font:400 clamp(72px,9vw,132px)/.83 'Cormorant Garamond';
+  text-transform:uppercase;
+  letter-spacing:-.02em;
+  margin:0;
+  max-width:850px;
+}
+.hero-copy {
+  max-width:510px;
+  margin-left:auto;
+}
+.hero-copy p {
+  font-size:15px;
+  line-height:1.75;
+  margin:0;
+  color:var(--cream);
+}
+.actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:32px;
+}
+.btn {
+  font-family:'DM Sans',sans-serif;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:48px;
+  padding:0 30px;
+  border-radius:30px;
+  border:1px solid transparent;
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  transition:.25s ease;
+}
+.btn:hover {
+  transform:translateY(-2px);
+}
+.btn-light {
+  background:var(--white);
+  color:var(--forest);
+}
+.btn-outline {
+  border-color:var(--olive);
+  color:var(--white);
+}
+.btn-outline:hover {
+  background:var(--moss);
+  border-color:var(--sage);
+  color:var(--white);
+}
+.btn-dark {
+  background:var(--deep);
+  color:var(--white);
+  border-color:var(--olive);
+}
+.btn-dark:hover {
+  background:var(--forest);
+  border-color:var(--sage);
+}
+.section {
+  padding:110px 4vw;
+}
+.section.cream {
+  background:var(--cream);
+  color:var(--ink);
+}
+.eyebrow {
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  color:var(--sage);
+  margin-bottom:20px;
+}
+.cream .eyebrow {
+  color:var(--brown);
+}
+h2 {
+  font:400 clamp(50px,6vw,84px)/.93 'Cormorant Garamond';
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:-.01em;
+}
+h3 {
+  font:400 32px/1 'Cormorant Garamond';
+  margin:0;
+}
+p {
+  font-size:14px;
+  line-height:1.8;
+}
+.intro {
+  min-height:560px;
+  display:grid;
+  grid-template-columns:1.05fr .75fr;
+  gap:14vw;
+  align-items:center;
+  border-bottom:1px solid var(--line);
+}
+.intro p {
+  max-width:520px;
+  color:var(--sage);
+}
+.intentions {
+  background:var(--sand);
+}
+.intentions .section-title h2 {
+  color:var(--white)!important;
+}
+.intentions .eyebrow {
+  color:var(--ink);
+}
+.intentions .category-meta h3 {
+  color:var(--ink);
+}
+.section-title {
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:24px;
+  margin-bottom:55px;
+}
+.intention-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:28px;
+}
+.intention-card {
+  background:var(--white);
+  border:1px solid rgba(23,34,29,.18);
+  padding:16px;
+  border-radius:24px;
+  overflow:hidden;
+  transition:.3s ease;
+  box-shadow:0 10px 30px rgba(51,36,29,.08);
+}
+.intention-card:hover {
+  transform:translateY(-6px);
+  border-color:var(--moss);
+  box-shadow:0 18px 38px rgba(51,36,29,.14);
+}
+.photo {
+  height:470px;
+  border-radius:18px;
+  background-size:cover;
+  background-position:center;
+}
+.crystal {
+  background-image:url('url('assets/image-2.jpg')');
+}
+.bracelet {
+  background-image:url('https://images.pexels.com/photos/9660452/pexels-photo-9660452.jpeg?auto=compress&cs=tinysrgb&w=1200');
+}
+.tarot {
+  background-image:url('https://images.pexels.com/photos/27967865/pexels-photo-27967865.jpeg?auto=compress&cs=tinysrgb&w=1200');
+}
+.card-meta {
+  padding:22px 6px 14px;
+}
+.num {
+  color:var(--ink);
+  font-size:18px;
+  line-height:1;
+  letter-spacing:.18em;
+  margin-right:12px;
+  font-weight:500;
+}
+.card-meta h3 {
+  color:var(--ink);
+}
+.card-meta .btn-outline {
+  color:#000;
+  background:transparent;
+}
+.card-meta p {
+  color:var(--brown);
+  margin:12px 0 20px;
+  max-width:400px;
+}
+.products {
+  background:var(--ritual-gradient);
+  color:var(--white);
+}
+.products .section-title h2,.products .eyebrow {
+  color:var(--white);
+}
+.products .product-card h3 {
+  color:var(--white);
+}
+.products .product-card p {
+  color:var(--sand);
+}
+.products .price {
+  color:var(--white);
+}
+.products .product-card .art {
+  background:linear-gradient(145deg,rgba(217,203,181,.16),rgba(15,33,28,.5));
+  border-color:rgba(250,248,241,.15);
+}
+.products-grid {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:44px 24px;
+}
+.product-card .art {
+  height:320px;
+  border-radius:12px;
+  border:1px solid rgba(23,34,29,.1);
+  position:relative;
+  overflow:hidden;
+  background:var(--sand);
+}
+.art:before {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:56%;
+  transform:translate(-50%,-50%) rotate(43deg);
+  width:115px;
+  height:155px;
+  border-radius:18px 30px 16px 30px;
+  box-shadow:0 24px 34px rgba(23,34,29,.16),inset -18px -18px 28px rgba(23,34,29,.08);
+  border:1px solid rgba(250,248,241,.7);
+  background:linear-gradient(135deg,rgba(250,248,241,.8),rgba(250,248,241,.05));
+}
+.art:after {
+  content:"";
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at 28% 24%,rgba(250,248,241,.55),transparent 24%);
+}
+.a1 {
+  background:linear-gradient(135deg,var(--sand),var(--moss),var(--cream));
+}
+.a2 {
+  background:linear-gradient(135deg,var(--cream),var(--sage),var(--sand));
+}
+.a3 {
+  background:linear-gradient(135deg,var(--sand),var(--olive),var(--cream));
+}
+.a4 {
+  background:linear-gradient(135deg,var(--moss),var(--deep),var(--brown));
+}
+.a5 {
+  background:linear-gradient(135deg,var(--sage),var(--moss),var(--sand));
+}
+.a6 {
+  background:linear-gradient(135deg,var(--sand),var(--clay),var(--cream));
+}
+.a7 {
+  background:linear-gradient(135deg,var(--cream),var(--sage),var(--white));
+}
+.a8 {
+  background:linear-gradient(135deg,var(--olive),var(--forest),var(--sand));
+}
+.product-card h3 {
+  font-size:29px;
+  margin-top:16px;
+}
+.product-card p {
+  color:var(--moss);
+  margin:7px 0 3px;
+  font-size:12px;
+}
+.price {
+  font:400 20px 'Cormorant Garamond';
+  display:block;
+  margin-bottom:18px;
+}
+.banner {
+  min-height:590px;
+  position:relative;
+  background:url('https://images.pexels.com/photos/27967865/pexels-photo-27967865.jpeg?auto=compress&cs=tinysrgb&w=1800') center/cover;
+  display:flex;
+  align-items:flex-end;
+}
+.banner:after {
+  content:"";
+  position:absolute;
+  inset:0;
+  background:rgba(16,38,31,.18);
+}
+.banner-content {
+  position:relative;
+  z-index:2;
+  padding:95px 4vw;
+  max-width:790px;
+}
+.banner h2 {
+  font-size:clamp(56px,7vw,100px);
+}
+.banner p {
+  max-width:560px;
+  color:var(--cream);
+}
+.reading {
+  background:var(--cream);
+  color:var(--ink);
+  display:grid;
+  grid-template-columns:1.05fr .95fr;
+  gap:8vw;
+  align-items:center;
+}
+.reading-image {
+  height:560px;
+  border-radius:12px;
+  background:url('https://images.pexels.com/photos/32831018/pexels-photo-32831018.jpeg?auto=compress&cs=tinysrgb&w=1300') center/cover;
+}
+.reading>div:last-child p {
+  color:var(--moss);
+  max-width:520px;
+}
+.reading-list {
+  margin:36px 0 10px;
+}
+.reading-list>div {
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:7px;
+  padding:19px 0;
+  border-top:1px solid rgba(23,34,29,.16);
+}
+.reading-list span {
+  font:400 24px 'Cormorant Garamond';
+}
+.reading-list small {
+  grid-column:1;
+  color:var(--moss);
+}
+.rituals {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  background:var(--ritual-gradient);
+}
+.ritual-copy {
+  padding:110px 4vw;
+  color:var(--cream);
+}
+.ritual-copy p {
+  color:var(--sand);
+  max-width:560px;
+}
+.ritual-links a {
+  display:block;
+  font:400 31px 'Cormorant Garamond';
+  padding:21px 0;
+  border-top:1px solid rgba(241,234,220,.22);
+}
+.ritual-image {
+  min-height:620px;
+  background:url('https://images.pexels.com/photos/5887271/pexels-photo-5887271.jpeg?auto=compress&cs=tinysrgb&w=1400') center/cover;
+  border-radius:32px;
+  overflow:hidden;
+}
+.about {
+  display:grid;
+  grid-template-columns:1fr .85fr;
+  gap:8vw;
+  align-items:center;
+  background:var(--deep);
+}
+.about-image {
+  height:600px;
+  border-radius:12px;
+  background:url('url('assets/image-3.webp')') center/cover;
+}
+.about p {
+  color:var(--sage);
+  max-width:520px;
+}
+.journal {
+  background:var(--forest);
+}
+.journal-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:28px;
+}
+.journal-card {
+  border:1px solid var(--line);
+  padding:14px;
+  background:rgba(16,38,31,.3);
+}
+.journal-img {
+  height:390px;
+  border-radius:10px;
+  background-size:cover;
+  background-position:center;
+}
+.j1 {
+  background-image:url('url('assets/image-4.jpg')');
+}
+.j2 {
+  background-image:url('https://images.pexels.com/photos/27967865/pexels-photo-27967865.jpeg?auto=compress&cs=tinysrgb&w=1000');
+}
+.j3 {
+  background-image:url('https://images.pexels.com/photos/4203097/pexels-photo-4203097.jpeg?auto=compress&cs=tinysrgb&w=1000');
+}
+.journal-card small {
+  display:block;
+  margin:18px 6px 10px;
+  color:var(--sage);
+  text-transform:uppercase;
+  letter-spacing:.15em;
+  font-size:10px;
+}
+.journal-card h3 {
+  margin:0 6px 15px;
+  color:var(--white);
+  font-size:30px;
+}
+.newsletter {
+  padding:80px 4vw;
+  background:var(--ritual-gradient);
+  display:grid;
+  grid-template-columns:.9fr 1.4fr;
+  gap:10vw;
+  align-items:center;
+}
+.newsletter h2 {
+  font-size:58px;
+}
+.newsletter p {
+  color:var(--sand);
+  max-width:420px;
+}
+.newsletter-form {
+  display:flex;
+  border:1px solid var(--white);
+  border-radius:30px;
+  padding:4px;
+}
+.newsletter-form input {
+  min-width:0;
+  flex:1;
+  background:transparent;
+  border:0;
+  outline:0;
+  color:var(--white);
+  padding:0 20px;
+}
+.newsletter-form input::placeholder {
+  color:var(--sage);
+}
+.newsletter-form button {
+  border:0;
+  white-space:nowrap;
+}
+.contact {
+  display:grid;
+  grid-template-columns:.8fr 1fr;
+  gap:12vw;
+  background:var(--cream);
+  color:var(--ink);
+}
+.contact p {
+  color:var(--moss);
+}
+form {
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+}
+label {
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  color:var(--brown);
+}
+input,textarea {
+  border:0;
+  border-bottom:1px solid var(--sand);
+  background:transparent;
+  padding:13px 0;
+  outline:0;
+  color:var(--ink);
+  resize:vertical;
+}
+footer {
+  background:var(--ritual-gradient);
+  padding:90px 4vw 25px;
+  color:var(--cream);
+}
+.footer-grid {
+  display:grid;
+  grid-template-columns:1.2fr .8fr .8fr 1.1fr;
+  gap:50px;
+  min-height:300px;
+}
+.footer-logo {
+  font:400 28px 'Cormorant Garamond';
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+footer p,footer a {
+  color:var(--sage);
+  font-size:13px;
+  line-height:1.8;
+}
+.footer-title {
+  color:var(--white);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  margin-bottom:18px;
+}
+.footer-bottom {
+  border-top:1px solid var(--line);
+  padding-top:22px;
+  display:flex;
+  justify-content:space-between;
+  color:var(--sage);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+@media(max-width:900px) {
+  nav {
+    display:none;
+  }
+  .menu {
+    display:grid;
+  }
+  .hero-content,.intro,.reading,.about,.contact,.newsletter {
+    grid-template-columns:1fr;
+    gap:45px;
+  }
+  .hero {
+    min-height:760px;
+  }
+  .hero-copy {
+    margin:0;
+  }
+  .intention-grid,.journal-grid,.products-grid {
+    grid-template-columns:1fr 1fr;
+  }
+  .rituals {
+    grid-template-columns:1fr;
+  }
+  .ritual-image {
+    min-height:440px;
+    order:-1;
+  }
+  .footer-grid {
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:560px) {
+  .site-header {
+    padding:0 5vw;
+  }
+  .logo {
+    font-size:22px;
+  }
+  .hero-content {
+    padding:85px 5vw 55px;
+  }
+  .hero h1 {
+    font-size:57px;
+  }
+  .section {
+    padding:80px 5vw;
+  }
+  .intention-grid,.products-grid,.journal-grid,.footer-grid {
+    grid-template-columns:1fr;
+  }
+  .photo,.journal-img,.reading-image,.about-image {
+    height:420px;
+  }
+  .newsletter-form {
+    display:flex;
+    flex-direction:column;
+    border:0;
+    gap:10px;
+  }
+  .newsletter-form input {
+    height:48px;
+    border:1px solid var(--line);
+    border-radius:30px;
+    padding:0 18px;
+  }
+  .newsletter-form button {
+    width:100%;
+  }
+  .footer-bottom {
+    flex-direction:column;
+    gap:10px;
+  }
+}
+.mobile-nav {
+  display:none;
+}
+.mobile-open {
+  display:flex!important;
+  position:absolute;
+  left:0;
+  right:0;
+  top:78px;
+  background:var(--deep);
+  padding:22px 5vw;
+  flex-direction:column;
+  gap:18px;
+  border-bottom:1px solid var(--line);
+}
+/* --- Unified full-page gradient --- */ html, body {
+  min-height: 100%;
+}
+body {
+  background: var(--ritual-gradient);
+  background-attachment: fixed;
+}
+/* Let the single page-wide gradient show continuously instead of restarting with different cream/sand/forest section backgrounds. */ .site-header, .section, .section.cream, .intentions, .products, .reading, .rituals, .about, .journal, .newsletter, .contact, footer {
+  background: transparent;
+}
+/* Keep image-led areas intact while the surrounding page uses one gradient. */ .hero, .banner, .photo, .reading-image, .ritual-image, .journal-img {
+  background-color: transparent;
+}
+/* Ensure text remains legible across the unified dark gradient. */ .section.cream, .reading, .contact {
+  color: var(--white);
+}
+.section.cream h1, .section.cream h2, .section.cream h3, .section.cream p, .reading h1, .reading h2, .reading h3, .reading p, .contact h1, .contact h2, .contact h3, .contact p, .contact label {
+  color: inherit;
+}
+.reading .eyebrow, .contact .eyebrow {
+  color: var(--sand);
+}
+.reading .sub, .contact .sub {
+  color: var(--sage);
+}
+input, textarea {
+  color: var(--white);
+  border-color: var(--line);
+}
+input::placeholder, textarea::placeholder {
+  color: rgba(241,234,220,.65);
+}
+.contact .form-row label {
+  color: var(--sand);
+}
+.intention-card {
+  background: rgba(250,248,241,.08);
+  border-color: var(--line);
+  color: var(--white);
+}
+.intention-card h3, .intention-card p {
+  color: var(--white);
+}
+.journal-card {
+  background: rgba(16,38,31,.22);
+}
+footer {
+  border-top: 1px solid var(--line);
+}
+/* Keep the gradient visually continuous through the full document. */ .site-header {
+  background: rgba(16,38,31,.18);
+}
+/* --- Rounded journal cards --- */ .journal-card {
+  border-radius: 28px;
+  overflow: hidden;
+}
+.journal-card .journal-img {
+  border-radius: 18px;
+  overflow: hidden;
+}
+/* --- Find Your Rituals: white CTA text and numbers --- */ .intentions .btn-outline {
+  color: var(--white);
+}
+.intentions .btn-outline:hover {
+  color: var(--white);
+}
+.intentions .num {
+  color: var(--white);
+}
+/* --- Find Your Rituals subheading --- */ .intentions .eyebrow {
+  color: var(--white) !important;
+}
+.ritual-image,.ritual-card img,.rituals img,.intention-card img {
+  border-radius:32px !important;
+  width:88% !important;
+  margin:0 auto !important;
+  display:block !important;
+}
+/* Local reusable product action styling */ .btn-product {
+  color: var(--white);
+  border-color: var(--olive);
+  background: var(--deep);
+}

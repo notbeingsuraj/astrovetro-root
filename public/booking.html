@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Book a Reading — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<main>
+  <div class="page">
+    <div class="wrap" id="bookingRoot"></div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const root = AV.qs('#bookingRoot');
+const params = new URLSearchParams(location.search);
+const slug = params.get('slug');
+
+(async () => {
+  if (!slug) {
+    root.innerHTML = '<div class="empty"><a class="btn btn-light" href="/readings.html">Pick a reading</a></div>';
+    return;
+  }
+  root.innerHTML = '<div class="empty">Loading…</div>';
+  let service;
+  try {
+    const env = await AV.api.get(`/api/services/${encodeURIComponent(slug)}`);
+    service = env.data;
+  } catch (e) {
+    root.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/readings.html">View readings</a></div>`;
+    return;
+  }
+
+  const user = await AV.me();
+  const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
+
+  root.innerHTML = `
+    <a class="back" href="/readings.html">← All readings</a>
+    <div class="checkout-grid" style="margin-top:14px">
+      <div>
+        <div class="eyebrow">Book a reading</div>
+        <h1 style="font-size:clamp(38px,5vw,64px);text-transform:uppercase">${AV.esc(service.name)}</h1>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin:20px 0 28px">
+          <span class="tag">${AV.esc(service.type || 'tarot')}</span>
+          <span class="tag">${service.duration || ''} minutes</span>
+          <span class="tag">${AV.esc(service.format || 'online')}</span>
+          <span class="tag">${AV.formatPrice(service.price)}</span>
+        </div>
+        <p class="lead" style="color:var(--cream)">${AV.esc(service.description || '')}</p>
+
+        <form id="bkForm" style="margin-top:36px" novalidate>
+          <div class="form-grid">
+            <label>Your name<input name="name" required value="${AV.esc(name)}"></label>
+            <label>Email<input type="email" name="email" required value="${AV.esc(user?.email || '')}"></label>
+            <label>Phone<input name="phone" placeholder="+91 …" value="${AV.esc(user?.phone || '')}"></label>
+            <label>Preferred date<input type="date" name="date" min="${new Date().toISOString().slice(0, 10)}"></label>
+            <label class="full">Preferred time<input name="time" placeholder="e.g. 6:00 PM"></label>
+            <label class="full">Anything to share?<textarea name="message" rows="4"></textarea></label>
+          </div>
+          <p class="form-msg" id="bkMsg"></p>
+          <button class="btn btn-light" type="submit">Request booking</button>
+        </form>
+      </div>
+      <aside class="summary">
+        <h3>Your reading</h3>
+        <div class="row"><span>${AV.esc(service.name)}</span><span>${AV.formatPrice(service.price)}</span></div>
+        <div class="row"><span>Duration</span><span>${service.duration || ''} min</span></div>
+        <div class="row"><span>Format</span><span>${AV.esc(service.format || 'online')}</span></div>
+        <p class="note" style="margin-top:16px">We will confirm your slot by email within a day. No payment is needed until we agree on a time.</p>
+      </aside>
+    </div>`;
+
+  const form = AV.qs('#bkForm');
+  const msg = AV.qs('#bkMsg');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const f = form.elements;
+    msg.className = 'form-msg';
+    const day = f.date.value;
+    const preferredDate = day ? new Date(`${day}T10:00:00`).toISOString() : null;
+    try {
+      AV.setBusy(btn, true);
+      const env = await AV.api.post('/api/bookings', {
+        service: service._id,
+        name: f.name.value.trim(),
+        email: f.email.value.trim(),
+        phone: f.phone.value.trim(),
+        preferredDate,
+        preferredTime: f.time.value.trim(),
+        message: f.message.value.trim(),
+      });
+      form.reset();
+      msg.classList.add('show', 'ok');
+      msg.textContent = `Request received — we will confirm your ${service.name} slot by email shortly.`;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      void env;
+    } catch (err) {
+      msg.classList.add('show', 'err');
+      msg.textContent = AV.firstErr(err);
+    }
+    AV.setBusy(btn, false);
+  });
+})();
+</script>
+</body>
+</html>

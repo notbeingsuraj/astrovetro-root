@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your Bag — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/shop.html">← Continue shopping</a>
+    <div class="eyebrow">Your selection</div>
+    <h1>Your bag.</h1>
+  </div>
+</header>
+
+<main>
+  <div class="page">
+    <div class="wrap cart-grid">
+      <div id="cartList"></div>
+      <aside class="summary js-load" id="summary"></aside>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const FREE_ABOVE = 1500;
+const SHIP = 99;
+const listEl = AV.qs('#cartList');
+const sumEl = AV.qs('#summary');
+
+function render() {
+  const cart = AV.getCart();
+  if (!cart.length) {
+    listEl.innerHTML = '<div class="empty">Your bag is empty — nothing is waiting.<br><a class="btn btn-light" href="/shop.html">Browse the collection</a></div>';
+    sumEl.innerHTML = '';
+    return;
+  }
+  listEl.innerHTML = cart
+    .map((i) => `
+      <div class="cart-line">
+        <a href="/product.html?slug=${encodeURIComponent(i.slug)}"><div class="art ${AV.art(cart.indexOf(i))}" role="img" aria-label="${AV.esc(i.name)}"></div></a>
+        <div>
+          <h3><a href="/product.html?slug=${encodeURIComponent(i.slug)}">${AV.esc(i.name)}</a></h3>
+          <div class="price">${AV.formatPrice(i.price)}</div>
+          <div class="stepper line-qty">
+            <button type="button" data-qty-m="${i.slug}">−</button>
+            <span>${i.quantity}</span>
+            <button type="button" data-qty-p="${i.slug}">+</button>
+          </div>
+          <button class="remove" data-remove="${i.slug}">Remove</button>
+        </div>
+        <span class="line-total">${AV.formatPrice(i.price * i.quantity)}</span>
+      </div>`)
+    .join('');
+
+  const subtotal = AV.cartSubtotal();
+  const shipping = subtotal >= FREE_ABOVE ? 0 : SHIP;
+  const total = subtotal + shipping;
+  sumEl.innerHTML = `
+    <h3>Order summary</h3>
+    <div class="row"><span>Subtotal</span><span>${AV.formatPrice(subtotal)}</span></div>
+    <div class="row"><span>Shipping</span><span>${shipping ? AV.formatPrice(shipping) : 'Free'}</span></div>
+    ${shipping ? `<div class="free-ship">Add ${AV.formatPrice(FREE_ABOVE - subtotal)} more for free shipping.</div>` : ''}
+    <div class="row total"><span>Total</span><span>${AV.formatPrice(total)}</span></div>
+    <a class="btn btn-light" href="/checkout.html">Checkout · ${AV.formatPrice(total)}</a>
+    <p class="note" style="margin-top:14px">Shipping across India in 2–3 days. Free above ${AV.formatPrice(FREE_ABOVE)}.</p>`;
+}
+
+listEl.addEventListener('click', (e) => {
+  const minus = e.target.closest('[data-qty-m]');
+  const plus = e.target.closest('[data-qty-p]');
+  const rm = e.target.closest('[data-remove]');
+  if (minus) AV.setCartQty(minus.dataset.qtyM, (AV.getCart().find((i) => i.slug === minus.dataset.qtyM)?.quantity || 1) - 1);
+  if (plus) AV.setCartQty(plus.dataset.qtyP, (AV.getCart().find((i) => i.slug === plus.dataset.qtyP)?.quantity || 1) + 1);
+  if (rm) { AV.removeFromCart(rm.dataset.remove); AV.toast('Removed from your bag.', 'ok'); }
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

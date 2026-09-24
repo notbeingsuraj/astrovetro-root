@@ -1,0 +1,15 @@
+{
+  "name": "astrovetro-root-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Astro Vetro — static design served with an API proxy to the Astro Vetro backend (localhost:5002).",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "http-proxy-middleware": "^3.0.3"
+  }
+}

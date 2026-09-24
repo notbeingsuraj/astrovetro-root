@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Order — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<main>
+  <div class="page">
+    <div class="wrap" id="orderRoot"></div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const root = AV.qs('#orderRoot');
+const params = new URLSearchParams(location.search);
+const number = params.get('number');
+
+async function init() {
+  if (!number) {
+    root.innerHTML = '<div class="empty"><a class="btn btn-light" href="/shop.html">Browse the collection</a></div>';
+    return;
+  }
+  const user = await AV.me();
+  if (!user) {
+    root.innerHTML = `
+      <div class="gate">
+        <div class="eyebrow">Order secure</div>
+        <h2>Order<br>${AV.esc(number)}</h2>
+        <p class="lead" style="margin:16px auto 30px">Sign in to view your order details.</p>
+        <a class="btn btn-light" href="/account.html?view=login&next=${encodeURIComponent('/order.html?number=' + number)}">Sign in</a>
+      </div>`;
+    return;
+  }
+
+  root.innerHTML = '<div class="empty">Loading your order…</div>';
+  try {
+    const env = await AV.api.get(`/api/orders/${encodeURIComponent(number)}`);
+    const o = env.data;
+    document.title = `Order ${o.orderNumber} — Astro Vetro`;
+
+    const rows = (o.items || []).map((i) => `
+      <tr>
+        <td><a href="/product.html?slug=${encodeURIComponent(i.slug)}">${AV.esc(i.name)}</a></td>
+        <td>${i.quantity}</td>
+        <td>${AV.formatPrice(i.price)}</td>
+        <td>${AV.formatPrice(i.price * i.quantity)}</td>
+      </tr>`).join('');
+
+    root.innerHTML = `
+      <div class="notice" style="margin-bottom:40px">
+        <div class="eyebrow" style="margin:0 0 6px">Thank you</div>
+        <h2 style="font-size:44px">Order ${AV.esc(o.orderNumber)}</h2>
+        <p>Placed ${AV.formatDate(o.createdAt)} · <span class="status-badge status-${AV.esc(o.status)}">${AV.esc(o.status)}</span></p>
+        <p style="margin-top:12px">Payment ${AV.esc((o.paymentMethod || '').toUpperCase())} · ${AV.esc((o.paymentStatus || '').replace('_', ' '))}</p>
+      </div>
+      <div class="checkout-grid">
+        <div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <p class="note" style="margin-top:22px">A confirmation has been recorded on your account. Track it anytime under <a href="/account.html">Account → Orders</a>.</p>
+        </div>
+        <aside class="summary">
+          <h3>Summary</h3>
+          <div class="row"><span>Subtotal</span><span>${AV.formatPrice(o.subtotal)}</span></div>
+          <div class="row"><span>Shipping</span><span>${o.shipping ? AV.formatPrice(o.shipping) : 'Free'}</span></div>
+          <div class="row total"><span>Total</span><span>${AV.formatPrice(o.total)}</span></div>
+          <div class="row"><span>Payment</span><span>${AV.esc((o.paymentMethod || '').toUpperCase())}</span></div>
+          <h3 style="margin-top:26px">Ship to</h3>
+          <p class="note">${AV.esc(o.customer?.name)}<br>${AV.esc(o.shippingAddress?.line1)}${o.shippingAddress?.line2 ? '<br>' + AV.esc(o.shippingAddress.line2) : ''}<br>${AV.esc(o.shippingAddress?.city)}, ${AV.esc(o.shippingAddress?.state)} ${AV.esc(o.shippingAddress?.pincode)}<br>${AV.esc(o.shippingAddress?.country || '')}</p>
+        </aside>
+      </div>
+      <div style="margin-top:46px; display:flex; gap:12px; flex-wrap:wrap">
+        <a class="btn btn-light" href="/shop.html">Continue shopping</a>
+        <a class="btn btn-ghost" href="/account.html?view=orders">View all orders</a>
+      </div>`;
+  } catch (e) {
+    root.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/shop.html">Back to shop</a></div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

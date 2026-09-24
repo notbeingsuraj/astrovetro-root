@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Journal — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/index.html">← Home</a>
+    <div class="eyebrow">Stories &amp; guidance</div>
+    <h1>From the journal.</h1>
+    <p class="sub">Notes on stones, rituals and the quiet work of paying attention.</p>
+    <div class="intention-chips" id="catChips" style="margin-top:28px"></div>
+  </div>
+</header>
+
+<main>
+  <div class="page">
+    <div class="wrap">
+      <div class="journal-grid js-load" id="journalGrid" style="grid-template-columns:repeat(3,1fr)"></div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const params = new URLSearchParams(location.search);
+let page = Math.max(1, Number(params.get('page') || 1));
+
+const grid = AV.qs('#journalGrid');
+const pagerEl = AV.qs('#pager');
+const catChips = AV.qs('#catChips');
+let currentCat = params.get('category') || '';
+
+async function load() {
+  grid.innerHTML = '';
+  const q = new URLSearchParams({ page: String(page), limit: '6', sort: 'createdAt', order: 'desc' });
+  if (currentCat) q.set('category', currentCat);
+  try {
+    const env = await AV.api.get(`/api/articles?${q.toString()}`);
+    const items = env.data || [];
+    grid.innerHTML = items.length
+      ? items.map((a, i) => AV.journalCard(a, i)).join('')
+      : '<div class="empty">Nothing here yet — writing in progress.</div>';
+    const meta = env.meta || {};
+    page = meta.page || page;
+    pagerEl.innerHTML = `
+      ${page > 1 ? '<button class="btn btn-ghost" data-page="' + (page - 1) + '">← Prev</button>' : ''}
+      <span class="meta-count">Page ${meta.page || page} of ${meta.totalPages || 1}</span>
+      ${meta.hasMore ? '<button class="btn btn-ghost" data-page="' + (page + 1) + '">Next →</button>' : ''}`;
+    pagerEl.querySelectorAll('[data-page]').forEach((b) =>
+      b.addEventListener('click', () => {
+        page = Number(b.dataset.page);
+        params.set('page', String(page));
+        if (currentCat) params.set('category', currentCat);
+        history.replaceState(null, '', `${location.pathname}?${params}`);
+        load();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+    );
+  } catch (e) {
+    grid.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+(async () => {
+  try {
+    const all = await AV.api.get('/api/articles?limit=50');
+    const cats = [...new Set((all.data || []).map((a) => a.category).filter(Boolean))];
+    [['', 'All']].concat(cats.map((c) => [c, c])).forEach(([val, label]) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip' + (currentCat === val ? ' on' : '');
+      chip.textContent = label.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+      chip.addEventListener('click', () => {
+        currentCat = val;
+        page = 1;
+        load();
+        AV.qsa('.chip', catChips).forEach((x) => x.classList.toggle('on', x === chip));
+      });
+      catChips.appendChild(chip);
+    });
+  } catch (_e) { /* optional */ }
+  load();
+})();
+</script>
+</body>
+</html>

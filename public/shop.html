@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shop — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/index.html">← Home</a>
+    <div class="eyebrow">The collection</div>
+    <h1>Shop by intention.</h1>
+    <p class="sub" id="shopSub">Crystals, bracelets and ritual objects chosen for the way they make a space feel.</p>
+    <div class="toolbar" style="margin-top:40px">
+      <div class="filters">
+        <form class="search-field" id="searchForm">
+          <input type="search" id="searchInput" placeholder="Search the collection">
+          <button class="btn btn-ghost btn-sm" type="submit">Search</button>
+        </form>
+        <select id="catSelect" aria-label="Category">
+          <option value="">All categories</option>
+        </select>
+        <select id="sortSelect" aria-label="Sort">
+          <option value="createdAt">Newest</option>
+          <option value="price-desc">Price · high to low</option>
+          <option value="price">Price · low to high</option>
+          <option value="rating">Top rated</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+      <span class="meta-count" id="resultCount"></span>
+    </div>
+    <div class="intention-chips" id="intentionChips"></div>
+  </div>
+</header>
+
+<main>
+  <div class="page">
+    <div class="wrap">
+      <div class="products-grid js-load" id="shopGrid"></div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+
+const grid = AV.qs('#shopGrid');
+const pagerEl = AV.qs('#pager');
+const countEl = AV.qs('#resultCount');
+
+const params = new URLSearchParams(location.search);
+let page = Math.max(1, Number(params.get('page') || 1));
+
+function state() {
+  return {
+    search: params.get('search') || '',
+    intention: params.get('intention') || '',
+    category: params.get('category') || '',
+    sort: params.get('sort') || 'createdAt',
+    order: params.get('order') || 'desc',
+  };
+}
+function syncUrl() {
+  const s = state();
+  for (const k of ['search', 'intention', 'category', 'sort', 'order']) {
+    if (s[k]) params.set(k, s[k]);
+    else params.delete(k);
+  }
+  params.set('page', String(page));
+  history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+}
+
+async function load() {
+  grid.innerHTML = '';
+  const s = state();
+  const q = new URLSearchParams({
+    page: String(page),
+    limit: '12',
+    sort: s.sort,
+    order: s.order,
+  });
+  if (s.search) q.set('search', s.search);
+  if (s.intention) q.set('intention', s.intention);
+  if (s.category) q.set('category', s.category);
+
+  try {
+    const env = await AV.api.get(`/api/products?${q.toString()}`);
+    const items = env.data || [];
+    countEl.textContent = `${env.meta?.total ?? 0} ${(env.meta?.total ?? 0) === 1 ? 'piece' : 'pieces'}`;
+    grid.innerHTML = items.length
+      ? items.map((p, i) => AV.productCard(p, i)).join('')
+      : '<div class="empty">Nothing matches that search — try a different intention or filter.<br><button class="btn btn-ghost" data-reset-filters>Clear filters</button></div>';
+
+    const meta = env.meta || {};
+    page = meta.page || page;
+    pagerEl.innerHTML = `
+      ${page > 1 ? '<button class="btn btn-ghost" data-page="' + (page - 1) + '">← Prev</button>' : ''}
+      <span class="meta-count">Page ${meta.page || page} of ${meta.totalPages || 1}</span>
+      ${meta.hasMore ? '<button class="btn btn-ghost" data-page="' + (page + 1) + '">Next →</button>' : ''}`;
+    pagerEl.querySelectorAll('[data-page]').forEach((b) =>
+      b.addEventListener('click', () => {
+        page = Number(b.dataset.page);
+        syncUrl();
+        load();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+    );
+  } catch (e) {
+    grid.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+    pagerEl.innerHTML = '';
+  }
+}
+
+grid.addEventListener('click', (e) => {
+  const reset = e.target.closest('[data-reset-filters]');
+  if (reset) {
+    location.href = '/shop.html';
+  }
+});
+
+async function initFilters() {
+  const s = state();
+  AV.qs('#searchInput').value = s.search || '';
+  AV.qs('#sortSelect').value = s.sort === 'price' && s.order === 'asc' ? 'price' : s.sort === 'price' ? 'price-desc' : s.sort;
+
+  try {
+    const env = await AV.api.get('/api/products/intentions');
+    const intentions = Array.isArray(env.data) ? env.data : (env.data || []);
+    const chips = AV.qs('#intentionChips');
+    [['', 'All']].concat(intentions.map((x) => [x.name || x, x.name || x])).forEach(([val, label]) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip' + (s.intention && s.intention.toLowerCase() === String(val).toLowerCase() ? ' on' : '');
+      chip.textContent = label;
+      chip.addEventListener('click', () => {
+        params.delete('category');
+        params.delete('search');
+        if (String(val).toLowerCase() !== s.intention.toLowerCase()) params.set('intention', val);
+        else params.delete('intention');
+        page = 1;
+        syncUrl();
+        location.href = `?${params.toString()}`;
+      });
+      chips.appendChild(chip);
+    });
+  } catch (_e) { /* filters are optional */ }
+
+  try {
+    const all = await AV.api.get('/api/products?limit=50');
+    const cats = [...new Set((all.data || []).map((p) => p.category).filter(Boolean))];
+    const sel = AV.qs('#catSelect');
+    cats.forEach((c) => {
+      const o = document.createElement('option');
+      o.value = c;
+      o.textContent = c[0].toUpperCase() + c.slice(1);
+      sel.appendChild(o);
+    });
+    sel.value = s.category || '';
+  } catch (_e) { /* optional */ }
+}
+
+AV.qs('#searchForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const v = AV.qs('#searchInput').value.trim();
+  if (v) params.set('search', v);
+  else params.delete('search');
+  params.delete('page');
+  location.href = `?${params.toString()}`;
+});
+
+AV.qs('#catSelect').addEventListener('change', (e) => {
+  if (e.target.value) params.set('category', e.target.value);
+  else params.delete('category');
+  params.delete('page');
+  location.href = `?${params.toString()}`;
+});
+
+AV.qs('#sortSelect').addEventListener('change', (e) => {
+  const [sort, order] = e.target.value === 'price-desc' ? ['price', 'desc'] : [e.target.value, e.target.value === 'price' ? 'asc' : 'desc'];
+  params.set('sort', sort);
+  params.set('order', order);
+  params.delete('page');
+  location.href = `?${params.toString()}`;
+});
+
+initFilters();
+load();
+</script>
+</body>
+</html>

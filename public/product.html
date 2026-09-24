@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Product — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<main>
+  <div class="page">
+    <div class="wrap pd" id="productMain">
+      <div class="pd-art js-load" id="pdArt"></div>
+      <div class="pd-info js-load" id="pdInfo"></div>
+    </div>
+  </div>
+  <section class="section products">
+    <div class="wrap">
+      <div class="section-title">
+        <div><div class="eyebrow">Continuing the collection</div><h2>You may also want</h2></div>
+      </div>
+      <div class="products-grid" id="relatedGrid"></div>
+    </div>
+  </section>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const params = new URLSearchParams(location.search);
+const slug = params.get('slug');
+const pdArt = AV.qs('#pdArt');
+const pdInfo = AV.qs('#pdInfo');
+
+async function load() {
+  pdArt.innerHTML = '<div class="empty">Loading…</div>';
+  pdInfo.innerHTML = '';
+  try {
+    const env = await AV.api.get(`/api/products/${encodeURIComponent(slug)}`);
+    const p = env.data;
+    if (!p) throw new Error('Product not found');
+    document.title = `${p.name} — Astro Vetro`;
+
+    pdArt.innerHTML = `<div class="art ${AV.art(Math.abs(hash(p.slug)) % 8)}" role="img" aria-label="${AV.esc(p.name)}" style="height:100%"></div>`;
+    pdInfo.innerHTML = `
+      <div class="pd-cat">${AV.esc(p.category || '')}${p.stone ? ' · ' + AV.esc(p.stone) : ''}${p.metal ? ' · ' + AV.esc(p.metal) : ''}</div>
+      <h1>${AV.esc(p.name)}</h1>
+      <div class="rating">${'★'.repeat(Math.round(p.rating || 5))}<b> ${(p.rating || 0).toFixed(1)}</b> · ${p.reviewCount || 0} reviews</div>
+      <div class="pd-price">${AV.formatPrice(p.price)}</div>
+      <p class="pd-desc">${AV.esc(p.description || '')}</p>
+      <div class="intention-chips" id="intChips"></div>
+      <div class="pd-meta" id="shortInfo"></div>
+      <div class="qty-row">
+        <div class="stepper">
+          <button type="button" id="minus">−</button>
+          <span id="qty">1</span>
+          <button type="button" id="plus">+</button>
+        </div>
+        <span class="stock${p.availability ? '' : ' sold'}" id="avail">${p.availability ? 'In stock — ships in 2–3 days' : 'Currently unavailable'}</span>
+      </div>
+      <button class="btn btn-light btn-block" id="addBtn" ${p.availability ? '' : 'disabled'}>Add to bag</button>
+      <p class="note" style="margin-top:22px">Hand-selected pieces, packed by hand and shipped in small batches from Astro Vetro.</p>`;
+
+    const chips = (p.intentions || []).map((x) => `<span class="tag">${AV.esc(x)}</span>`).join('');
+    AV.qs('#intChips').innerHTML = chips;
+    AV.qs('#shortInfo').innerHTML = `
+      ${p.shortDescription ? `<div><b>In brief</b> ${AV.esc(p.shortDescription)}</div>` : ''}`;
+
+    const plus = AV.qs('#plus'), minus = AV.qs('#minus'), qtyEl = AV.qs('#qty');
+    let qty = 1;
+    plus.addEventListener('click', () => { qty = Math.min(99, qty + 1); qtyEl.textContent = qty; });
+    minus.addEventListener('click', () => { qty = Math.max(1, qty - 1); qtyEl.textContent = qty; });
+    AV.qs('#addBtn').addEventListener('click', () => {
+      AV.addToCart({ slug: p.slug, name: p.name, price: p.price, image: p.images?.[0] || null }, qty);
+      AV.toast(`Added ${qty} × “${p.name}” to your bag.`, 'ok');
+    });
+
+    try {
+      const rel = await AV.api.get('/api/products?limit=12&sort=rating&order=desc');
+      const pool = (rel.data || []).filter((x) => x.slug !== p.slug);
+      pool.sort((a, b) => (b.intentions || []).filter((x) => (p.intentions || []).includes(x)).length - (a.intentions || []).filter((x) => (p.intentions || []).includes(x)).length);
+      AV.qs('#relatedGrid').innerHTML = pool.slice(0, 4).map((x, i) => AV.productCard(x, i)).join('')
+        || '<div class="empty">More pieces arriving soon.</div>';
+    } catch (_e) {
+      AV.qs('#relatedGrid').innerHTML = '<div class="empty">More pieces arriving soon.</div>';
+    }
+  } catch (e) {
+    pdArt.innerHTML = '';
+    pdInfo.innerHTML = `<div class="empty" style="text-align:left">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/shop.html">Back to shop</a></div>`;
+  }
+}
+
+function hash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+load();
+</script>
+</body>
+</html>

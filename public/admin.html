@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/account.html">← Account</a>
+    <div class="eyebrow">Astro Vetro desk</div>
+    <h1>Admin</h1>
+    <p class="sub">Orders, readings, inventory and messages.</p>
+  </div>
+</header>
+
+<main>
+  <div class="page">
+    <div class="wrap" id="admRoot"></div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const root = AV.qs('#admRoot');
+let view = new URLSearchParams(location.search).get('view') || 'dashboard';
+
+const CATEGORIES = ['ring', 'bracelet', 'pendant', 'tower', 'cluster', 'tumble', 'raw', 'other'];
+const ORDER_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'];
+
+async function init() {
+  const user = await AV.me();
+  if (!user || user.role !== 'admin') {
+    document.title = 'Restricted — Astro Vetro';
+    root.innerHTML = `<div class="gate">
+      <div class="eyebrow">Restricted</div>
+      <h2>This desk is<br>for staff only.</h2>
+      <p class="lead" style="margin:16px auto 30px">You need an administrator account to open the admin desk.</p>
+      <a class="btn btn-light" href="/account.html">Back to account</a>
+      <div style="margin-top:10px"><a class="btn btn-ghost" href="/index.html">Home</a></div>
+    </div>`;
+    return;
+  }
+  const tabs = [
+    ['dashboard', 'Overview'],
+    ['orders', 'Orders'],
+    ['bookings', 'Readings'],
+    ['products', 'Products'],
+    ['subscribers', 'Subscribers'],
+    ['messages', 'Messages'],
+  ];
+  view = tabs.some(([k]) => k === view) ? view : 'dashboard';
+  root.innerHTML = `<div class="tabs" id="admTabs">${tabs.map(([k, l]) => `<button class="tab${k === view ? ' active' : ''}" data-view="${k}">${l}</button>`).join('')}</div><div id="admPane"></div>`;
+  const pane = AV.qs('#admPane');
+  AV.qs('#admTabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-view]');
+    if (!b) return;
+    view = b.dataset.view;
+    history.replaceState(null, '', `/admin.html?view=${view}`);
+    AV.qsa('.tab').forEach((x) => x.classList.toggle('active', x === b));
+    route(pane);
+  });
+  route(pane);
+}
+
+async function route(pane) {
+  pane.innerHTML = '<div class="empty">Loading…</div>';
+  if (view === 'dashboard') await dashboard(pane);
+  else if (view === 'orders') await orders(pane);
+  else if (view === 'bookings') await bookings(pane);
+  else if (view === 'products') await products(pane);
+  else if (view === 'subscribers') await subscribers(pane);
+  else if (view === 'messages') await messages(pane);
+}
+
+/* ── Dashboard ─────────────────────────────────────────────────── */
+async function dashboard(pane) {
+  try {
+    const s = (await AV.api.get('/api/admin/stats')).data;
+    pane.innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-card"><div class="n">${s.orderCount}</div><div class="l">Orders</div></div>
+        <div class="stat-card"><div class="n">${AV.formatPrice(s.revenue)}</div><div class="l">Revenue</div></div>
+        <div class="stat-card"><div class="n">${s.todayOrders}</div><div class="l">Orders today</div></div>
+        <div class="stat-card"><div class="n">${s.bookingCount}</div><div class="l">Readings</div></div>
+        <div class="stat-card"><div class="n">${s.productCount}</div><div class="l">Products</div></div>
+        <div class="stat-card"><div class="n">${s.subscriberCount}</div><div class="l">Subscribers</div></div>
+        <div class="stat-card"><div class="n">${s.messageCount}</div><div class="l">New messages</div></div>
+      </div>
+      <div class="notice">A glimpse of the shop floor. Use the tabs above for orders, readings, inventory, subscribers and messages.</div>`;
+  } catch (e) {
+    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+/* ── Orders ───────────────────────────────────────────────────── */
+async function orders(pane) {
+  try {
+    const env = await AV.api.get('/api/orders?limit=50');
+    const list = env.data || [];
+    pane.innerHTML = list.length
+      ? `<div class="table-wrap"><table>
+        <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>${list.map((o) => `
+          <tr>
+            <td><a href="/order.html?number=${encodeURIComponent(o.orderNumber)}">${AV.esc(o.orderNumber)}</a></td>
+            <td>${AV.esc(o.customer?.name || '—')}</td>
+            <td>${AV.formatPrice(o.total)}</td>
+            <td class="muted">${AV.formatDate(o.createdAt)}</td>
+            <td><select data-order="${o._id}">${statusOptions(ORDER_STATUSES, o.status)}</select></td>
+          </tr>`).join('')}
+        </tbody></table></div>`
+      : '<div class="empty">No orders yet.</div>';
+
+    AV.qs('tbody').addEventListener('change', async (e) => {
+      const sel = e.target.closest('[data-order]');
+      if (!sel) return;
+      try {
+        await AV.api.patch(`/api/orders/${sel.dataset.order}`, { status: sel.value });
+        AV.toast('Order status updated.', 'ok');
+      } catch (err) {
+        AV.toast(AV.firstErr(err), 'err');
+      }
+    });
+  } catch (e) {
+    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+/* ── Bookings ─────────────────────────────────────────────────── */
+async function bookings(pane) {
+  try {
+    const env = await AV.api.get('/api/bookings?limit=50');
+    const list = env.data || [];
+    pane.innerHTML = list.length
+      ? `<div class="table-wrap"><table>
+        <thead><tr><th>Reading</th><th>Name</th><th>Contact</th><th>When</th><th>Status</th></tr></thead>
+        <tbody>${list.map((b) => `
+          <tr>
+            <td>${AV.esc(b.serviceName)}</td>
+            <td>${AV.esc(b.name)}</td>
+            <td class="muted">${AV.esc(b.email)}</td>
+            <td class="muted">${AV.formatDate(b.preferredDate)} ${AV.esc(b.preferredTime || '')}</td>
+            <td><select data-booking="${b._id}">${statusOptions(BOOKING_STATUSES, b.status)}</select></td>
+          </tr>`).join('')}
+        </tbody></table></div>`
+      : '<div class="empty">No reading requests yet.</div>';
+
+    AV.qs('tbody').addEventListener('change', async (e) => {
+      const sel = e.target.closest('[data-booking]');
+      if (!sel) return;
+      try {
+        await AV.api.patch(`/api/bookings/${sel.dataset.booking}`, { status: sel.value });
+        AV.toast('Reading status updated.', 'ok');
+      } catch (err) {
+        AV.toast(AV.firstErr(err), 'err');
+      }
+    });
+  } catch (e) {
+    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+/* ── Products ─────────────────────────────────────────────────── */
+async function products(pane) {
+  try {
+    const env = await AV.api.get('/api/products?limit=50');
+    const list = env.data || [];
+    pane.innerHTML = `
+      <details class="notice" style="margin-bottom:30px">
+        <summary style="cursor:pointer;color:var(--white)">＋ Add a product</summary>
+        <form id="prodForm" class="form-grid" style="margin-top:20px">
+          <label>Name<input name="name" required></label>
+          <label>Category<select name="category">${CATEGORIES.map((c) => `<option>${c}</option>`).join('')}</select></label>
+          <label>Price (₹)<input type="number" name="price" min="0" step="1" required></label>
+          <label>Short description<input name="shortDescription" maxlength="300"></label>
+          <label class="full">Description<textarea name="description" rows="3"></textarea></label>
+          <label class="full">Intentions (comma separated)<input name="intentions" placeholder="Abundance, Focus"></label>
+          <div class="full" style="display:flex;gap:28px;flex-wrap:wrap">
+            <label style="display:flex;gap:10px;align-items:center;text-transform:none;color:var(--sand)"><input type="checkbox" name="availability" checked> Available</label>
+            <label style="display:flex;gap:10px;align-items:center;text-transform:none;color:var(--sand)"><input type="checkbox" name="featured"> Featured</label>
+          </div>
+          <button class="btn btn-light btn-sm" type="submit" style="justify-self:start">Create product</button>
+        </form>
+      </details>
+      ${list.length ? `<div class="table-wrap"><table>
+        <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody>${list.map((p) => `
+          <tr>
+            <td><a href="/product.html?slug=${encodeURIComponent(p.slug)}">${AV.esc(p.name)}</a></td>
+            <td class="muted">${AV.esc(p.category)}</td>
+            <td>${AV.formatPrice(p.price)}</td>
+            <td>${p.availability ? 'In stock' : 'Unavailable'}</td>
+            <td style="text-align:right">
+              <button class="btn btn-ghost btn-sm" data-avail="${p._id}" data-cur="${p.availability}">${p.availability ? 'Mark unavailable' : 'Mark available'}</button>
+              <button class="btn btn-ghost btn-sm" data-del="${p._id}" data-name="${AV.esc(p.name)}">Delete</button>
+            </td>
+          </tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty">No products.</div>'}`;
+
+    AV.qs('#prodForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target.elements;
+      try {
+        await AV.api.post('/api/products', {
+          name: f.name.value.trim(),
+          category: f.category.value,
+          price: Number(f.price.value),
+          shortDescription: f.shortDescription.value.trim(),
+          description: f.description.value.trim(),
+          intentions: f.intentions.value.split(',').map((s) => s.trim()).filter(Boolean),
+          availability: f.availability.checked,
+          featured: f.featured.checked,
+        });
+        AV.toast('Product created.', 'ok');
+        products(pane);
+      } catch (err) {
+        AV.toast(AV.firstErr(err), 'err');
+      }
+    });
+
+    const tbody = AV.qs('tbody');
+    tbody.addEventListener('click', async (e) => {
+      const av = e.target.closest('[data-avail]');
+      const del = e.target.closest('[data-del]');
+      if (av) {
+        try {
+          await AV.api.patch(`/api/products/${av.dataset.avail}`, { availability: av.dataset.cur !== 'true' });
+          AV.toast('Product updated.', 'ok');
+          products(pane);
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+        }
+      }
+      if (del) {
+        if (!confirm(`Delete “${del.dataset.name}”? This cannot be undone.`)) return;
+        try {
+          await AV.api.del(`/api/products/${del.dataset.del}`);
+          AV.toast('Product deleted.', 'ok');
+          products(pane);
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+        }
+      }
+    });
+  } catch (e) {
+    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+/* ── Subscribers ──────────────────────────────────────────────── */
+async function subscribers(pane) {
+  try {
+    const env = await AV.api.get('/api/newsletter');
+    const list = env.data || [];
+    pane.innerHTML = list.length
+      ? `<div class="table-wrap"><table>
+        <thead><tr><th>Email</th><th>Source</th><th>Subscribed</th><th style="text-align:right">Action</th></tr></thead>
+        <tbody>${list.map((s) => `
+          <tr>
+            <td>${AV.esc(s.email)}</td>
+            <td class="muted">${AV.esc(s.source || '—')}</td>
+            <td class="muted">${AV.formatDate(s.createdAt)}</td>
+            <td style="text-align:right"><button class="btn btn-ghost btn-sm" data-sub="${s._id}">Delete</button></td>
+          </tr>`).join('')}
+        </tbody></table></div>`
+      : '<div class="empty">No subscribers yet.</div>';
+
+    AV.qs('tbody').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-sub]');
+      if (!b) return;
+      if (!confirm('Remove this subscriber?')) return;
+      try {
+        await AV.api.del(`/api/newsletter/${b.dataset.sub}`);
+        AV.toast('Subscriber removed.', 'ok');
+        subscribers(pane);
+      } catch (err) {
+        AV.toast(AV.firstErr(err), 'err');
+      }
+    });
+  } catch (e) {
+    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+/* ── Messages ─────────────────────────────────────────────────── */
+async function messages(pane) {
+  try {
+    const env = await AV.api.get('/api/contact');
+    const list = env.data || [];
+    pane.innerHTML = list.length
+      ? `<div class="table-wrap"><table>
+        <thead><tr><th>From</th><th>Subject</th><th>Date</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody>${list.map((m) => `
+          <tr>
+            <td>${AV.esc(m.name)}<div class="muted">${AV.esc(m.email)}</div></td>
+            <td>${AV.esc(m.subject)}<div class="muted">${AV.esc((m.message || '').slice(0, 80))}</div></td>
+            <td class="muted">${AV.formatDate(m.createdAt)}</td>
+            <td><span class="status-badge status-${m.status === 'new' ? 'new' : 'confirmed'}">${AV.esc(m.status)}</span></td>
+            <td style="text-align:right">
+              ${m.status === 'new' ? `<button class="btn btn-ghost btn-sm" data-read="${m._id}">Mark read</button>` : ''}
+              <button class="btn btn-ghost btn-sm" data-mdel="${m._id}">Delete</button>
+            </td>
+          </tr>`).join('')}
+        </tbody></table></div>`
+      : '<div class="empty">No messages yet.</div>';
+
+    AV.qs('tbody').addEventListener('click', async (e) => {
+      const rd = e.target.closest('[data-read]');
+      const dl = e.target.closest('[data-mdel]');
+      try {
+        if (rd) await AV.api.patch(`/api/contact/${rd.dataset.read}/read`, {});
+        if (dl) { if (!confirm('Delete this message?')) return; await AV.api.del(`/api/contact/${dl.dataset.mdel}`); }
+        if (rd || dl) { AV.toast('Updated.', 'ok'); messages(pane); }
+      } catch (err) {
+        AV.toast(AV.firstErr(err), 'err');
+      }
+    });
+  } catch (e) {
+    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+}
+
+function statusOptions(allowed, current) {
+  return allowed
+    .map((s) => `<option value="${s}"${s === current ? ' selected' : ''}>${s}</option>`)
+    .join('');
+}
+
+init();
+</script>
+</body>
+</html>
