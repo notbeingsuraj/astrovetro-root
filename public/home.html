@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Astro Vetro — Objects, Rituals &amp; Symbols</title>
+<meta name="description" content="Astro Vetro — crystals, tarot, ritual objects and botanical traditions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+<main>
+  <section id="home" class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <div>
+        <div class="kicker">Astro Vetro</div>
+        <h1>Come back to<br>yourself.</h1>
+      </div>
+      <div class="hero-copy">
+        <p>Crystals, tarot and ritual objects for the moments when you want to slow down, reconnect and listen inward.</p>
+        <div class="actions">
+          <a class="btn btn-light" href="/shop.html">Shop the collection</a>
+          <a class="btn btn-outline" href="/readings.html">Explore tarot</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section intro">
+    <div>
+      <div class="eyebrow">Our philosophy</div>
+      <h2>Objects with<br>intention.<br>Rituals with<br>meaning.</h2>
+    </div>
+    <p>Astro Vetro brings together crystals, tarot, ritual objects and botanical traditions to create meaningful moments of reflection, grounding and connection.</p>
+  </section>
+
+  <section class="section intentions">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">Shop by intention</div>
+        <h2>Find your ritual.</h2>
+      </div>
+      <a class="btn btn-outline" href="/shop.html">View all products</a>
+    </div>
+    <div class="intention-grid">
+      <article class="intention-card">
+        <div class="photo crystal"></div>
+        <div class="card-meta">
+          <h3><span class="num">01</span>Crystals</h3>
+          <p>Healing stones selected for their natural beauty, symbolism and energy.</p>
+          <a class="btn btn-outline" href="/shop.html">Shop crystals</a>
+        </div>
+      </article>
+      <article class="intention-card">
+        <div class="photo bracelet"></div>
+        <div class="card-meta">
+          <h3><span class="num">02</span>Bracelets</h3>
+          <p>Wearable crystal pieces designed to become part of your everyday ritual.</p>
+          <a class="btn btn-outline" href="/shop.html">Explore bracelets</a>
+        </div>
+      </article>
+      <article class="intention-card">
+        <div class="photo tarot"></div>
+        <div class="card-meta">
+          <h3><span class="num">03</span>Tarot</h3>
+          <p>Tools for reflection, intuition and deeper self-discovery.</p>
+          <a class="btn btn-outline" href="/readings.html">Discover tarot</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="products" class="section products">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">A considered edit</div>
+        <h2>Chosen this season</h2>
+      </div>
+      <a class="btn btn-dark" href="/shop.html">View all products</a>
+    </div>
+    <div class="products-grid js-load" id="homeProducts"></div>
+  </section>
+
+  <section id="tarot" class="banner">
+    <div class="banner-content">
+      <div class="eyebrow">Tarot</div>
+      <h2>The cards have<br>something to say.</h2>
+      <p>Tarot is an invitation to pause, reflect and look at what is already within you.</p>
+      <div class="actions">
+        <a class="btn btn-light" href="/readings.html">Explore tarot</a>
+        <a class="btn btn-outline" href="/readings.html">Book a reading</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="readings" class="section reading">
+    <div class="reading-image"></div>
+    <div>
+      <div class="eyebrow">Tarot readings</div>
+      <h2>A moment to look<br>inward.</h2>
+      <p>Personal tarot readings designed to help you explore questions, patterns and possibilities with greater clarity.</p>
+      <div class="reading-list js-load" id="homeReadings"></div>
+      <a class="btn btn-dark" href="/readings.html">Book a tarot reading</a>
+    </div>
+  </section>
+
+  <section id="rituals" class="rituals">
+    <div class="ritual-copy">
+      <div class="eyebrow">Rituals</div>
+      <h2>Make space for ritual.</h2>
+      <p>Crystals, herbs, distilled oils and small objects for marking the beginning and the end of a day.</p>
+      <div class="ritual-links">
+        <a href="/shop.html">Stones</a>
+        <a href="/shop.html">Bracelets</a>
+        <a href="/readings.html">Readings</a>
+      </div>
+      <a class="btn btn-light" href="/shop.html">Explore the collection</a>
+    </div>
+    <div class="ritual-image"></div>
+  </section>
+
+  <section id="about" class="section about">
+    <div class="about-image"></div>
+    <div>
+      <div class="eyebrow">About Astro Vetro</div>
+      <h2>A space for<br>spiritual connection.</h2>
+      <p>Crystals, tarot and botanical traditions, brought together for modern rituals of reflection, grounding and spiritual connection.</p>
+      <a class="btn btn-dark" href="/readings.html">Our story</a>
+    </div>
+  </section>
+
+  <section id="journal" class="section journal">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">Stories &amp; guidance</div>
+        <h2>From the journal</h2>
+      </div>
+      <a class="btn btn-outline" href="/journal.html">View journal</a>
+    </div>
+    <div class="journal-grid js-load" id="homeJournal"></div>
+  </section>
+
+  <section class="newsletter">
+    <div>
+      <div class="eyebrow">Stay connected</div>
+      <h2>A little magic,<br>in your inbox.</h2>
+    </div>
+    <div>
+      <p>Objects, rituals and symbols for coming back to yourself.</p>
+      <form class="newsletter-form" id="newsletterForm">
+        <input type="email" name="email" id="newsletterEmail" required placeholder="Your email">
+        <button class="btn btn-light" type="submit">Subscribe</button>
+      </form>
+      <p class="form-msg" id="newsletterMsg"></p>
+    </div>
+  </section>
+
+  <section id="contact" class="section contact">
+    <div>
+      <div class="eyebrow">Contact</div>
+      <h2>Let's<br>connect.</h2>
+      <p>Questions about an order, a reading, or simply want to say hello?</p>
+    </div>
+    <form id="contactForm">
+      <label>Name<input name="name" required placeholder="Your name"></label>
+      <label>Email<input type="email" name="email" required placeholder="you@example.com"></label>
+      <label>Subject<input name="subject" required placeholder="What is it about?"></label>
+      <label>Message<textarea name="message" rows="6" required placeholder="How can we help?"></textarea></label>
+      <button class="btn btn-dark" type="submit">Send message</button>
+      <p class="form-msg" id="contactMsg"></p>
+    </form>
+  </section>
+</main>
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const homeProducts = AV.qs('#homeProducts');
+const homeReadings = AV.qs('#homeReadings');
+const homeJournal = AV.qs('#homeJournal');
+
+(async () => {
+  try {
+    const prod = await AV.api.get('/api/products?limit=4&featured=true');
+    homeProducts.innerHTML = prod.data?.length
+      ? prod.data.map((p, i) => AV.productCard(p, i)).join('')
+      : '<div class="empty">The shelf is bare right now — check back soon.</div>';
+  } catch (e) {
+    homeProducts.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+  try {
+    const serv = await AV.api.get('/api/services?limit=50');
+    const tarot = (serv.data || []).filter((s) => s.type === 'tarot').slice(0, 4);
+    homeReadings.innerHTML = tarot
+      .map(
+        (s) =>
+          `<div><span>${AV.esc(s.name)}</span><b>${AV.formatPrice(s.price)}</b>` +
+          `<small>${AV.esc(s.shortDescription || (s.description || '').slice(0, 90))}</small></div>`
+      )
+      .join('');
+  } catch (e) {
+    homeReadings.innerHTML = `<p class="note">${AV.esc(AV.firstErr(e))}</p>`;
+  }
+  try {
+    const jou = await AV.api.get('/api/articles?limit=3');
+    homeJournal.innerHTML = (jou.data || [])
+      .map((a, i) => AV.journalCard(a, i))
+      .join('');
+  } catch (e) {
+    homeJournal.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+})();
+
+AV.qs('#newsletterForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const Msg = AV.qs('#newsletterMsg');
+  const btn = AV.qs('#newsletterForm button');
+  Msg.className = 'form-msg';
+  AV.setBusy(btn, true);
+  try {
+    await AV.api.post('/api/newsletter/subscribe', { email: AV.qs('#newsletterEmail').value, source: 'footer' });
+    Msg.classList.add('show', 'ok');
+    Msg.textContent = 'Thank you — you are subscribed.';
+    AV.qs('#newsletterEmail').value = '';
+  } catch (err) {
+    Msg.classList.add('show', 'err');
+    Msg.textContent = AV.firstErr(err);
+  }
+  AV.setBusy(btn, false);
+});
+
+AV.qs('#contactForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const Msg = AV.qs('#contactMsg');
+  const btn = AV.qs('#contactForm button');
+  const f = e.target;
+  Msg.className = 'form-msg';
+  const body = { name: f.name.value, email: f.email.value, subject: f.subject.value, message: f.message.value };
+  AV.setBusy(btn, true);
+  try {
+    await AV.api.post('/api/contact', body);
+    Msg.classList.add('show', 'ok');
+    Msg.textContent = 'Thank you — your message has been received.';
+    f.reset();
+  } catch (err) {
+    Msg.classList.add('show', 'err');
+    Msg.textContent = AV.firstErr(err);
+  }
+  AV.setBusy(btn, false);
+});
+</script>
+</body>
+</html>

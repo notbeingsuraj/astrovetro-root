@@ -7,12 +7,12 @@ window.AV = window.AV || {};
   const CART_KEY = 'av_cart';
   const USER_KEY = 'av_user';
   const nav = [
-    ['Home', '/index.html'],
+    ['Home', '/home.html'],
     ['Shop', '/shop.html'],
     ['Readings', '/readings.html'],
     ['Journal', '/journal.html'],
-    ['About', '/index.html#about'],
-    ['Contact', '/index.html#contact'],
+    ['About', '/home.html#about'],
+    ['Contact', '/home.html#contact'],
   ];
 
   function page(file) {
@@ -20,11 +20,11 @@ window.AV = window.AV || {};
   }
 
   function headerHTML() {
-    const active = page('index.html') ? '/' : null;
+    const active = page('home.html') ? '/' : null;
     const links = nav
       .map(([label, href]) => {
         const on =
-          (href === '/index.html' && page('index.html')) ||
+          (href === '/home.html' && page('home.html')) ||
           (href === '/shop.html' && page('shop.html')) ||
           (href === '/readings.html' && page('readings.html')) ||
           (href === '/journal.html' && page('journal.html'));
@@ -33,7 +33,7 @@ window.AV = window.AV || {};
       .join('');
     const initial = AV.user ? AV.user.firstName?.[0] || AV.user.email?.[0] : null;
     return `
-<a href="/index.html" class="logo">Astro Vetro</a>
+<a href="/home.html" class="logo">Astro Vetro</a>
 <button class="icon menu" id="menuBtn" aria-label="Menu">\u2630</button>
 <nav id="siteNav">${links}</nav>
 <div class="header-actions">
@@ -50,8 +50,8 @@ window.AV = window.AV || {};
 <div class="footer-grid">
   <div><div class="footer-logo">Astro Vetro</div><p>Objects, rituals and symbols for coming back to yourself.</p></div>
   <div><div class="footer-title">Navigate</div>
-    <a href="/index.html">Home</a><a href="/shop.html">Shop</a><a href="/readings.html">Readings</a>
-    <a href="/journal.html">Journal</a><a href="/index.html#contact">Contact</a>
+    <a href="/home.html">Home</a><a href="/shop.html">Shop</a><a href="/readings.html">Readings</a>
+    <a href="/journal.html">Journal</a><a href="/home.html#contact">Contact</a>
   </div>
   <div><div class="footer-title">Customer</div>
     <a href="/legal.html#shipping">Shipping</a><a href="/legal.html#returns">Returns</a>
