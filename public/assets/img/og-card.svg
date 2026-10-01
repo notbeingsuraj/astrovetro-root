@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c332a"/>
+      <stop offset="60%" stop-color="#17221d"/>
+      <stop offset="100%" stop-color="#0f1915"/>
+    </linearGradient>
+    <linearGradient id="stone" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f1ead8" stop-opacity=".85"/>
+      <stop offset="100%" stop-color="#f1ead8" stop-opacity=".08"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- quiet faceted mark, echoing the cabinet door -->
+  <g transform="translate(88 128)">
+    <path d="M60 0 L118 34 L118 108 Q118 140 60 166 Q2 140 2 108 L2 34 Z"
+          fill="none" stroke="#f1ead8" stroke-width="3" stroke-linejoin="round" opacity=".9"/>
+    <path d="M60 46 L60 122 M27 80 L93 80" stroke="#c4967a" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <text x="88" y="392" font-family="Georgia, 'Times New Roman', serif" font-size="82"
+        fill="#f1ead8" letter-spacing="1">Astro Vetro</text>
+  <text x="88" y="452" font-family="Helvetica, Arial, sans-serif" font-size="27"
+        fill="#c9c2ae" letter-spacing="3.4">CRYSTALS · TAROT · RITUAL OBJECTS</text>
+
+  <line x1="88" y1="500" x2="300" y2="500" stroke="#c4967a" stroke-width="2" opacity=".8"/>
+</svg>

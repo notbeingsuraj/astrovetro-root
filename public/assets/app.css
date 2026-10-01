@@ -732,3 +732,97 @@ a.intention-card:focus-visible { outline:2px solid var(--brown); outline-offset:
 @media (max-width: 700px) {
   .featured-head { flex-direction: column; align-items: start; }
 }
+
+/* ── Accessibility ──────────────────────────────────────────────── */
+/* First tab stop: lets keyboard users jump past the nav straight into the
+   page body. Visually hidden until focused. */
+.skip-link {
+  position:absolute;
+  left:-9999px;
+  top:0;
+  z-index:200;
+  padding:14px 22px;
+  background:var(--cream);
+  color:var(--ink);
+  font:500 12px/1 'DM Sans',sans-serif;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  border-radius:0 0 10px 0;
+}
+.skip-link:focus {
+  left:0;
+  outline:2px solid var(--clay);
+  outline-offset:2px;
+}
+/* Keyboard focus must always be visible; the design otherwise removes it. */
+:focus-visible {
+  outline:2px solid var(--clay);
+  outline-offset:3px;
+  border-radius:4px;
+}
+
+/* ── 404 ─────────────────────────────────────────────────────────── */
+.err-body { background:var(--deep); }
+.err-page {
+  min-height:calc(100vh - 78px);
+  display:flex;
+  align-items:center;
+  padding:96px 0 110px;
+}
+.err-wrap {
+  max-width:680px;
+  margin:0 auto;
+  text-align:center;
+}
+.err-mark {
+  font:400 clamp(84px,15vw,150px)/1 'Cormorant Garamond',serif;
+  letter-spacing:.02em;
+  color:transparent;
+  -webkit-text-stroke:1px rgba(241,234,220,.34);
+  margin-bottom:6px;
+}
+.err-wrap h1 {
+  font-size:clamp(32px,5.2vw,54px);
+  text-transform:none;
+  letter-spacing:-.01em;
+  margin:10px 0 18px;
+}
+.err-wrap .lead {
+  color:var(--sand);
+  max-width:46ch;
+  margin:0 auto;
+}
+.err-actions {
+  justify-content:center;
+  margin-top:34px;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.err-search {
+  margin-top:44px;
+  padding-top:32px;
+  border-top:1px solid var(--line);
+}
+.err-search .search-form {
+  display:flex;
+  gap:10px;
+  max-width:440px;
+  margin:0 auto;
+}
+.err-search input {
+  flex:1;
+  min-width:0;
+  height:48px;
+  padding:0 20px;
+  border:1px solid var(--line);
+  border-radius:30px;
+  background:rgba(16,38,31,.5);
+  color:var(--white);
+  font:300 15px 'DM Sans',sans-serif;
+}
+.err-search input::placeholder { color:var(--sage); }
+.err-search input:focus { outline:2px solid var(--clay); outline-offset:2px; }
+@media (max-width:560px) {
+  .err-search .search-form { flex-direction:column; }
+  .err-page { padding:64px 0 80px; }
+}

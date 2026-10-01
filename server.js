@@ -31,10 +31,28 @@ app.use(
   })
 );
 
+/* The landing page is the canonical home. Older links and bookmarks pointed at
+   /home.html, so redirect them permanently instead of 404ing a URL that is
+   still in search results and other people's messages. */
+app.get(['/home.html', '/home'], (_req, res) => res.redirect(301, '/'));
+
 app.use(express.static(PUBLIC_DIR, { index: 'index.html', extensions: ['html'] }));
 
-app.use((_req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+/* Real 404s. A catch-all that serves index.html for every unknown path makes
+   broken links look like they work, hides typos, and returns HTML with a 200
+   for missing assets, which then fail confusingly in the browser.
+   Requests that look like a file (they have an extension) get a bare 404 so a
+   broken <script>/<img> does not receive a page of HTML. */
+app.use((req, res) => {
+  const wantsFile = path.extname(req.path) !== '';
+  res.status(404);
+  if (wantsFile) {
+    res.type('text/plain').send('Not found');
+    return;
+  }
+  res.sendFile(path.join(PUBLIC_DIR, '404.html'), (err) => {
+    if (err) res.type('text/plain').send('Not found');
+  });
 });
 
 app.listen(PORT, () => {

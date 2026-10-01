@@ -13,24 +13,29 @@ window.AV = window.AV || {};
   AV.shippingFor = (subtotal) =>
     subtotal >= SHIPPING.freeAbove || subtotal === 0 ? 0 : SHIPPING.flat;
   const nav = [
-    ['Home', '/home.html'],
+    ['Home', '/'],
     ['Shop', '/shop.html'],
     ['Readings', '/readings.html'],
     ['Journal', '/journal.html'],
-    ['About', '/home.html#about'],
-    ['Contact', '/home.html#contact'],
+    ['About', '/#about'],
+    ['Contact', '/#contact'],
   ];
 
   function page(file) {
     return location.pathname.replace(/^\//, '').split('?')[0].split('#')[0] === file;
   }
 
+  /* The landing page is served at "/" — index.html is the canonical home. */
+  function isHome() {
+    const p = location.pathname.replace(/\/+$/, '');
+    return p === '' || p === '/index.html';
+  }
+
   function headerHTML() {
-    const active = page('home.html') ? '/' : null;
     const links = nav
       .map(([label, href]) => {
         const on =
-          (href === '/home.html' && page('home.html')) ||
+          (href === '/' && isHome()) ||
           (href === '/shop.html' && page('shop.html')) ||
           (href === '/readings.html' && page('readings.html')) ||
           (href === '/journal.html' && page('journal.html'));
@@ -39,7 +44,7 @@ window.AV = window.AV || {};
       .join('');
     const initial = AV.user ? AV.user.firstName?.[0] || AV.user.email?.[0] : null;
     return `
-<a href="/home.html" class="logo">Astro Vetro</a>
+<a href="/" class="logo">Astro Vetro</a>
 <button class="icon menu" id="menuBtn" aria-label="Menu">\u2630</button>
 <nav id="siteNav">${links}</nav>
 <div class="header-actions">
@@ -61,12 +66,12 @@ window.AV = window.AV || {};
   </div>
   <div>
     <div class="footer-title">Navigate</div>
-    <a href="/home.html">Home</a>
+    <a href="/">Home</a>
     <a href="/shop.html">Shop</a>
     <a href="/readings.html">Readings</a>
     <a href="/journal.html">Journal</a>
-    <a href="/home.html#about">About</a>
-    <a href="/home.html#contact">Contact</a>
+    <a href="/#about">About</a>
+    <a href="/#contact">Contact</a>
   </div>
   <div>
     <div class="footer-title">Customer</div>
@@ -256,6 +261,57 @@ window.AV = window.AV || {};
   <small>${AV.esc(a.category || 'Journal')} \u00b7 ${a.readingTime || ''} min read</small>
   <h3><a href="/article.html?slug=${encodeURIComponent(a.slug)}">${AV.esc(a.title)}</a></h3>
 </article>`;
+
+  /* ── Document head ─────────────────────────────────────────────────── */
+  /* Page-level SEO is authored in each HTML file; this only fills in the tags
+     that must stay in step with the live route, and keeps a single source of
+     truth for the social image. */
+  const SITE = 'Astro Vetro';
+  const DEFAULT_OG = '/assets/img/og-card.svg';
+  AV.SITE_NAME = SITE;
+
+  const setMeta = (attr, key, content) => {
+    if (!content) return;
+    let el = document.head.querySelector(`meta[${attr}="${key}"]`);
+    if (!el) {
+      el = document.createElement('meta');
+      el.setAttribute(attr, key);
+      document.head.appendChild(el);
+    }
+    el.setAttribute('content', content);
+  };
+
+  /* absolute() so canonical/og:url are correct regardless of the current path */
+  AV.absolute = (href) => {
+    if (!href) return '';
+    if (/^https?:\/\//i.test(href)) return href;
+    return new URL(href, location.origin).href;
+  };
+
+  /* Call after setting document.title and the description. */
+  AV.seo = ({ title, description, image, url, type = 'website', noindex = false }) => {
+    const full = title ? (title.includes(SITE) ? title : `${title} — ${SITE}`) : SITE;
+    document.title = full;
+    if (description) setMeta('name', 'description', description);
+    setMeta('name', 'robots', noindex ? 'noindex,follow' : 'index,follow');
+    setMeta('property', 'og:site_name', SITE);
+    setMeta('property', 'og:type', type);
+    setMeta('property', 'og:title', full);
+    if (description) setMeta('property', 'og:description', description);
+    setMeta('property', 'og:url', AV.absolute(url || location.pathname + location.search));
+    setMeta('property', 'og:image', AV.absolute(image || DEFAULT_OG));
+    setMeta('name', 'twitter:card', 'summary_large_image');
+    setMeta('name', 'twitter:title', full);
+    if (description) setMeta('name', 'twitter:description', description);
+    setMeta('name', 'twitter:image', AV.absolute(image || DEFAULT_OG));
+    let link = document.head.querySelector('link[rel="canonical"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('rel', 'canonical');
+      document.head.appendChild(link);
+    }
+    link.setAttribute('href', AV.absolute(url || location.pathname + location.search));
+  };
 
   /* ── Boot ─────────────────────────────────────────────────────────── */
   AV.boot = (opts = {}) => {

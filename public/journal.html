@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Journal — Astro Vetro</title>
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<meta name="robots" content="index, follow">
+<meta name="description" content="Notes on stones, rituals and the quiet work of paying attention.">
+<title>Journal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -11,11 +16,12 @@
 <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
 <header class="page-hero">
   <div class="wrap">
-    <a class="back" href="/home.html">← Home</a>
+    <a class="back" href="/">← Home</a>
     <div class="eyebrow">Stories &amp; guidance</div>
     <h1>From the journal.</h1>
     <p class="sub">Notes on stones, rituals and the quiet work of paying attention.</p>
@@ -23,9 +29,10 @@
   </div>
 </header>
 
-<main>
+<main id="main">
   <div class="page">
     <div class="wrap">
+      <h2 class="sr-only">Articles</h2>
       <div class="journal-grid js-load" id="journalGrid" style="grid-template-columns:repeat(3,1fr)"></div>
       <div class="pager" id="pager"></div>
     </div>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Page not found — Astro Vetro</title>
+<meta name="description" content="That page is not here. Return to the Astro Vetro collection of crystals, tarot and ritual objects.">
+<meta name="robots" content="noindex,follow">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body class="err-body">
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+
+<main id="main">
+  <div class="page err-page">
+    <div class="wrap err-wrap">
+      <div class="err-mark" aria-hidden="true">404</div>
+      <div class="eyebrow">Nothing on this shelf</div>
+      <h1>This page has wandered off.</h1>
+      <p class="lead">The link may be old, or the piece you were after may have
+        sold out. The shop and the readings are both still where you left them.</p>
+      <div class="actions err-actions">
+        <a class="btn btn-light" href="/">Back to the cabinet</a>
+        <a class="btn btn-outline" href="/shop.html">Browse the collection</a>
+        <a class="btn btn-outline" href="/readings.html">See readings</a>
+      </div>
+      <div class="err-search">
+        <form action="/shop.html" method="get" class="search-form" id="nfSearch">
+          <label class="sr-only" for="nfQ">Search the collection</label>
+          <input type="search" id="nfQ" name="search" placeholder="Or search for a piece" autocomplete="off">
+          <button class="btn btn-ghost btn-sm" type="submit">Search</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+
+/* Send the visitor straight to the shop with their term applied, rather than
+   bouncing them through a second empty results page. */
+AV.qs('#nfSearch').addEventListener('submit', (e) => {
+  const v = AV.qs('#nfQ').value.trim();
+  if (!v) { e.preventDefault(); AV.qs('#nfQ').focus(); return; }
+  e.preventDefault();
+  location.href = '/shop.html?search=' + encodeURIComponent(v);
+});
+</script>
+</body>
+</html>

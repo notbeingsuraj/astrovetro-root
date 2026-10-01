@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Readings — Astro Vetro</title>
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<meta name="robots" content="index, follow">
+<meta name="description" content="Personal tarot readings for the questions, decisions and reflections on your mind. Held online, at a time that suits you.">
+<title>Tarot Readings</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -11,6 +16,7 @@
 <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
 <header class="page-hero">
@@ -22,10 +28,11 @@
   </div>
 </header>
 
-<main>
+<main id="main">
   <div class="page">
     <div class="wrap">
 
+      <h2 class="sr-only">Available readings</h2>
       <div class="toolbar readings-toolbar">
         <div class="filters">
           <label class="sr-only" for="typeSelect">Reading type</label>
@@ -101,7 +108,7 @@
       <p class="sub">Choose a format below, or write to us and we will find a
         time that suits you.</p>
       <div class="actions">
-        <a class="btn btn-light" href="/home.html#contact">Write to us</a>
+        <a class="btn btn-light" href="/#contact">Write to us</a>
       </div>
     </div>
   </section>
@@ -221,7 +228,7 @@ async function load() {
     render();
   } catch (e) {
     grid.innerHTML = '<div class="empty">We could not reach the booking system just now. '
-      + '<a class="btn btn-ghost btn-sm" href="/home.html#contact">Write to us instead</a></div>';
+      + '<a class="btn btn-ghost btn-sm" href="/#contact">Write to us instead</a></div>';
     countEl.textContent = '';
   }
 
