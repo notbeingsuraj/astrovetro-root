@@ -469,8 +469,6 @@ td a { color: var(--sand); border-bottom: 1px dotted var(--line); }
 /* ── Cart badge / avatar / active nav ─────────────────────────── */
 .cart-badge {
   position: absolute;
-  right: -4px;
-  top: -4px;
   min-width: 17px;
   height: 17px;
   border-radius: 50%;
@@ -480,6 +478,11 @@ td a { color: var(--sand); border-bottom: 1px dotted var(--line); }
   display: none;
   place-items: center;
   padding: 0 4px;
+  /* Tucked inside the round button. Hanging it outside with a negative offset
+     pushed past the header edge and gave every page a 4px horizontal
+     scrollbar, so the count now sits just inside the circle. */
+  right:2px;
+  top:2px;
   font-style: normal;
 }
 nav a.on { color: var(--sand); border-bottom: 1px solid var(--olive); padding-bottom: 2px; }
@@ -736,10 +739,13 @@ a.intention-card:focus-visible { outline:2px solid var(--brown); outline-offset:
 /* ── Accessibility ──────────────────────────────────────────────── */
 /* First tab stop: lets keyboard users jump past the nav straight into the
    page body. Visually hidden until focused. */
+/* Hidden with the same 1px/clip technique as .sr-only rather than
+   left:-9999px — the large negative offset widens the scroll area and gives
+   every page a 4px horizontal scrollbar. */
 .skip-link {
   position:absolute;
-  left:-9999px;
   top:0;
+  left:0;
   z-index:200;
   padding:14px 22px;
   background:var(--cream);
@@ -748,9 +754,21 @@ a.intention-card:focus-visible { outline:2px solid var(--brown); outline-offset:
   letter-spacing:.14em;
   text-transform:uppercase;
   border-radius:0 0 10px 0;
+  /* Hidden with the same 1px/clip technique as .sr-only rather than
+     left:-9999px — the large negative offset widens the scroll area and gives
+     every page a 4px horizontal scrollbar. */
+  width:1px; height:1px;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  white-space:nowrap;
 }
 .skip-link:focus {
-  left:0;
+  width:auto; height:auto;
+  margin:0;
+  overflow:visible;
+  clip:auto;
+  white-space:normal;
   outline:2px solid var(--clay);
   outline-offset:2px;
 }
@@ -825,4 +843,29 @@ a.intention-card:focus-visible { outline:2px solid var(--brown); outline-offset:
 @media (max-width:560px) {
   .err-search .search-form { flex-direction:column; }
   .err-page { padding:64px 0 80px; }
+}
+
+/* Per-line stock note under the quantity stepper. */
+.line-note {
+  margin:8px 0 0;
+  font:300 11px/1.5 'DM Sans',sans-serif;
+  letter-spacing:.06em;
+  color:var(--sage);
+}
+/* The + button is disabled at the stock ceiling; keep it legible as a limit
+   rather than looking broken. */
+.stepper button[disabled] {
+  opacity:.34;
+  cursor:not-allowed;
+}
+
+/* reportValidity() paints these itself, but only after the user has visited a
+   field once. Styling :user-invalid shows the error at the same moment the
+   submit is blocked, which is the point of the check. */
+input:user-invalid, select:user-invalid, textarea:user-invalid {
+  border-color:#e0a9a0 !important;
+}
+input:user-invalid:focus, select:user-invalid:focus, textarea:user-invalid:focus {
+  outline:2px solid #e0a9a0;
+  outline-offset:2px;
 }

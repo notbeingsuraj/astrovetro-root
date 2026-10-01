@@ -14,6 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/admin.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Admin — Astro Vetro">
+<meta property="og:description" content="Internal dashboard.">
+<meta property="og:url" content="/admin.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Admin — Astro Vetro">
+<meta name="twitter:description" content="Internal dashboard.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -50,7 +61,7 @@ const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'];
 async function init() {
   const user = await AV.me();
   if (!user || user.role !== 'admin') {
-    document.title = 'Restricted — Astro Vetro';
+    AV.seo({ title: 'Restricted', description: 'Internal dashboard.', noindex: true });
     root.innerHTML = `<div class="gate">
       <div class="eyebrow">Restricted</div>
       <h2>This desk is<br>for staff only.</h2>

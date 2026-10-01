@@ -161,22 +161,82 @@ window.AV = window.AV || {};
   AV.markInCart = function markInCart() {
     document.querySelectorAll('.btn-product[data-slug]').forEach(markBtnInBag);
   };
+  /* Stock is optional in the API. When present it caps the quantity, so a
+     shopper cannot build a bag the backend will refuse at checkout. */
+  const stockOf = (p) => {
+    const s = Number(p && p.stock);
+    return Number.isFinite(s) && s > 0 ? s : 99;
+  };
   function addToCart(p, qty) {
     const c = readCart();
     const found = c.find((i) => i.slug === p.slug);
+    const want = (found ? found.quantity : 0) + (qty || 1);
+    const cap = stockOf(p);
+    if (want > cap) {
+      AV.toast(
+        cap === 0
+          ? `${p.name} has sold out.`
+          : `Only ${cap} of ${p.name} left — that is all we have.`
+      );
+      return false;
+    }
     if (found) {
-      found.quantity = Math.min(99, found.quantity + (qty || 1));
+      found.quantity = Math.min(cap, want);
       found.price = p.price;
     } else {
-      c.push({ slug: p.slug, name: p.name, price: p.price, image: p.image || null, quantity: qty || 1 });
+      c.push({
+        slug: p.slug,
+        name: p.name,
+        price: p.price,
+        image: p.image || null,
+        stock: stockOf(p),
+        quantity: qty || 1,
+      });
     }
     writeCart(c);
+    return true;
   }
   AV.setCartQty = (slug, qty) => {
     const c = readCart();
     const i = c.find((x) => x.slug === slug);
-    if (i) i.quantity = Math.max(1, Math.min(99, qty));
+    if (i) {
+      /* The bag remembers the stock cap from when the item was added, so the
+         + button stops at the same limit even after a reload. */
+      const cap = Number.isFinite(i.stock) && i.stock > 0 ? i.stock : 99;
+      i.quantity = Math.max(1, Math.min(cap, qty));
+    }
     writeCart(c);
+  };
+  /* Re-checks every line against current stock and drops anything gone.
+     `covered` is every slug the API returned, so a paginated response cannot
+     be mistaken for a full catalogue and wipe the bag. */
+  AV.pruneCart = (products, opts = {}) => {
+    const covered = opts.all === true;
+    const byslug = new Map((products || []).map((p) => [p.slug, p]));
+    const c = readCart();
+    const kept = [];
+    const dropped = [];
+    c.forEach((i) => {
+      const p = byslug.get(i.slug);
+      /* Unknown only counts as removed when the response was the whole list. */
+      if (!p) {
+        if (covered) dropped.push(i.name);
+        else kept.push(i);
+        return;
+      }
+      i.price = p.price;
+      /* Only tighten a cap the API actually reports. A catalogue with no stock
+         field must not wipe a limit learned when the item was added. */
+      const live = Number(p.stock);
+      if (Number.isFinite(live) && live >= 0) i.stock = live > 0 ? live : 0;
+      const cap = Number.isFinite(i.stock) && i.stock > 0 ? i.stock : 99;
+      if (i.stock === 0) { dropped.push(i.name); return; }
+      if (i.quantity > cap) i.quantity = cap;
+      kept.push(i);
+    });
+    if (dropped.length) writeCart(kept);
+    else writeCart(c);
+    return dropped;
   };
   AV.removeFromCart = (slug) => {
     writeCart(readCart().filter((i) => i.slug !== slug));

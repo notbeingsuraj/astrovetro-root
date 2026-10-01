@@ -14,6 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/order.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Your Order — Astro Vetro">
+<meta property="og:description" content="Your order confirmation and delivery details.">
+<meta property="og:url" content="/order.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Your Order — Astro Vetro">
+<meta name="twitter:description" content="Your order confirmation and delivery details.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -21,6 +32,7 @@
 
 <main id="main">
   <div class="page">
+    <h1 class="sr-only">Your order</h1>
     <div class="wrap" id="orderRoot"></div>
   </div>
 </main>
@@ -56,7 +68,11 @@ async function init() {
   try {
     const env = await AV.api.get(`/api/orders/${encodeURIComponent(number)}`);
     const o = env.data;
-    document.title = `Order ${o.orderNumber} — Astro Vetro`;
+    AV.seo({
+      title: `Order ${o.orderNumber}`,
+      description: 'Your order confirmation and delivery details.',
+      noindex: true,
+    });
 
     const rows = (o.items || []).map((i) => `
       <tr>

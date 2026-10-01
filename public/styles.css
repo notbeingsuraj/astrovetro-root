@@ -93,6 +93,7 @@ nav a:hover {
   gap:10px;
 }
 .icon {
+  position:relative; /* anchors the cart count badge */
   width:37px;
   height:37px;
   border:1px solid var(--line);
@@ -764,6 +765,15 @@ footer p,footer a {
   .footer-bottom {
     flex-direction:column;
     gap:10px;
+  }
+  /* The newsletter heading kept its 58px desktop size here, so "Occasional"
+     alone set a min-content column wider than a 320px screen. */
+  .newsletter {
+    padding:64px 5vw;
+  }
+  .newsletter h2 {
+    font-size:34px;
+    overflow-wrap:break-word;
   }
 }
 .mobile-nav {

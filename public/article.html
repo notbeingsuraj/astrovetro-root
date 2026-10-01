@@ -14,6 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/article.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Journal — Astro Vetro">
+<meta property="og:description" content="Notes on stones, rituals and the quiet work of paying attention.">
+<meta property="og:url" content="/article.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Journal — Astro Vetro">
+<meta name="twitter:description" content="Notes on stones, rituals and the quiet work of paying attention.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -21,7 +32,9 @@
 
 <main id="main">
   <div class="page">
-    <div class="wrap article" id="articleRoot"></div>
+    <div class="wrap article" id="articleRoot">
+      <h1 class="sr-only">Astro Vetro journal</h1>
+    </div>
   </div>
   <section class="section journal">
     <div class="wrap">
@@ -73,7 +86,12 @@ function escLine(t) {
     const env = await AV.api.get(`/api/articles/${encodeURIComponent(slug)}`);
     const a = env.data;
     if (!a) throw new Error('Article not found');
-    document.title = `${a.title} — Astro Vetro Journal`;
+    AV.seo({
+      title: `${a.title} — Journal`,
+      description: a.excerpt || 'Notes on stones, rituals and the quiet work of paying attention.',
+      url: `/article.html?slug=${encodeURIComponent(a.slug)}`,
+      type: 'article',
+    });
 
     root.innerHTML = `
       <a class="back" href="/journal.html">← Journal</a>

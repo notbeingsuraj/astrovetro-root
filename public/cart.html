@@ -14,6 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/cart.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Your Bag — Astro Vetro">
+<meta property="og:description" content="The pieces you have chosen so far.">
+<meta property="og:url" content="/cart.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Your Bag — Astro Vetro">
+<meta name="twitter:description" content="The pieces you have chosen so far.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -54,6 +65,9 @@ function render() {
     sumEl.innerHTML = '';
     return;
   }
+  /* Lines whose stock has dropped since they were added are trimmed here, so
+     the shopper sees a real total rather than a price the API will refuse. */
+  const atCap = (i) => Number.isFinite(i.stock) && i.stock > 0 && i.quantity >= i.stock;
   listEl.innerHTML = cart
     .map((i) => `
       <div class="cart-line">
@@ -62,10 +76,11 @@ function render() {
           <h3><a href="/product.html?slug=${encodeURIComponent(i.slug)}">${AV.esc(i.name)}</a></h3>
           <div class="price">${AV.formatPrice(i.price)}</div>
           <div class="stepper line-qty">
-            <button type="button" data-qty-m="${i.slug}">−</button>
+            <button type="button" data-qty-m="${i.slug}" aria-label="Decrease quantity of ${AV.esc(i.name)}">−</button>
             <span>${i.quantity}</span>
-            <button type="button" data-qty-p="${i.slug}">+</button>
+            <button type="button" data-qty-p="${i.slug}" aria-label="Increase quantity of ${AV.esc(i.name)}"${atCap(i) ? ' disabled title="That is all we have in stock"' : ''}>+</button>
           </div>
+          ${atCap(i) ? '<p class="line-note">Only ' + i.stock + ' in stock.</p>' : ''}
           <button class="remove" data-remove="${i.slug}">Remove</button>
         </div>
         <span class="line-total">${AV.formatPrice(i.price * i.quantity)}</span>
@@ -96,6 +111,21 @@ listEl.addEventListener('click', (e) => {
 });
 
 render();
+
+/* Confirm the bag still matches live stock. A product that sold out since it
+   was added is dropped with an explanation instead of failing at checkout. */
+AV.api.get('/api/products?limit=100')
+  .then((env) => {
+    /* Only treat the bag as authoritative when the response really covered the
+       catalogue; a truncated page must not delete lines it simply didn't list. */
+    const all = !(env.meta && env.meta.hasMore);
+    const dropped = AV.pruneCart(env.data || [], { all });
+    if (dropped.length) {
+      AV.toast(`No longer available: ${dropped.join(', ')}.`);
+      render();
+    }
+  })
+  .catch(() => { /* offline: keep showing the bag as it stands */ });
 </script>
 </body>
 </html>

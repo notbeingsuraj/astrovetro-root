@@ -14,6 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/booking.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Book a Reading — Astro Vetro">
+<meta property="og:description" content="Request a tarot reading at a time that suits you. No payment until we agree on a slot.">
+<meta property="og:url" content="/booking.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Book a Reading — Astro Vetro">
+<meta name="twitter:description" content="Request a tarot reading at a time that suits you. No payment until we agree on a slot.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -52,6 +63,13 @@ const slug = params.get('slug');
 
   const user = await AV.me();
   const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
+
+  AV.seo({
+    title: `Book ${service.name}`,
+    description: `Request ${service.name} at a time that suits you. No payment until we agree on a slot.`,
+    url: `/booking.html?slug=${encodeURIComponent(slug)}`,
+    noindex: true,
+  });
 
   root.innerHTML = `
     <a class="back" href="/readings.html">← All readings</a>
@@ -96,6 +114,7 @@ const slug = params.get('slug');
     const btn = form.querySelector('button[type="submit"]');
     const f = form.elements;
     msg.className = 'form-msg';
+    if (!form.reportValidity()) return;
     const day = f.date.value;
     const preferredDate = day ? new Date(`${day}T10:00:00`).toISOString() : null;
     try {

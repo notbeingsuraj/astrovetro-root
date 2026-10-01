@@ -14,6 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/product.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Product — Astro Vetro">
+<meta property="og:description" content="Stone, setting, dimensions and what this piece is for.">
+<meta property="og:url" content="/product.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Product — Astro Vetro">
+<meta name="twitter:description" content="Stone, setting, dimensions and what this piece is for.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -54,7 +65,13 @@ async function load() {
     const env = await AV.api.get(`/api/products/${encodeURIComponent(slug)}`);
     const p = env.data;
     if (!p) throw new Error('Product not found');
-    document.title = `${p.name} — Astro Vetro`;
+    AV.seo({
+      title: p.name,
+      description: p.description ||
+        `${p.name}${p.stone ? ' in ' + p.stone : ''} — ${p.category || 'crystal'}.`,
+      url: `/product.html?slug=${encodeURIComponent(p.slug)}`,
+      type: 'product',
+    });
 
     pdArt.innerHTML = `<div class="art ${AV.art(Math.abs(hash(p.slug)) % 8)}" role="img" aria-label="${AV.esc(p.name)}" style="height:100%"></div>`;
     pdInfo.innerHTML = `

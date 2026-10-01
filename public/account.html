@@ -14,6 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/account.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Your Account — Astro Vetro">
+<meta property="og:description" content="Your orders, readings and account details.">
+<meta property="og:url" content="/account.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Your Account — Astro Vetro">
+<meta name="twitter:description" content="Your orders, readings and account details.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -49,7 +60,7 @@ async function init() {
   const user = await AV.me();
   if (!user) return renderAuth();
   AV.setUser(user);
-  document.title = `Hi, ${user.firstName} — Astro Vetro`;
+  AV.seo({ title: `${user.firstName}'s account`, description: 'Your orders, readings and account details.', noindex: true });
   AV.qs('#pageTitle').textContent = `${user.firstName}'s space.`;
   renderTabs(user);
 }
@@ -236,7 +247,13 @@ function password(_user, pane) {
 /* ── Auth (login / register) ──────────────────────────────────── */
 function renderAuth() {
   const mode = view === 'register' ? 'register' : 'login';
-  document.title = mode === 'register' ? 'Join Astro Vetro' : 'Sign in — Astro Vetro';
+  AV.seo({
+    title: mode === 'register' ? 'Join us' : 'Sign in',
+    description: mode === 'register'
+      ? 'Create an account for faster checkout.'
+      : 'Sign in to see your orders and readings.',
+    noindex: true,
+  });
   AV.qs('#pageTitle').textContent = mode === 'register' ? 'Join us.' : 'Welcome back.';
   AV.qs('#pageSub').textContent = mode === 'register' ? 'Create an account for faster checkout.' : 'Sign in to see your orders and readings.';
 
@@ -261,6 +278,9 @@ function renderAuth() {
     const msg = AV.qs('.form-msg');
     const btn = form.querySelector('button[type="submit"]');
     msg.className = 'form-msg';
+    /* novalidate is set so errors render in the one place; the equivalent
+       native checks must run here or an empty password reaches the API. */
+    if (!form.reportValidity()) return;
     try {
       AV.setBusy(btn, true);
       const body = {};

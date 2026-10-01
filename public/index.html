@@ -151,7 +151,7 @@ body {
 }
 /* Scales with the viewport and is capped by height so the heading can never
    grow taller than the compartment it sits in. */
-.content h2 {
+.content .door-label {
   margin:0 0 clamp(14px,2.2vh,18px);
   font-family:Georgia,'Times New Roman',serif;
   font-size:min(clamp(46px,6.5vw,96px),13vh);
@@ -363,7 +363,7 @@ body {
   .crystal-content,
   .ritual-content { text-align:left; }
   .ritual-content .lede { margin-left:0; }
-  .content h2 { font-size:min(clamp(38px,11vw,56px),11vh); }
+  .content .door-label { font-size:min(clamp(38px,11vw,56px),11vh); }
   .divider {
     left:12%; right:12%; top:50%; bottom:50%;
     width:auto; height:1px;
@@ -375,7 +375,7 @@ body {
 /* Short viewports (landscape phones): tighten the copy so it fits the
    compartment without being clipped. */
 @media (max-height:560px) {
-  .content h2 { font-size:min(clamp(38px,7vh,64px),11vh); }
+  .content .door-label { font-size:min(clamp(38px,7vh,64px),11vh); }
   .panel-eyebrow { margin-bottom:10px; }
   .content .lede { margin-bottom:14px; line-height:1.55; }
   .scroll-stage { height:200vh; }
@@ -406,6 +406,17 @@ body {
   .panel-enter { opacity:.85; pointer-events:auto; visibility:visible; }
 }
 </style>
+<link rel="canonical" href="/">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Astro Vetro — Crystals, Tarot &amp; Ritual Objects">
+<meta property="og:description" content="Crystals, tarot and ritual objects for slow mornings and small rituals. Crystals and jewellery chosen for how they sit in a room and feel in the hand.">
+<meta property="og:url" content="/">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Astro Vetro — Crystals, Tarot &amp; Ritual Objects">
+<meta name="twitter:description" content="Crystals, tarot and ritual objects for slow mornings and small rituals. Crystals and jewellery chosen for how they sit in a room and feel in the hand.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -419,7 +430,7 @@ body {
         <div class="panel-shade"></div>
         <div class="content crystal-content">
           <p class="panel-eyebrow">01 · The Collection</p>
-          <h2>Crystals</h2>
+          <p class="door-label">Crystals</p>
           <p class="lede">Objects chosen for their texture, presence and quiet ritual of touch.</p>
           <a class="panel-enter" href="shop.html">Enter the cabinet</a>
         </div>
@@ -429,7 +440,7 @@ body {
         <div class="panel-shade"></div>
         <div class="content ritual-content">
           <p class="panel-eyebrow">02 · The Practice</p>
-          <h2>Rituals</h2>
+          <p class="door-label">Rituals</p>
           <p class="lede">Small practices and meaningful objects for making space in the everyday.</p>
           <a class="panel-enter" href="readings.html">Enter the rituals</a>
         </div>
@@ -499,8 +510,8 @@ body {
 
   <section class="section intentions" id="intentions">
     <div class="section-title">
-      <div class="kicker">Find your ritual</div>
-      <h2>Begin where you are.</h2>
+      <div class="kicker">Start here</div>
+      <h2>Pick what you need.</h2>
     </div>
     <div class="intention-grid">
       <a class="intention-card" href="/shop.html?category=tower">
@@ -530,7 +541,7 @@ body {
   <section class="section products" id="products">
     <div class="section-title">
       <div class="kicker">The collection</div>
-      <h2>Chosen this season.</h2>
+      <h2>What we have in stock.</h2>
     </div>
     <div class="products-grid js-load" id="homeProducts"></div>
     <div class="actions" id="homeProductsActions"></div>
@@ -571,7 +582,7 @@ body {
   <section class="section about" id="about">
     <div class="about-copy">
       <div class="kicker">About</div>
-      <h2>A space for spiritual connection.</h2>
+      <h2>Why we started.</h2>
       <p>AstroVetro began with a simple frustration: most of what is sold as
         spiritual is loud, and most of what is genuinely useful is not sold at
         all. We wanted the opposite of that &mdash; a small, quiet practice built
@@ -596,7 +607,7 @@ body {
   </section>
 
   <section class="newsletter" id="newsletter">
-    <h2>A little magic,<br>in your inbox.</h2>
+    <h2>Occasional notes,<br>now and then.</h2>
     <p>Occasional notes on new pieces, practice and what we are learning.
       No noise, and unsubscribing is one click.</p>
     <form class="newsletter-form" id="newsletterForm" novalidate>

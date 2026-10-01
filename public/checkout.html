@@ -14,6 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/checkout.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Checkout — Astro Vetro">
+<meta property="og:description" content="Complete your order.">
+<meta property="og:url" content="/checkout.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Checkout — Astro Vetro">
+<meta name="twitter:description" content="Complete your order.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -122,6 +133,21 @@ async function init() {
     e.preventDefault();
     const btn = form.querySelector('button[type="submit"]');
     const f = form.elements;
+    msg.className = 'form-msg';
+
+    /* The form opts out of native validation so the error can be shown in one
+       place, so the equivalent checks have to run here — otherwise an empty
+       address is posted to the API as a real order. */
+    if (!form.reportValidity()) return;
+
+    const pincode = f.pincode.value.trim();
+    if (!/^\d{4,10}$/.test(pincode)) {
+      msg.classList.add('show', 'err');
+      msg.textContent = 'Enter a valid pincode (4–10 digits).';
+      f.pincode.focus();
+      return;
+    }
+
     const items = cart.map((i) => ({
       slug: i.slug,
       name: i.name,
@@ -141,7 +167,7 @@ async function init() {
           line2: f.line2.value.trim(),
           city: f.city.value.trim(),
           state: f.state.value.trim(),
-          pincode: f.pincode.value.trim(),
+          pincode,
           country: f.country.value.trim() || 'India',
         },
       });
