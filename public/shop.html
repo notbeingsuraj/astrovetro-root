@@ -15,7 +15,7 @@
 
 <header class="page-hero">
   <div class="wrap">
-    <a class="back" href="/home.html">← Home</a>
+    <a class="back" href="/">← Home</a>
     <div class="eyebrow">The collection</div>
     <h1>Shop by intention.</h1>
     <p class="sub" id="shopSub">Crystals, bracelets and ritual objects chosen for the way they make a space feel.</p>
@@ -29,11 +29,11 @@
           <option value="">All categories</option>
         </select>
         <select id="sortSelect" aria-label="Sort">
-          <option value="createdAt">Newest</option>
-          <option value="price-desc">Price · high to low</option>
-          <option value="price">Price · low to high</option>
-          <option value="rating">Top rated</option>
-          <option value="name">Name</option>
+          <option value="createdAt:desc">Newest</option>
+          <option value="price:asc">Price · low to high</option>
+          <option value="price:desc">Price · high to low</option>
+          <option value="rating:desc">Top rated</option>
+          <option value="name:asc">Name</option>
         </select>
       </div>
       <span class="meta-count" id="resultCount"></span>
@@ -45,6 +45,19 @@
 <main>
   <div class="page">
     <div class="wrap">
+
+      <!-- Shown only before any filter narrows the list. -->
+      <section class="featured-rail" id="featuredRail" hidden>
+        <div class="featured-head">
+          <div>
+            <div class="kicker">Most chosen</div>
+            <h2>Where to begin.</h2>
+          </div>
+          <a class="btn btn-ghost btn-sm" href="/shop.html">See everything</a>
+        </div>
+        <div class="products-grid" id="featuredGrid"></div>
+      </section>
+
       <div class="products-grid js-load" id="shopGrid"></div>
       <div class="pager" id="pager"></div>
     </div>
@@ -84,8 +97,36 @@ function syncUrl() {
   history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
 }
 
+/* Tracks an in-flight load so a slow response cannot overwrite a newer one. */
+let loadToken = 0;
+
+function isFiltered() {
+  const s = state();
+  return Boolean(s.search || s.intention || s.category);
+}
+
+/* Featured rail only when the visitor has not narrowed anything yet. */
+async function loadFeatured() {
+  const rail = AV.qs('#featuredRail');
+  const fgrid = AV.qs('#featuredGrid');
+  if (isFiltered()) { rail.hidden = true; return; }
+  try {
+    let env = await AV.api.get('/api/products?limit=4&featured=true');
+    let items = env.data || [];
+    if (!items.length) {
+      env = await AV.api.get('/api/products?limit=4&sort=rating&order=desc');
+      items = env.data || [];
+    }
+    if (!items.length) { rail.hidden = true; return; }
+    fgrid.innerHTML = items.map((p, i) => AV.productCard(p, i)).join('');
+    rail.hidden = false;
+  } catch (_e) {
+    rail.hidden = true; // rail is a bonus, never a blocker
+  }
+}
+
 async function load() {
-  grid.innerHTML = '';
+  const token = ++loadToken;
   const s = state();
   const q = new URLSearchParams({
     page: String(page),
@@ -97,13 +138,25 @@ async function load() {
   if (s.intention) q.set('intention', s.intention);
   if (s.category) q.set('category', s.category);
 
+  /* Keep the previous results on screen while refetching; only show
+     skeletons on a cold first paint. */
+  if (!grid.children.length) {
+    grid.innerHTML = AV.skeletonCards(8);
+    AV.reveal(grid);
+  }
+  grid.setAttribute('aria-busy', 'true');
+
   try {
     const env = await AV.api.get(`/api/products?${q.toString()}`);
+    if (token !== loadToken) return;
     const items = env.data || [];
-    countEl.textContent = `${env.meta?.total ?? 0} ${(env.meta?.total ?? 0) === 1 ? 'piece' : 'pieces'}`;
+    const total = env.meta?.total ?? items.length;
+
+    countEl.textContent = `${total} ${total === 1 ? 'piece' : 'pieces'}`;
     grid.innerHTML = items.length
       ? items.map((p, i) => AV.productCard(p, i)).join('')
-      : '<div class="empty">Nothing matches that search — try a different intention or filter.<br><button class="btn btn-ghost" data-reset-filters>Clear filters</button></div>';
+      : `<div class="empty">Nothing matches that search — try a different intention or filter.<br><button class="btn btn-ghost" data-reset-filters>Clear filters</button></div>`;
+    AV.markInCart();
 
     const meta = env.meta || {};
     page = meta.page || page;
@@ -119,23 +172,60 @@ async function load() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       })
     );
+
+    loadFeatured();
   } catch (e) {
-    grid.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+    if (token !== loadToken) return;
+    /* Distinguish "the shop is down" from "no matches", so the visitor knows
+       whether to wait or to change their filters. */
+    grid.innerHTML = `<div class="empty">The collection could not be loaded just now.<br>
+      <span class="muted">${AV.esc(AV.firstErr(e))}</span><br>
+      <button class="btn btn-ghost" data-retry>Try again</button></div>`;
+    countEl.textContent = '';
     pagerEl.innerHTML = '';
+    AV.qs('#featuredRail').hidden = true;
+  } finally {
+    if (token === loadToken) grid.removeAttribute('aria-busy');
   }
+}
+
+
+
+/* Reloads in place. A full navigation would throw away the page, reset scroll
+   and replay the boot sequence on every chip or dropdown change. */
+function refetch({ resetPage = true, scroll = false } = {}) {
+  if (resetPage) page = 1;
+  syncUrl();
+  load();
+  if (scroll) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 grid.addEventListener('click', (e) => {
   const reset = e.target.closest('[data-reset-filters]');
   if (reset) {
-    location.href = '/shop.html';
+    for (const k of ['search', 'intention', 'category']) params.delete(k);
+    AV.qs('#searchInput').value = '';
+    AV.qs('#catSelect').value = '';
+    AV.qsa('#intentionChips .chip').forEach((c) => c.classList.remove('on'));
+    refetch();
+    return;
+  }
+  if (e.target.closest('[data-retry]')) {
+    AV.qs('#featuredRail').hidden = true;
+    load();
   }
 });
 
 async function initFilters() {
   const s = state();
   AV.qs('#searchInput').value = s.search || '';
-  AV.qs('#sortSelect').value = s.sort === 'price' && s.order === 'asc' ? 'price' : s.sort === 'price' ? 'price-desc' : s.sort;
+  /* Reflect the URL in the control; fall back to Newest for anything the
+     select does not offer so it can never display a stale, mismatched value. */
+  const sortEl = AV.qs('#sortSelect');
+  const wanted = `${s.sort}:${s.order}`;
+  sortEl.value = [...sortEl.options].some((o) => o.value === wanted)
+    ? wanted
+    : ([...sortEl.options].some((o) => o.value === s.sort) ? s.sort : 'createdAt:desc');
 
   try {
     const env = await AV.api.get('/api/products/intentions');
@@ -145,14 +235,19 @@ async function initFilters() {
       const chip = document.createElement('button');
       chip.className = 'chip' + (s.intention && s.intention.toLowerCase() === String(val).toLowerCase() ? ' on' : '');
       chip.textContent = label;
+      chip.dataset.intention = val;
       chip.addEventListener('click', () => {
+        const same = s.intention.toLowerCase() === String(val).toLowerCase();
         params.delete('category');
         params.delete('search');
-        if (String(val).toLowerCase() !== s.intention.toLowerCase()) params.set('intention', val);
+        if (!same) params.set('intention', val);
         else params.delete('intention');
-        page = 1;
-        syncUrl();
-        location.href = `?${params.toString()}`;
+        AV.qs('#searchInput').value = '';
+        AV.qs('#catSelect').value = '';
+        AV.qsa('#intentionChips .chip').forEach((c) => {
+          c.classList.toggle('on', !same && c.dataset.intention === val);
+        });
+        refetch();
       });
       chips.appendChild(chip);
     });
@@ -177,27 +272,37 @@ AV.qs('#searchForm').addEventListener('submit', (e) => {
   const v = AV.qs('#searchInput').value.trim();
   if (v) params.set('search', v);
   else params.delete('search');
-  params.delete('page');
-  location.href = `?${params.toString()}`;
+  refetch();
 });
 
 AV.qs('#catSelect').addEventListener('change', (e) => {
   if (e.target.value) params.set('category', e.target.value);
   else params.delete('category');
-  params.delete('page');
-  location.href = `?${params.toString()}`;
+  AV.qsa('#intentionChips .chip').forEach((c) => c.classList.remove('on'));
+  refetch();
 });
 
 AV.qs('#sortSelect').addEventListener('change', (e) => {
-  const [sort, order] = e.target.value === 'price-desc' ? ['price', 'desc'] : [e.target.value, e.target.value === 'price' ? 'asc' : 'desc'];
+  /* Option values carry an explicit direction ("price:asc") so the select and
+     the URL cannot disagree about which way "price" is being sorted. */
+  const [sort, order = 'asc'] = e.target.value.split(':');
   params.set('sort', sort);
   params.set('order', order);
-  params.delete('page');
-  location.href = `?${params.toString()}`;
+  refetch();
 });
 
 initFilters();
 load();
+
+/* The header search icon deep-links here as ?focus=1 — honour it by putting
+   the caret in the field and bringing it into view. */
+if (new URLSearchParams(location.search).get('focus') === '1') {
+  const input = AV.qs('#searchInput');
+  requestAnimationFrame(() => {
+    input.focus({ preventScroll: true });
+    input.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+}
 </script>
 </body>
 </html>

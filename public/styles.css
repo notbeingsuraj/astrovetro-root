@@ -53,6 +53,20 @@ button,input,textarea {
   backdrop-filter:blur(12px);
   border-bottom:1px solid var(--line);
 }
+/* The logo must be allowed to shrink and the icon row to stay on screen,
+   otherwise the nowrap flex row pushes .header-actions past the viewport and
+   the whole page gains a horizontal scrollbar. */
+.site-header .logo {
+  flex:0 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.site-header .header-actions {
+  flex:0 0 auto;
+  margin-left:auto;
+}
 .logo {
   font:400 29px 'Cormorant Garamond';
   letter-spacing:.14em;
@@ -105,7 +119,7 @@ nav a:hover {
   inset:-8px;
   filter:blur(5px);
   transform:scale(1.02);
-  background:url('url('assets/image-1.jpg')') center/cover no-repeat;
+  background:url('/assets/img/hero-bg.jpg') center/cover no-repeat;
   filter:saturate(.88) contrast(1.03);
 }
 .hero::after {
@@ -281,13 +295,18 @@ p {
   background-position:center;
 }
 .crystal {
-  background-image:url('url('assets/image-2.jpg')');
+  background-image:url('/assets/img/crystal.jpg');
 }
+/* Only the four original photographs ship with the site. Cards that have no
+   matching original fall back to the design's own gradient art rather than
+   hotlinking stock photography. */
 .bracelet {
-  background-image:url('https://images.pexels.com/photos/9660452/pexels-photo-9660452.jpeg?auto=compress&cs=tinysrgb&w=1200');
+  background-image:linear-gradient(150deg,rgba(196,150,120,.5),rgba(23,34,29,.62)),
+    url('/assets/img/hero-bg.jpg');
 }
 .tarot {
-  background-image:url('https://images.pexels.com/photos/27967865/pexels-photo-27967865.jpeg?auto=compress&cs=tinysrgb&w=1200');
+  background-image:linear-gradient(150deg,rgba(23,34,29,.55),rgba(196,150,120,.32)),
+    url('/assets/img/about.webp');
 }
 .card-meta {
   padding:22px 6px 14px;
@@ -337,13 +356,19 @@ p {
   grid-template-columns:repeat(4,1fr);
   gap:44px 24px;
 }
-.product-card .art {
-  height:320px;
-  border-radius:12px;
-  border:1px solid rgba(23,34,29,.1);
+/* Base art block. The positioning and clipping must live here rather than on
+   .product-card, because .art is also used in the cart and on product pages —
+   without a containing block the decorative :before/:after layers escape and
+   their inset:0 covers the whole row, swallowing clicks. */
+.art {
   position:relative;
   overflow:hidden;
+  border-radius:12px;
+  border:1px solid rgba(23,34,29,.1);
   background:var(--sand);
+}
+.product-card .art {
+  height:320px;
 }
 .art:before {
   content:"";
@@ -405,7 +430,7 @@ p {
 .banner {
   min-height:590px;
   position:relative;
-  background:url('https://images.pexels.com/photos/27967865/pexels-photo-27967865.jpeg?auto=compress&cs=tinysrgb&w=1800') center/cover;
+  background:url('/assets/img/about.webp') center/cover;
   display:flex;
   align-items:flex-end;
 }
@@ -439,7 +464,7 @@ p {
 .reading-image {
   height:560px;
   border-radius:12px;
-  background:url('https://images.pexels.com/photos/32831018/pexels-photo-32831018.jpeg?auto=compress&cs=tinysrgb&w=1300') center/cover;
+  background:url('/assets/img/journal-1.jpg') center/cover;
 }
 .reading>div:last-child p {
   color:var(--moss);
@@ -483,7 +508,7 @@ p {
 }
 .ritual-image {
   min-height:620px;
-  background:url('https://images.pexels.com/photos/5887271/pexels-photo-5887271.jpeg?auto=compress&cs=tinysrgb&w=1400') center/cover;
+  background:url('/assets/img/hero-bg.jpg') center/cover;
   border-radius:32px;
   overflow:hidden;
 }
@@ -497,7 +522,7 @@ p {
 .about-image {
   height:600px;
   border-radius:12px;
-  background:url('url('assets/image-3.webp')') center/cover;
+  background:url('/assets/img/about.webp') center/cover;
 }
 .about p {
   color:var(--sage);
@@ -523,13 +548,13 @@ p {
   background-position:center;
 }
 .j1 {
-  background-image:url('url('assets/image-4.jpg')');
+  background-image:url('/assets/img/journal-1.jpg');
 }
 .j2 {
-  background-image:url('https://images.pexels.com/photos/27967865/pexels-photo-27967865.jpeg?auto=compress&cs=tinysrgb&w=1000');
+  background-image:url('/assets/img/about.webp');
 }
 .j3 {
-  background-image:url('https://images.pexels.com/photos/4203097/pexels-photo-4203097.jpeg?auto=compress&cs=tinysrgb&w=1000');
+  background-image:url('/assets/img/hero-bg.jpg');
 }
 .journal-card small {
   display:block;
@@ -683,9 +708,28 @@ footer p,footer a {
 @media(max-width:560px) {
   .site-header {
     padding:0 5vw;
+    gap:14px;
   }
   .logo {
     font-size:22px;
+  }
+  /* Narrow phones: tighten the icon row so logo + actions always fit. */
+  .header-actions {
+    gap:7px;
+  }
+  .icon {
+    width:34px;
+    height:34px;
+  }
+  /* Display type must be able to break, or a long word ("connection.") sets a
+     min-content width wider than the viewport and forces horizontal scroll. */
+  .section h2,.after-door h2,.page-hero h1,.expect h2 {
+    overflow-wrap:break-word;
+    word-break:normal;
+    hyphens:auto;
+  }
+  .section h2 {
+    font-size:34px;
   }
   .hero-content {
     padding:85px 5vw 55px;

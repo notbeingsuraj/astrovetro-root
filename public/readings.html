@@ -15,7 +15,7 @@
 
 <header class="page-hero">
   <div class="wrap">
-    <a class="back" href="/home.html">← Home</a>
+    <a class="back" href="/">← Home</a>
     <div class="eyebrow">Tarot readings</div>
     <h1>A moment to<br>look inward.</h1>
     <p class="sub">Personal tarot readings designed to help you explore questions, patterns and possibilities with greater clarity.</p>
@@ -24,8 +24,87 @@
 
 <main>
   <div class="page">
-    <div class="wrap service-grid js-load" id="serviceGrid"></div>
+    <div class="wrap">
+
+      <div class="toolbar readings-toolbar">
+        <div class="filters">
+          <label class="sr-only" for="typeSelect">Reading type</label>
+          <select id="typeSelect" aria-label="Reading type">
+            <option value="">All readings</option>
+          </select>
+          <label class="sr-only" for="rSortSelect">Sort</label>
+          <select id="rSortSelect" aria-label="Sort">
+            <option value="featured">Featured first</option>
+            <option value="price-asc">Price · low to high</option>
+            <option value="price-desc">Price · high to low</option>
+            <option value="duration-asc">Shortest first</option>
+            <option value="duration-desc">Longest first</option>
+            <option value="name">Name</option>
+          </select>
+        </div>
+        <span class="meta-count" id="rCount"></span>
+      </div>
+
+      <div class="service-grid js-load" id="serviceGrid"></div>
+
+    </div>
   </div>
+
+  <!-- What happens in a session, so the commitment is clear before booking. -->
+  <section class="section expect" id="expect">
+    <div class="wrap">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">What to expect</div>
+          <h2>How a reading works.</h2>
+        </div>
+      </div>
+      <div class="expect-grid">
+        <div class="expect-step">
+          <span class="num">01</span>
+          <h3>You bring a question</h3>
+          <p>Not a neatly worded one. Whatever is genuinely on your mind is
+            enough &mdash; the reading meets you where you actually are.</p>
+        </div>
+        <div class="expect-step">
+          <span class="num">02</span>
+          <h3>We talk, then the cards</h3>
+          <p>We spend the first few minutes on context, then work through the
+            spread. You are welcome to speak, or to simply listen.</p>
+        </div>
+        <div class="expect-step">
+          <span class="num">03</span>
+          <h3>You leave with language</h3>
+          <p>Not predictions. A clearer way to hold what you already know, and
+            usually one concrete thing to do next.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section voices" id="voices">
+    <div class="wrap">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">In their words</div>
+          <h2>After the session.</h2>
+        </div>
+      </div>
+      <div class="voices-grid js-load" id="voicesGrid"></div>
+    </div>
+  </section>
+
+  <section class="page-hero page-hero--tail">
+    <div class="wrap">
+      <div class="eyebrow">Ready when you are</div>
+      <h2>Book a reading.</h2>
+      <p class="sub">Choose a format below, or write to us and we will find a
+        time that suits you.</p>
+      <div class="actions">
+        <a class="btn btn-light" href="/home.html#contact">Write to us</a>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer id="siteFooter"></footer>
@@ -34,35 +113,125 @@
 <script src="/assets/store.js"></script>
 <script>
 AV.boot();
-const grid = AV.qs('#serviceGrid');
 
-(async () => {
-  grid.innerHTML = '';
+const grid   = AV.qs('#serviceGrid');
+const countEl = AV.qs('#rCount');
+const typeSel = AV.qs('#typeSelect');
+const sortSel = AV.qs('#rSortSelect');
+
+let all = [];
+let type = '';
+let sort = 'featured';
+
+const esc = AV.esc;
+
+function sortServices(list) {
+  const c = list.slice();
+  if (sort === 'price-asc') c.sort((a, b) => a.price - b.price);
+  else if (sort === 'price-desc') c.sort((a, b) => b.price - a.price);
+  else if (sort === 'duration-asc') c.sort((a, b) => (a.duration || 0) - (b.duration || 0));
+  else if (sort === 'duration-desc') c.sort((a, b) => (b.duration || 0) - (a.duration || 0));
+  else if (sort === 'name') c.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  else c.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+  return c;
+}
+
+/* Renders one pill. Pass only the words themselves — a leading or trailing
+   space here would show up inside the pill's border. */
+function tag(text) {
+  const t = String(text || '').trim();
+  if (!t) return '';
+  return '<span class="tag">' + esc(t) + '</span>';
+}
+
+function render() {
+  const filtered = type ? all.filter((s) => String(s.type || '').toLowerCase() === type) : all;
+  const items = sortServices(filtered);
+
+  countEl.textContent = items.length + (items.length === 1 ? ' reading' : ' readings');
+
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty">'
+      + (all.length
+          ? 'No readings of that type right now. <button class="btn btn-ghost btn-sm" data-clear-type>Show all</button>'
+          : 'Readings are full right now — write to us and we will find you a slot.')
+      + '</div>';
+    const clear = AV.qs('[data-clear-type]', grid);
+    if (clear) clear.addEventListener('click', () => { typeSel.value = ''; type = ''; render(); });
+    return;
+  }
+
+  grid.innerHTML = items.map((s) => `
+    <article class="service-card">
+      <div class="service-tags">
+        ${tag(s.type)}
+        ${tag(s.format)}
+        ${s.featured ? tag('Featured') : ''}
+      </div>
+      <h3>${esc(s.name)}</h3>
+      <p>${esc(s.shortDescription || s.description || '')}</p>
+      <div class="service-foot">
+        <div>
+          <span class="price">${AV.formatPrice(s.price)}</span>
+          <span class="dur">${s.duration ? s.duration + ' min' : ''}</span>
+        </div>
+        <a class="btn btn-outline btn-sm" href="/booking.html?slug=${encodeURIComponent(s.slug)}">Book</a>
+      </div>
+    </article>`).join('');
+}
+
+async function loadVoices() {
+  const g = AV.qs('#voicesGrid');
+  g.innerHTML = AV.skeletonCards(3, 'voice');
+  AV.reveal(g);
+  try {
+    const env = await AV.api.get('/api/testimonials?limit=6&type=reading');
+    const items = (env.data || []).filter((t) => t.type === 'reading').slice(0, 3);
+    if (!items.length) { g.innerHTML = '<div class="empty">Voices from past sessions will appear here.</div>'; return; }
+    g.innerHTML = items.map((t) => `
+      <figure class="voice">
+        <blockquote>${esc(t.content || '')}</blockquote>
+        <figcaption>
+          <span class="voice-name">${esc(t.name || '')}</span>
+          <span class="voice-meta">${esc([t.productOrService, t.location].filter(Boolean).join(' · '))}</span>
+        </figcaption>
+      </figure>`).join('');
+  } catch (e) {
+    g.innerHTML = '<div class="empty">We could not load past voices right now.</div>';
+  }
+}
+
+async function load() {
+  grid.innerHTML = AV.skeletonCards(3, 'service');
+  AV.reveal(grid);
   try {
     const env = await AV.api.get('/api/services?limit=50');
-    const services = (env.data || []).filter((s) => s.available !== false);
-    if (!services.length) {
-      grid.innerHTML = '<div class="empty">Readings are full right now — write to us and we will find you a slot.</div>';
-      return;
-    }
-    grid.innerHTML = services
-      .map((s) => `
-        <div class="service-card">
-          <div>
-            <div class="dur">${AV.esc(s.format || 'online')} · ${s.duration || ''} min</div>
-            <h3>${AV.esc(s.name)}</h3>
-          </div>
-          <p>${AV.esc(s.shortDescription || s.description || '')}</p>
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="price">${AV.formatPrice(s.price)}</span>
-            <a class="btn btn-outline btn-sm" href="/booking.html?slug=${encodeURIComponent(s.slug)}">Book</a>
-          </div>
-        </div>`)
-      .join('');
+    /* Services use `availability` (products use `availability` too); accept
+       either spelling so a retired field name cannot leak unbookable slots. */
+    all = (env.data || []).filter((s) => s.availability !== false && s.available !== false);
+
+    const types = [...new Set(all.map((s) => s.type).filter(Boolean))];
+    types.forEach((t) => {
+      const o = document.createElement('option');
+      o.value = t;
+      o.textContent = String(t).charAt(0).toUpperCase() + String(t).slice(1);
+      typeSel.appendChild(o);
+    });
+
+    render();
   } catch (e) {
-    grid.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+    grid.innerHTML = '<div class="empty">We could not reach the booking system just now. '
+      + '<a class="btn btn-ghost btn-sm" href="/home.html#contact">Write to us instead</a></div>';
+    countEl.textContent = '';
   }
-})();
+
+  loadVoices();
+}
+
+typeSel.addEventListener('change', (e) => { type = e.target.value; render(); });
+sortSel.addEventListener('change', (e) => { sort = e.target.value; render(); });
+
+load();
 </script>
 </body>
 </html>

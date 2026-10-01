@@ -6,6 +6,12 @@ window.AV = window.AV || {};
 (function () {
   const CART_KEY = 'av_cart';
   const USER_KEY = 'av_user';
+
+  /* Shipping rules live here so the bag and the checkout can never disagree. */
+  const SHIPPING = { freeAbove: 1500, flat: 99 };
+  AV.SHIPPING = SHIPPING;
+  AV.shippingFor = (subtotal) =>
+    subtotal >= SHIPPING.freeAbove || subtotal === 0 ? 0 : SHIPPING.flat;
   const nav = [
     ['Home', '/home.html'],
     ['Shop', '/shop.html'],
@@ -46,23 +52,42 @@ window.AV = window.AV || {};
   }
 
   function footerHTML() {
+    const y = new Date().getFullYear();
     return `
 <div class="footer-grid">
-  <div><div class="footer-logo">Astro Vetro</div><p>Objects, rituals and symbols for coming back to yourself.</p></div>
-  <div><div class="footer-title">Navigate</div>
-    <a href="/home.html">Home</a><a href="/shop.html">Shop</a><a href="/readings.html">Readings</a>
-    <a href="/journal.html">Journal</a><a href="/home.html#contact">Contact</a>
+  <div>
+    <div class="footer-logo">Astro Vetro</div>
+    <p>Objects, rituals and symbols for coming back to yourself.</p>
   </div>
-  <div><div class="footer-title">Customer</div>
-    <a href="/legal.html#shipping">Shipping</a><a href="/legal.html#returns">Returns</a>
-    <a href="/legal.html#faq">FAQ</a><a href="/legal.html#privacy">Privacy</a><a href="/legal.html#terms">Terms</a>
+  <div>
+    <div class="footer-title">Navigate</div>
+    <a href="/home.html">Home</a>
+    <a href="/shop.html">Shop</a>
+    <a href="/readings.html">Readings</a>
+    <a href="/journal.html">Journal</a>
+    <a href="/home.html#about">About</a>
+    <a href="/home.html#contact">Contact</a>
   </div>
-  <div><div class="footer-title">Astro Vetro</div>
-    <p>Made slowly, in small batches.</p>
-    <p>&copy; 2026 Astro Vetro</p>
+  <div>
+    <div class="footer-title">Customer</div>
+    <a href="/legal.html#shipping">Shipping</a>
+    <a href="/legal.html#returns">Returns</a>
+    <a href="/legal.html#faq">FAQ</a>
+    <a href="/legal.html#privacy">Privacy</a>
+    <a href="/legal.html#terms">Terms</a>
+  </div>
+  <div>
+    <div class="footer-title">Orders</div>
+    <a href="/cart.html">Your bag</a>
+    <a href="/account.html">Your account</a>
+    <a href="/account.html?view=orders">Order history</a>
+    <a href="/account.html?view=bookings">Your bookings</a>
   </div>
 </div>
-<div class="footer-bottom"><span>&copy; 2026 Astro Vetro</span><span>Made slowly, in small batches</span></div>`;
+<div class="footer-bottom">
+  <span>&copy; ${y} Astro Vetro</span>
+  <span>Made slowly, in small batches</span>
+</div>`;
   }
 
   function mount(chrome) {
@@ -94,6 +119,11 @@ window.AV = window.AV || {};
         availability: btn.dataset.availability !== 'false',
       }, Number(btn.dataset.qty || 1));
       AV.toast(`Added \u201c${btn.dataset.name}\u201d to your bag.`, 'ok');
+      /* Any other card for the same piece is now also "in the bag", e.g. the
+         featured rail and the grid can show the same product. */
+      document.querySelectorAll(`.btn-product[data-slug="${CSS.escape(btn.dataset.slug)}"]`)
+        .forEach(markBtnInBag);
+      AV.markInCart();
     });
   }
 
@@ -113,6 +143,19 @@ window.AV = window.AV || {};
   AV.cartCount = () => readCart().reduce((n, i) => n + i.quantity, 0);
   AV.cartSubtotal = () => readCart().reduce((n, i) => n + i.price * i.quantity, 0);
   AV.addToCart = addToCart;
+
+  /* Marks a single add-to-cart button as already containing its product. */
+  function markBtnInBag(btn) {
+    if (!btn) return;
+    const has = readCart().some((i) => i.slug === btn.dataset.slug);
+    btn.classList.toggle('in-bag', has);
+    const label = btn.dataset.label || (btn.dataset.label = btn.textContent.trim());
+    btn.textContent = has ? 'Add another' : label;
+  }
+  /* Re-applies the in-bag label across every product card on the page. */
+  AV.markInCart = function markInCart() {
+    document.querySelectorAll('.btn-product[data-slug]').forEach(markBtnInBag);
+  };
   function addToCart(p, qty) {
     const c = readCart();
     const found = c.find((i) => i.slug === p.slug);
@@ -172,21 +215,38 @@ window.AV = window.AV || {};
   /* ── Card renderers ───────────────────────────────────────────────── */
   AV.art = (i) => `a${((i % 8) + 1)}`;
 
-  AV.productCard = (p, i = 0) => `
+  /* Placeholder shown while data is in flight, so grids are never blank. */
+  AV.skeletonCards = (n = 4, kind = 'product') => {
+    let out = '';
+    for (let i = 0; i < n; i += 1) out += `<div class="skeleton skeleton-${kind}"></div>`;
+    return out;
+  };
+
+  AV.productCard = (p, i = 0) => {
+    const inStock = p.availability !== false;
+    const img = p.images?.[0];
+    /* Real photography when the catalogue has it, otherwise the design's own
+       gradient art block so the grid is never broken by a missing file. */
+    const art = img
+      ? `<div class="art has-photo" style="background-image:url('${AV.esc(img)}')" role="img" aria-label="${AV.esc(p.name)}"></div>`
+      : `<div class="art ${AV.art(i)}" role="img" aria-label="${AV.esc(p.name)}"></div>`;
+    const href = `/product.html?slug=${encodeURIComponent(p.slug)}`;
+    const meta = [p.stone, p.metal].filter(Boolean).join(' · ') || p.category || '';
+    return `
 <article class="product-card">
-  <a class="art-link" href="/product.html?slug=${encodeURIComponent(p.slug)}">
-    <div class="art ${AV.art(i)}" role="img" aria-label="${AV.esc(p.name)}"></div>
-  </a>
-  <h3><a href="/product.html?slug=${encodeURIComponent(p.slug)}">${AV.esc(p.name)}</a></h3>
-  <p>${AV.esc(p.shortDescription || p.stone || p.category)}</p>
+  <a class="art-link" href="${href}">${art}</a>
+  <h3><a href="${href}">${AV.esc(p.name)}</a></h3>
+  <p>${AV.esc(p.shortDescription || meta)}</p>
+  ${p.rating ? `<span class="rating" aria-label="Rated ${p.rating} out of 5">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5 - Math.round(p.rating))}</span>` : ''}
   <span class="price">${AV.formatPrice(p.price)}</span>
-  <span class="stock${p.availability ? '' : ' sold'}">${p.availability ? 'In stock' : 'Unavailable'}</span>
+  <span class="stock${inStock ? '' : ' sold'}">${inStock ? 'In stock' : 'Unavailable'}</span>
   <button class="btn btn-outline btn-sm btn-product"
-    ${p.availability ? '' : 'disabled'}
+    ${inStock ? '' : 'disabled'}
     data-add data-slug="${AV.esc(p.slug)}" data-name="${AV.esc(p.name)}"
-    data-price="${p.price}" data-image="${AV.esc(p.images?.[0] || '')}"
-    data-availability="${p.availability}">Add to cart</button>
+    data-price="${p.price}" data-image="${AV.esc(img || '')}"
+    data-availability="${inStock}">Add to cart</button>
 </article>`;
+  };
 
   AV.journalCard = (a, i = 0) => `
 <article class="journal-card">
@@ -200,7 +260,15 @@ window.AV = window.AV || {};
   /* ── Boot ─────────────────────────────────────────────────────────── */
   AV.boot = (opts = {}) => {
     mount(opts.chrome);
-    const reveal = AV.qs('[data-reveal]');
-    if (reveal) reveal.classList.add('ready');
+    revealAll();
   };
+
+  /* `.js-load` and `[data-reveal]` start at opacity:0 so that server-rendered
+     markup never flashes before its data arrives. Both selectors must be
+     released, otherwise the containers stay invisible forever. */
+  function revealAll(scope) {
+    const root = scope || document;
+    root.querySelectorAll('.js-load, [data-reveal]').forEach((el) => el.classList.add('ready'));
+  }
+  AV.reveal = revealAll;
 })();

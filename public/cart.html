@@ -36,8 +36,8 @@
 <script src="/assets/store.js"></script>
 <script>
 AV.boot();
-const FREE_ABOVE = 1500;
-const SHIP = 99;
+const FREE_ABOVE = AV.SHIPPING.freeAbove;
+const SHIP = AV.SHIPPING.flat;
 const listEl = AV.qs('#cartList');
 const sumEl = AV.qs('#summary');
 
