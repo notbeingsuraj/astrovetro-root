@@ -111,40 +111,40 @@ body {
 }
 
 /* panel typography ────────────────────────────────────── */
+/* Each compartment owns its full width; the copy is inset from the outer edge
+   so it never crosses the divider. Width is viewport-relative so the same
+   measure holds at every size. */
 .content {
   position:absolute; z-index:2; top:50%;
-  width:50%;
+  left:0; right:0;
+  width:auto;
+  padding-left:clamp(28px,6.5vw,96px);
+  padding-right:clamp(28px,6.5vw,96px);
   color:var(--cream);
   opacity:0;
   pointer-events:none;
   will-change:transform,opacity;
 }
-.crystal-content {
-  left:0;
-  padding-left:clamp(28px,6.5vw,96px);
-  text-align:left;
-}
-.ritual-content {
-  right:0;
-  padding-right:clamp(28px,6.5vw,96px);
-  text-align:right;
-}
+.crystal-content { text-align:left; }
+.ritual-content { text-align:right; }
 .panel-eyebrow {
-  margin:0 0 20px;
+  margin:0 0 clamp(14px,2vh,20px);
   font:400 10px/1 Arial,sans-serif;
   letter-spacing:.28em;
   text-transform:uppercase;
   opacity:.55;
 }
+/* Scales with the viewport and is capped by height so the heading can never
+   grow taller than the compartment it sits in. */
 .content h2 {
-  margin:0 0 18px;
-  font-size:clamp(46px,6.5vw,96px);
+  margin:0 0 clamp(14px,2.2vh,18px);
+  font-size:min(clamp(46px,6.5vw,96px),13vh);
   font-weight:400;
   line-height:.9;
   letter-spacing:-.02em;
 }
 .content .lede {
-  margin:0 0 26px;
+  margin:0 0 clamp(18px,2.6vh,26px);
   max-width:320px;
   font:300 12px/1.7 Arial,sans-serif;
   letter-spacing:.04em;
@@ -153,6 +153,7 @@ body {
 .ritual-content .lede { margin-left:auto; }
 .panel-enter {
   display:inline-block;
+  position:relative;
   font:400 11px/1 Arial,sans-serif;
   letter-spacing:.18em;
   text-transform:uppercase;
@@ -162,9 +163,16 @@ body {
   padding-bottom:6px;
   opacity:0;
   transition:opacity .45s ease, border-color .3s ease;
-  pointer-events:auto;
+  pointer-events:none;
+  touch-action:manipulation;
 }
-.stage.is-open .content.open .panel-enter { opacity:.85; }
+/* Enlarged hit area for touch — keeps the visual weight unchanged. */
+.panel-enter::after {
+  content:"";
+  position:absolute;
+  left:-16px; right:-16px; top:-13px; bottom:-13px;
+}
+.stage.is-open .content.open .panel-enter { opacity:.85; pointer-events:auto; }
 .panel-enter:hover { border-color:var(--cream); opacity:1 !important; }
 .panel-enter:focus-visible { outline:1px solid var(--cream); outline-offset:6px; opacity:1; }
 
@@ -215,6 +223,7 @@ body {
   pointer-events:none;
   will-change:transform;
 }
+.center-mark > div { position:relative; }
 .brand {
   font-size:clamp(28px,4vw,52px);
   letter-spacing:.18em;
@@ -228,6 +237,14 @@ body {
   to   { opacity:1; transform:translateY(0) scale(1); }
 }
 .hero-note {
+  /* Held out of flow so the wordmark always centres on its own and can never
+     be pushed off-screen by the hint beneath it. */
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  width:max-content;
+  max-width:88vw;
   margin-top:20px;
   opacity:0;
   transition:opacity 1.2s ease;
@@ -308,27 +325,26 @@ body {
 .after-links a:hover { border-color:var(--cream); opacity:.9; }
 .after-links a:focus-visible { outline:1px solid var(--cream); outline-offset:6px; }
 
-/* responsive ── vertical cabinet on small screens ─────── */
-@media (max-width:700px) {
+/* responsive ──────────────────────────────────────────────
+   Portrait phones stack the two compartments and give the copy the full
+   width. Landscape phones keep the side-by-side cabinet, because stacking
+   there would leave each compartment too short for its own copy.
+   The copy is vertically centred with a translate(-50%), so the compartment
+   padding reserves room for it instead of a fixed offset from the top. */
+@media (max-width:700px) and (orientation:portrait) {
   .scroll-stage { height:260vh; }
   .panels {
     grid-template-columns:1fr;
     grid-template-rows:1fr 1fr;
   }
-  .crystal-content {
-    top:25%;
-    left:0; right:0;
-    padding:0 28px;
-    text-align:left;
+  .content {
+    padding-left:clamp(20px,7vw,28px);
+    padding-right:clamp(20px,7vw,28px);
   }
-  .ritual-content {
-    top:75%;
-    left:0; right:0;
-    padding:0 28px;
-    text-align:left;
-  }
+  .crystal-content,
+  .ritual-content { text-align:left; }
   .ritual-content .lede { margin-left:0; }
-  .content h2 { font-size:44px; }
+  .content h2 { font-size:min(clamp(38px,11vw,56px),11vh); }
   .divider {
     left:12%; right:12%; top:50%; bottom:50%;
     width:auto; height:1px;
@@ -337,12 +353,27 @@ body {
   .brand { font-size:clamp(26px,9vw,40px); }
 }
 
+/* Short viewports (landscape phones): tighten the copy so it fits the
+   compartment without being clipped. */
+@media (max-height:560px) {
+  .content h2 { font-size:min(clamp(38px,7vh,64px),11vh); }
+  .panel-eyebrow { margin-bottom:10px; }
+  .content .lede { margin-bottom:14px; line-height:1.55; }
+  .scroll-stage { height:200vh; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panel-img { animation:none !important; transform:scale(1); }
   .ambient-glow { animation:none; opacity:.35; }
   .brand { animation:none; opacity:1; transform:none; }
   .hero-note { transition:none; }
   .scroll-cue::after { animation:none; }
+  /* No scroll-driven reveal: show the cabinet settled and let the copy in. */
+  .panels { clip-path:none; opacity:1; transform:none; }
+  .content { opacity:1; }
+  .divider { opacity:.92; }
+  .glass { opacity:.95; }
+  .panel-enter { opacity:.85; pointer-events:auto; visibility:visible; }
 }
 </style>
 </head>
@@ -419,6 +450,7 @@ body {
   let vh = 0;
   let span = 0;
   let oneShot = false;
+  let frame = 0;
 
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
   const w = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
@@ -427,8 +459,30 @@ body {
 
   function layout() {
     vh = window.innerHeight;
-    span = wrap.getBoundingClientRect().height - vh;
+    span = Math.max(1, wrap.getBoundingClientRect().height - vh);
   }
+
+/* Vertical centre for the wordmark's resting place, in px from the stage top.
+   Derived from the measured copy height so the wordmark always finishes clear
+   of the copy, and clamped so it can never be pushed off-screen. */
+function restTop() {
+  const copyH = cContent.getBoundingClientRect().height || 0;
+  const brandEl = mark.querySelector('.brand');
+  const brandH = (brandEl && brandEl.getBoundingClientRect().height) || 0;
+  const stacked = window.matchMedia('(max-width:700px) and (orientation:portrait)').matches;
+
+  /* Copy sits at the centre of its compartment: the middle of the stage when
+     side-by-side, the upper quarter when stacked. */
+  const copyCentre = stacked ? vh * 0.25 : vh * 0.5;
+  const copyTop = copyCentre - copyH / 2;
+  const gap = 16;
+
+  /* Original resting position, preserved so desktop is unchanged... */
+  const design = vh < 700 ? 46 : Math.max(56, vh * 0.075);
+  /* ...but never lower than what keeps the wordmark clear of the copy. */
+  const clearance = copyTop - gap - brandH / 2;
+  return Math.max(brandH / 2 + 8, Math.min(design, clearance));
+}
 
   function apply(p) {
     const po = easeInOut(w(p, 0.06, 0.44));
@@ -439,8 +493,7 @@ body {
     glass.style.opacity = (0.35 + 0.6 * po).toFixed(3);
 
     const bp = easeOut(p);
-    const finalTop = vh < 700 ? 46 : Math.max(56, vh * 0.075);
-    const trip = -(vh * 0.5 - finalTop) * bp;
+    const trip = -(vh * 0.5 - restTop()) * bp;
     mark.style.transform = 'translateY(' + trip.toFixed(2) + 'px) scale(' + (1 - 0.1 * bp).toFixed(4) + ')';
     if (!reduced) note.style.opacity = (1 - w(p, 0.1, 0.3)).toFixed(3);
 
@@ -461,29 +514,52 @@ body {
     }
   }
 
+  function progress() {
+    return clamp(window.scrollY / (span * 0.72 || 1), 0, 1);
+  }
+
+  /* Re-measure and re-apply so an orientation change or resize lands on the
+     correct settled state instead of the state of the previous viewport. */
+  function relayout() {
+    layout();
+    apply(progress());
+  }
+
   function settle() {
-    /* reduced-motion: show the settled cabinet immediately, no animation */
     stage.classList.add('loaded');
+    layout();
+
+    /* reduced-motion: show the settled cabinet immediately, no animation */
     if (reduced) {
       apply(1);
       if (!oneShot) { oneShot = true; stage.classList.add('is-open'); }
+      window.addEventListener('resize', relayout);
       return;
     }
-    apply(clamp(window.scrollY / (span * 0.72 || 1), 0, 1));
-    layout();
+
+    apply(progress());
     window.addEventListener('scroll', function () {
       window.requestAnimationFrame(function () {
-        apply(clamp(window.scrollY / (span * 0.72 || 1), 0, 1));
+        apply(progress());
       });
     }, { passive: true });
-    window.addEventListener('resize', layout);
+    window.addEventListener('resize', relayout);
+    window.addEventListener('orientationchange', function () {
+      window.setTimeout(relayout, 120);
+    });
   }
 
+  /* Panel navigation unlocks with the cabinet. Until the reveal has finished a
+     tap or click just scrolls, so the sequence is never cut short. */
   window.addEventListener('click', function (event) {
-    const panel = event.target.closest('.panel');
+    if (!stage.classList.contains('is-open')) return;
+
+    var link = event.target.closest('a[href]');
+    if (link) return; // let the anchor navigate itself
+
+    var panel = event.target.closest('.panel');
     if (panel) {
-      const ritual = panel.classList.contains('ritual');
-      window.location.href = ritual
+      window.location.href = panel.classList.contains('ritual')
         ? 'readings.html'
         : 'shop.html';
     }
