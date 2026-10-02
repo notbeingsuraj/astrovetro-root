@@ -67,6 +67,12 @@ own width and measured 37fps at 1920×1080; this measures 60.
 
 See `public/assets/doors.css`, which documents the geometry.
 
+The overlay carries `data-clip="intentional"`. Its contents overhang the
+viewport by design, so the alignment test is told to skip them. Geometry alone
+cannot distinguish that from content accidentally cut off — both look identical
+to an overflow check, and guessing wrong once hid a newsletter form that really
+was being clipped. Keep the attribute if you restructure the markup.
+
 About and Contact live at `/about.html` and `/contact.html`.
 
 ## Rules baked into the UI

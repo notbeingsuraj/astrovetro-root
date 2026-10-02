@@ -44,8 +44,18 @@
 
 /* While the doors are up, the page underneath is hidden rather than removed:
    visibility:hidden keeps layout stable (no reflow, no scroll jump) while
-   taking it out of the tab order and the accessibility tree. */
-[data-intro='show'] body > *:not(.doors) { visibility:hidden; }
+   taking it out of the tab order and the accessibility tree.
+
+   Scoped to min-width:700px to match the only width at which the doors
+   actually display. Without the scope, shrinking the window on a first visit
+   dropped .doors to display:none while this rule kept the page hidden —
+   a blank screen. Let CSS follow the same breakpoint the script gates on. */
+@media (min-width:700px) {
+  [data-intro='show'] body > *:not(.doors) { visibility:hidden; }
+  /* Stop a wheel or touch drag scrolling the page invisibly behind the door. */
+  [data-intro='show'],
+  [data-intro='show'] body { overflow:hidden; }
+}
 
 .doors-track {
   position:absolute;

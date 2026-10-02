@@ -48,7 +48,8 @@ const slug = params.get('slug');
 
 (async () => {
   if (!slug) {
-    root.innerHTML = '<div class="empty"><a class="btn btn-light" href="/readings.html">Pick a reading</a></div>';
+    root.innerHTML = '<h1 style="font-size:clamp(32px,4vw,52px);text-transform:uppercase;margin-bottom:18px">Book a reading</h1>'
+      + '<div class="empty"><a class="btn btn-light" href="/readings.html">Pick a reading</a></div>';
     return;
   }
   root.innerHTML = '<div class="empty">Loading…</div>';
@@ -56,8 +57,13 @@ const slug = params.get('slug');
   try {
     const env = await AV.api.get(`/api/services/${encodeURIComponent(slug)}`);
     service = env.data;
+    // A stale, mistyped or withdrawn slug comes back as 200 with data:null, so
+    // nothing throws here. Without this the page sat on "Loading…" forever:
+    // the TypeError from service.name below lands outside this try.
+    if (!service) throw new Error('Reading not found');
   } catch (e) {
-    root.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/readings.html">View readings</a></div>`;
+    root.innerHTML = '<h1 style="font-size:clamp(32px,4vw,52px);text-transform:uppercase;margin-bottom:18px">Reading unavailable</h1>'
+      + `<div class="empty">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/readings.html">View readings</a></div>`;
     return;
   }
 

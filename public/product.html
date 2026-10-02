@@ -118,7 +118,8 @@ async function load() {
     }
   } catch (e) {
     pdArt.innerHTML = '';
-    pdInfo.innerHTML = `<div class="empty" style="text-align:left">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/shop.html">Back to shop</a></div>`;
+    pdInfo.innerHTML = `<h1 style="font-size:clamp(32px,4vw,52px);text-transform:uppercase;margin-bottom:14px">Piece unavailable</h1>`
+      + `<div class="empty" style="text-align:left">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/shop.html">Back to shop</a></div>`;
   }
 }
 

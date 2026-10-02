@@ -78,7 +78,8 @@ function escLine(t) {
 
 (async () => {
   if (!slug) {
-    root.innerHTML = '<div class="empty"><a class="btn btn-light" href="/journal.html">Open the journal</a></div>';
+    root.innerHTML = '<h1 style="font-size:clamp(32px,4vw,52px);text-transform:uppercase;margin-bottom:18px">The journal</h1>'
+      + '<div class="empty"><a class="btn btn-light" href="/journal.html">Open the journal</a></div>';
     return;
   }
   root.innerHTML = '<div class="empty">Loading…</div>';
@@ -112,7 +113,8 @@ function escLine(t) {
       ? pool.filter((x) => x.slug !== a.slug).map((x, i) => AV.journalCard(x, i)).join('')
       : '<div class="empty">More stories arriving soon.</div>';
   } catch (e) {
-    root.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/journal.html">Back to journal</a></div>`;
+    root.innerHTML = '<h1 style="font-size:clamp(32px,4vw,52px);text-transform:uppercase;margin-bottom:18px">Story unavailable</h1>'
+      + `<div class="empty">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/journal.html">Back to journal</a></div>`;
   }
 })();
 

@@ -686,6 +686,10 @@ footer p,footer a {
   .intention-grid,.products-grid,.journal-grid,.footer-grid {
     grid-template-columns:1fr;
   }
+  .intro,.reading,.about,.contact,.newsletter {
+    grid-template-columns:1fr;
+    gap:45px;
+  }
   .photo,.journal-img,.reading-image,.about-image {
     height:420px;
   }
