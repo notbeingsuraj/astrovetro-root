@@ -3,7 +3,6 @@
 /* The original design's photography, extracted from the embedded media into
    real files. These win over any legacy ref so the site shows its own imagery
    rather than a hotlinked placeholder. */
-.hero-bg,
 .j1 {
   background: url('/assets/img/journal-1.jpg') center/cover no-repeat;
 }
@@ -519,65 +518,7 @@ nav a.on { color: var(--sand); border-bottom: 1px solid var(--olive); padding-bo
   .cart-line .art { height: 110px; }
   .line-total { grid-column: 2; }
 }
-/* ── Landing page: post-cabinet content ───────────────────────────── */
 .landing .section { position:relative; }
-
-/* The two doors out of the cabinet, on the landing page. */
-.after-door {
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  gap:22px;
-  align-items:start;
-  width:min(420px,100%);
-  padding:30px 28px;
-  text-align:left;
-  color:var(--cream);
-  text-decoration:none;
-  border:1px solid rgba(241,234,220,.22);
-  border-radius:14px;
-  background:rgba(241,234,220,.03);
-  transition:border-color .35s ease, background .35s ease, transform .35s ease;
-}
-.after-door:hover,
-.after-door:focus-visible {
-  border-color:rgba(241,234,220,.6);
-  background:rgba(241,234,220,.07);
-  transform:translateY(-3px);
-}
-.after-door:focus-visible { outline:1px solid var(--cream); outline-offset:4px; }
-.after-door-num {
-  font:400 11px/1 Arial,sans-serif;
-  letter-spacing:.22em;
-  opacity:.55;
-  padding-top:6px;
-}
-.after-door-body { display:block; }
-.after-door-name {
-  display:block;
-  font:400 clamp(26px,3.4vw,38px)/1 'Cormorant Garamond';
-  margin-bottom:10px;
-}
-.after-door-desc {
-  display:block;
-  font:300 12px/1.7 'DM Sans',sans-serif;
-  letter-spacing:.03em;
-  opacity:.68;
-  max-width:30ch;
-}
-.after-door-go {
-  font-size:18px;
-  line-height:1;
-  padding-top:4px;
-  opacity:.6;
-  transition:transform .35s ease, opacity .35s ease;
-}
-.after-door:hover .after-door-go { transform:translateX(5px); opacity:1; }
-.after-links {
-  display:flex;
-  gap:clamp(18px,3vw,32px);
-  flex-wrap:wrap;
-  justify-content:center;
-}
 
 /* Intention cards are links on the landing page. */
 a.intention-card { text-decoration:none; color:inherit; display:block; }
@@ -619,8 +560,6 @@ a.intention-card:focus-visible { outline:2px solid var(--brown); outline-offset:
 }
 
 @media (max-width:760px) {
-  .after-door { padding:24px 22px; gap:16px; }
-  .after-door-desc { max-width:none; }
   .skeleton-product { height:260px; }
   .skeleton-journal { height:250px; }
 }

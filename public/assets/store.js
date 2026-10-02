@@ -17,8 +17,8 @@ window.AV = window.AV || {};
     ['Shop', '/shop.html'],
     ['Readings', '/readings.html'],
     ['Journal', '/journal.html'],
-    ['About', '/#about'],
-    ['Contact', '/#contact'],
+    ['About', '/about.html'],
+    ['Contact', '/contact.html'],
   ];
 
   function page(file) {
@@ -70,8 +70,8 @@ window.AV = window.AV || {};
     <a href="/shop.html">Shop</a>
     <a href="/readings.html">Readings</a>
     <a href="/journal.html">Journal</a>
-    <a href="/#about">About</a>
-    <a href="/#contact">Contact</a>
+    <a href="/about.html">About</a>
+    <a href="/contact.html">Contact</a>
   </div>
   <div>
     <div class="footer-title">Customer</div>

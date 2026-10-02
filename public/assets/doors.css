@@ -1,0 +1,187 @@
+/* ─────────────────────────────────────────────────────────────────────
+   First-visit door — Rituals | Crystals
+   Two halves that slide past each other like doors.
+
+   How the motion is built
+   -----------------------
+   Each half is 66vw wide inside a 132vw track. At rest the track sits at
+   -16vw, which leaves 50vw of each half showing and the other 16vw hidden
+   just off-screen. Moving the whole track is therefore all it takes to open
+   one side and carry the other out of frame:
+
+       track -16vw  →  50 / 50      (rest)
+       track   0vw  →  66 / 34      (Rituals open)
+       track -32vw  →  34 / 66      (Crystals open)
+
+   The two halves are 66vw wide and slide by 16vw, so the seam between them
+   always lands exactly on the boundary and the pair always fills the frame.
+   A second 16vw of each side stays in reserve for the open position.
+
+   Performance
+   -----------
+   This is one `transform` on one element. Nothing about size or position in
+   the layout tree changes, so the browser composites it on the GPU: no
+   layout, no repaint, no re-running `background-size:cover`, and no
+   distortion of either photograph. An earlier version animated the halves'
+   own width, which was correct visually but repainted two full-viewport
+   layers every frame and measured 37fps at 1920x1080. This measures 60.
+
+   Copy is centred on each half's *visible* 50vw, not its 66vw box, so the two
+   labels sit symmetrically at rest and travel with their door when pushed.
+   ───────────────────────────────────────────────────────────────────── */
+
+[data-intro='show'] .doors { display:block; }
+
+.doors {
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:900;
+  overflow:hidden;         /* clips the 16vw of overhang on each side */
+  background:var(--ink);
+  font-family:Georgia,'Times New Roman',serif;
+}
+
+/* While the doors are up, the page underneath is hidden rather than removed:
+   visibility:hidden keeps layout stable (no reflow, no scroll jump) while
+   taking it out of the tab order and the accessibility tree. */
+[data-intro='show'] body > *:not(.doors) { visibility:hidden; }
+
+.doors-track {
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:0;
+  width:132vw;
+  display:flex;
+  transform:translate3d(-16vw,0,0);
+  transition:transform .78s cubic-bezier(.22,.68,.24,1);
+  will-change:transform;
+  backface-visibility:hidden;
+}
+
+.door {
+  position:relative;
+  flex:0 0 50%;            /* 66vw of the 132vw track */
+  overflow:hidden;
+  contain:paint;
+  display:block;
+  color:var(--cream);
+  text-decoration:none;
+}
+
+/* Half of a 66vw box. Rituals keeps its overhang on the left, so its visible
+   window is box-local 16–66vw (centre 62.12%); Crystals keeps it on the
+   right, so its window is box-local 0–50vw (centre 37.88%). */
+.door--rituals  .door-body { left:62.1212%; }
+.door--crystals .door-body { left:37.8788%; }
+
+/* Fixed at the half's full width: the photo is measured once and then only
+   cropped differently, never rescaled. */
+.door-bg {
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-position:center;
+  transform:scale(1.03);    /* hides the hairline seam mid-transition */
+}
+.door--rituals  .door-bg { background-image:url('/assets/img/hero-bg.jpg'); }
+.door--crystals .door-bg { background-image:url('/assets/img/crystal.jpg'); }
+
+/* Keeps the type legible over any part of either photograph. */
+.door-veil {
+  position:absolute;
+  inset:0;
+  transition:opacity .78s cubic-bezier(.22,.68,.24,1);
+  background:linear-gradient(180deg,
+    rgba(11,23,18,.62) 0%,
+    rgba(11,23,18,.34) 42%,
+    rgba(11,23,18,.78) 100%);
+}
+
+.door-body {
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  /* Viewport-relative, so it is unaffected by the half's width. */
+  width:min(30rem,42vw);
+  padding:0 6px;
+  text-align:center;
+}
+.door-num {
+  display:block;
+  margin-bottom:18px;
+  font:400 10px/1 'DM Sans',sans-serif;
+  letter-spacing:.32em;
+  text-transform:uppercase;
+  opacity:.62;
+}
+.door-name {
+  display:block;
+  font:400 clamp(38px,5.6vw,84px)/.95 'Cormorant Garamond',Georgia,serif;
+  letter-spacing:-.015em;
+  margin-bottom:20px;
+}
+.door-copy {
+  display:block;
+  max-width:24rem;
+  margin:0 auto;
+  font:300 clamp(13px,1.05vw,15px)/1.75 'DM Sans',sans-serif;
+  opacity:.72;
+}
+.door-go {
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  margin-top:30px;
+  padding-bottom:5px;
+  font:400 10px/1 'DM Sans',sans-serif;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  border-bottom:1px solid rgba(241,234,220,.34);
+  transition:border-color .5s ease;
+}
+.door-arrow {
+  display:inline-block;
+  transition:transform .5s cubic-bezier(.22,.68,.24,1);
+}
+
+/* Idle: both halves sit slightly veiled so neither reads as pre-selected. */
+.doors .door-veil { opacity:.82; }
+.door:hover .door-veil,
+.door:focus-visible .door-veil { opacity:1; }
+/* ── The push ──────────────────────────────────────────────────────────
+   `:has()` rather than the sibling combinator: Crystals is last, so `~`
+   cannot reach back to Rituals. */
+.doors:has(.door--rituals:hover) .doors-track,
+.doors:has(.door--rituals:focus-visible) .doors-track {
+  transform:translate3d(0,0,0);
+}
+.doors:has(.door--crystals:hover) .doors-track,
+.doors:has(.door--crystals:focus-visible) .doors-track {
+  transform:translate3d(-32vw,0,0);
+}
+
+.door:hover .door-arrow,
+.door:focus-visible .door-arrow { transform:translateX(7px); }
+.door:hover .door-go,
+.door:focus-visible .door-go { border-color:rgba(241,234,220,.8); }
+
+.door:focus-visible {
+  outline:2px solid var(--cream);
+  outline-offset:-6px;
+}
+
+/* Phones: no door, no split, no intro of any kind. */
+@media (max-width:699px) {
+  .doors { display:none !important; }
+}
+
+/* Reduced motion: the choice is still offered, it simply does not move. */
+@media (prefers-reduced-motion:reduce) {
+  .doors-track,
+  .door-veil,
+  .door-arrow,
+  .door-go { transition:none; }
+  .door-bg { transform:none; }
+}

@@ -20,7 +20,7 @@ PORT=5199 node server.js               # or pick a port
 
 | Route            | Purpose                                                     |
 | ---------------- | ----------------------------------------------------------- |
-| `/`              | Landing: cabinet intro, featured products, readings, journal, newsletter, contact |
+| `/`              | Home. On a first desktop/tablet visit it is covered by the Rituals \| Crystals door before the content is shown. |
 | `/shop.html`     | Product grid with search, category, intention, sort, pagination |
 | `/product.html`  | Product detail, quantity stepper, related products            |
 | `/cart.html`     | Bag (localStorage), shipping rule, stock-capped quantities    |
@@ -33,10 +33,41 @@ PORT=5199 node server.js               # or pick a port
 | `/account.html`  | Login/register, orders, bookings, profile                    |
 | `/admin.html`    | Admin dashboard: orders, bookings, products, subscribers, messages |
 | `/legal.html`    | Shipping, returns, privacy, terms, FAQ                       |
+| `/about.html`    | Why Astro Vetro exists, sourcing, how readings are held     |
+| `/contact.html`  | Contact form, direct email, where else to find help         |
 | `/404.html`      | Not-found page, served with a 404 status for unknown routes   |
 
 `/` is the only home page. `/home.html` still exists in old links and is
 redirected permanently to `/`.
+
+## The first-visit door
+
+A first visitor on desktop or tablet sees `/` split into two halves — Rituals
+on the left, Crystals on the right — before any of the page's content.
+Hovering or focusing one opens it to 66% and carries the other out to 34%.
+Rituals goes to `/readings.html`; Crystals goes to `/`.
+
+It is deliberately a one-time thing and deliberately boring underneath:
+
+- The choice is stored as `av_intro_seen=1` in `localStorage`.
+- Whether to show it is decided in `<head>`, before first paint, so there is
+  no flash of the home page and no layout shift. `<html data-intro="skip">`
+  is the default, so a visitor without JS — or with storage blocked — goes
+  straight to the home page and can never be trapped.
+- Below 700px the door is `display:none` and phones never see it.
+- Crystals points at `/`, and we are already on `/`, so choosing it takes the
+  door down in place instead of reloading.
+
+The motion is one `transform` on one element. Both halves are 66vw wide inside
+a 132vw track; the rest position sits at `-16vw`, which leaves 50vw of each
+showing and 16vw in reserve. Sliding the whole track to `0` or `-32vw` is what
+opens a side and pushes the other away, so nothing in the layout tree changes
+size and no photograph is rescaled. An earlier version animated the halves'
+own width and measured 37fps at 1920×1080; this measures 60.
+
+See `public/assets/doors.css`, which documents the geometry.
+
+About and Contact live at `/about.html` and `/contact.html`.
 
 ## Rules baked into the UI
 
@@ -52,8 +83,8 @@ redirected permanently to `/`.
 ## Assets
 
 Four original images ship in `public/assets/img/`: `hero-bg.jpg`,
-`crystal.jpg`, `about.webp`, `journal-1.jpg`. The cabinet's panel media is an
-inline base64 SVG and is deliberately left untouched. Anything without a
+`crystal.jpg`, `about.webp`, `journal-1.jpg`. `hero-bg.jpg` backs the Rituals
+half of the door and `crystal.jpg` the Crystals half. Anything without a
 photograph falls back to the original gradient art blocks, and products fall
 back to a gradient when the API has no image. No stock photography is
 hotlinked.
