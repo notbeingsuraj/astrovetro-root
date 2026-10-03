@@ -18,9 +18,12 @@ window.AV = window.AV || {};
      reached through there, not from the top of the page. */
   /* The gateway at "/" carries no navigation, so this is the only way back to
      the homepage. "Home" is the full page at /home.html, not the gateway. */
+  /* Crystals is not listed here: it is no longer a page of its own and forwards
+     to the shop, so a "Crystals" entry would only promise a destination that
+     does not exist. The collection is reached through Shop, and the gateway's
+     Crystals panel goes there too. */
   const nav = [
     ['Home', '/home.html'],
-    ['Crystals', '/crystals.html'],
     ['Rituals', '/readings.html'],
     ['Shop', '/shop.html'],
     ['Journal', '/journal.html'],
@@ -37,7 +40,6 @@ window.AV = window.AV || {};
       .map(([label, href]) => {
         const on =
           (href === '/home.html' && page('home.html')) ||
-          (href === '/crystals.html' && page('crystals.html')) ||
           (href === '/readings.html' && page('readings.html')) ||
           (href === '/shop.html' && page('shop.html')) ||
           (href === '/journal.html' && page('journal.html'));
@@ -69,7 +71,6 @@ window.AV = window.AV || {};
   <div>
     <div class="footer-title">Navigate</div>
     <a href="/home.html">Home</a>
-    <a href="/crystals.html">Crystals</a>
     <a href="/readings.html">Rituals</a>
     <a href="/shop.html">Shop</a>
     <a href="/journal.html">Journal</a>

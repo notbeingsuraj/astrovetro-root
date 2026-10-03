@@ -31,7 +31,11 @@
 <!-- The gateway. This document is the whole entry experience: the brand and
      two panels, locked to the viewport. There is no header, no footer, no
      page content and no stored state — the homepage lives at /home.html and
-     the two destinations are /crystals.html and /readings.html.
+     the two destinations are /shop.html and /readings.html.
+
+     The left panel still reads CRYSTALS, because the gateway's three words are
+     fixed, but it now leads to the shop: there is no separate crystals page, and
+     forwarding it keeps the gateway's promise honest.
 
      The scroll lock lives in gateway.css, which only this page loads. -->
 <body>
@@ -43,7 +47,7 @@
   <section class="hero-split" id="hero" data-clip="intentional" aria-label="Choose an experience">
     <div class="hero-track">
 
-      <a class="hero-panel hero-panel--crystals" href="/crystals.html" data-panel="crystals">
+      <a class="hero-panel hero-panel--crystals" href="/shop.html" data-panel="crystals">
         <span class="hero-bg" aria-hidden="true"></span>
         <span class="hero-veil" aria-hidden="true"></span>
         <span class="hero-name">Crystals</span>

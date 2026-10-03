@@ -69,6 +69,14 @@ if (apiDisabled) {
    target. /home without the extension still lands there. */
 app.get('/home', (_req, res) => res.redirect(301, '/home.html'));
 
+/* Crystals is not a page of its own any more — the collection is the shop, and
+   the gateway's Crystals panel and the navbar both lead there. Forward both
+   spellings so old bookmarks, external links and cached indexes land on the
+   shop instead of 404ing. Declared before the static handler, which would
+   otherwise serve public/crystals.html straight out of public/. */
+app.get('/crystals', (_req, res) => res.redirect(301, '/shop.html'));
+app.get('/crystals.html', (_req, res) => res.redirect(301, '/shop.html'));
+
 app.use(express.static(PUBLIC_DIR, { index: 'index.html', extensions: ['html'] }));
 
 /* Real 404s. A catch-all that serves index.html for every unknown path makes
