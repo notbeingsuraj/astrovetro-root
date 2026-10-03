@@ -6,7 +6,8 @@
   "description": "Astro Vetro — static design served with an API proxy to the Astro Vetro backend (localhost:5002).",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "node -e \"console.log('Astro Vetro has no build step. public/ is plain HTML/CSS/JS and is served as-is by server.js; nothing to compile.')\""
   },
   "dependencies": {
     "express": "^4.21.2",

@@ -16,6 +16,30 @@ PORT=5199 node server.js               # or pick a port
 
 `API_TARGET` overrides the backend address if it is not on port 5002.
 
+## Deploying
+
+**There is no build step.** `public/` is plain HTML, CSS and JS; `server.js`
+serves those files as they are. `npm run build` exists only to succeed and say
+so, because most hosts run `npm run build` during deploy and fail the release
+if the script is missing. Do not point a host at `vite build` — there is no
+Vite here and no bundler to run.
+
+Two settings matter:
+
+| Setting         | Value                                                    |
+| --------------- | -------------------------------------------------------- |
+| Build command   | `npm run build` (or leave empty)                         |
+| Start command   | `npm start`                                               |
+| `PORT`          | set by the host                                           |
+| `API_TARGET`    | the Astro Vetro backend, e.g. `https://api.example.com`   |
+
+Deploy this as a **Node service**, not as static files. The frontend calls
+`/api/*` on its own origin and `server.js` is what proxies those calls to the
+backend; a static host has no Express, so every product and service list comes
+back empty and the shop renders blank. If you must deploy statically, you need
+a rewrite rule sending `/api/*` to the backend — but you lose the same-origin
+session cookie, which is the reason the proxy exists.
+
 ## Pages
 
 | Route            | Purpose                                                     |

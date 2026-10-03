@@ -1,0 +1,33 @@
+# Dependencies — installed by `npm install`, never committed.
+# This repo had 923 of its 963 tracked files inside node_modules, which is what
+# made builds unpredictable across machines and left a stale copy of every
+# package shadowing whatever a host actually installed.
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Secrets — .env is per-machine and must never be pushed.
+.env
+.env.*
+!.env.example
+
+# Editor / OS noise
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
