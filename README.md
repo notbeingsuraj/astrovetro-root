@@ -20,13 +20,14 @@ PORT=5199 node server.js               # or pick a port
 
 | Route            | Purpose                                                     |
 | ---------------- | ----------------------------------------------------------- |
-| `/`              | Landing. Opens with the Crystals \| Rituals gateway, then the full home page. |
+| `/`              | The gateway. The entire document: ASTROVETRO, Crystals \| Rituals. Nothing else. |
 | `/shop.html`     | Product grid with search, category, intention, sort, pagination |
 | `/product.html`  | Product detail, quantity stepper, related products            |
 | `/cart.html`     | Bag (localStorage), shipping rule, stock-capped quantities    |
 | `/checkout.html` | Auth-gated checkout, address + payment, places the order     |
 | `/order.html`    | Order confirmation by number                                  |
 | `/crystals.html` | Crystals: how a piece is chosen, plus category tiles into the shop |
+| `/home.html`     | The home page: intro, intentions, products, rituals, practice, about, journal, newsletter, contact |
 | `/readings.html` | Rituals: what you can book → top sellers → ritual experience → tarot |
 | `/booking.html`  | Book a reading                                               |
 | `/journal.html`  | Articles with category chips and pagination                   |
@@ -38,16 +39,24 @@ PORT=5199 node server.js               # or pick a port
 | `/contact.html`  | Contact form, direct email, where else to find help         |
 | `/404.html`      | Not-found page, served with a 404 status for unknown routes   |
 
-`/` is the only home page. `/home.html` still exists in old links and is
-redirected permanently to `/`.
+`/` is the gateway, not the home page. The home page is `/home.html`, which is
+the only way back to it — via the wordmark, the Home nav item, or the "← Home"
+link on every internal page. `/home` without the extension redirects to
+`/home.html`. Nothing links to `/` except as the entry point itself.
 
-## The Crystals | Rituals gateway
+## The gateway
 
-`/` opens on a split hero — **Crystals** on the left, **Rituals** on the right —
-and the home page continues below it. It is the first thing in the document
-flow, not an overlay: there is no stored state, no first-visit gate, and no
-breakpoint at which it disappears. Phones get the same gateway with the two
-panels stacked, and everything still lands above the fold.
+`/` is the whole entry experience, and it is deliberately as small as it can
+be: the wordmark **ASTROVETRO** and two panels, **Crystals** on the left and
+**Rituals** on the right. There is no header, no nav, no footer, no page
+content, and no scroll — not "content below the fold", none at all. The
+document is locked to the viewport and refuses wheel, keyboard and touch
+scrolling. Phones get the same gateway with the two panels stacked.
+
+It is not an overlay and not a first-visit gate. There is no stored state: the
+same three words are shown to everyone on every visit, and the real home page
+is never rendered behind it, so there is nothing to flash and nothing to
+remember.
 
 - Crystals → `/crystals.html`, which explains how a piece is chosen and links
   into the shop by category.
@@ -79,11 +88,25 @@ never re-lays-out or re-paints the two full-viewport photographs, and each
 label travels with its panel. An earlier version animated the panels' own
 width and measured 37fps at 1920×1080; this measures 60.
 
-The hero is `calc(100svh - var(--header-h))` because the header is sticky but
-in-flow — without the subtraction the hero is always one header taller than
-the viewport. `--header-h` is the single source of truth for that height.
+The viewport lock is `min-height: 100svh; height: 100dvh` on `.gateway`, plus
+`overflow: hidden` and `overscroll-behavior: none` on both `html` and `body`.
+`height: 100%` on the root is what makes the `overflow: hidden` bite — without
+a definite height on both, the document still grows to fit its content and the
+bars come back. Plain `100vh` is not used anywhere: on a phone it includes the
+area behind the URL bar, which is what pushes the second panel out of frame and
+hands the user a scrollbar. The hero then takes the space left under the
+wordmark with `flex: 1; min-height: 0`, so no viewport arithmetic inside it can
+be invalidated by the browser's chrome.
 
-See `public/assets/doors.css`, which documents the geometry.
+That scroll lock is safe only because `public/assets/gateway.css` is loaded by
+the gateway and nothing else. Every other page keeps scrolling normally. If you
+add that stylesheet elsewhere, move the lock with it.
+
+See `public/assets/gateway.css`, which documents the geometry and the two
+subtleties worth preserving: the track must stay absolutely positioned (return
+it to the flow and its `flex: 0 0 50%` panels collapse to zero height, taking
+the whole entry screen with them), and the two label offsets are not symmetric
+— Crystals keeps its reserve on the right, Rituals on the left.
 
 The hero carries `data-clip="intentional"`. Its track overhangs the viewport by
 design, so the alignment test is told to skip it. Geometry alone

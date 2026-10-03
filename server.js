@@ -31,10 +31,10 @@ app.use(
   })
 );
 
-/* The landing page is the canonical home. Older links and bookmarks pointed at
-   /home.html, so redirect them permanently instead of 404ing a URL that is
-   still in search results and other people's messages. */
-app.get(['/home.html', '/home'], (_req, res) => res.redirect(301, '/'));
+/* "/" is the gateway — the isolated Crystals | Rituals entry screen — so the
+   home page needs its own address and /home.html is no longer a redirect
+   target. /home without the extension still lands there. */
+app.get('/home', (_req, res) => res.redirect(301, '/home.html'));
 
 app.use(express.static(PUBLIC_DIR, { index: 'index.html', extensions: ['html'] }));
 

@@ -16,7 +16,10 @@ window.AV = window.AV || {};
      is the catalogue behind them, then the supporting pages. There is no
      Tarot item — tarot lives inside Rituals at /readings.html#tarot and is
      reached through there, not from the top of the page. */
+  /* The gateway at "/" carries no navigation, so this is the only way back to
+     the homepage. "Home" is the full page at /home.html, not the gateway. */
   const nav = [
+    ['Home', '/home.html'],
     ['Crystals', '/crystals.html'],
     ['Rituals', '/readings.html'],
     ['Shop', '/shop.html'],
@@ -33,6 +36,7 @@ window.AV = window.AV || {};
     const links = nav
       .map(([label, href]) => {
         const on =
+          (href === '/home.html' && page('home.html')) ||
           (href === '/crystals.html' && page('crystals.html')) ||
           (href === '/readings.html' && page('readings.html')) ||
           (href === '/shop.html' && page('shop.html')) ||
@@ -42,7 +46,7 @@ window.AV = window.AV || {};
       .join('');
     const initial = AV.user ? AV.user.firstName?.[0] || AV.user.email?.[0] : null;
     return `
-<a href="/" class="logo">Astro Vetro</a>
+<a href="/home.html" class="logo">Astro Vetro</a>
 <button class="icon menu" id="menuBtn" aria-label="Menu">\u2630</button>
 <nav id="siteNav">${links}</nav>
 <div class="header-actions">
@@ -64,6 +68,7 @@ window.AV = window.AV || {};
   </div>
   <div>
     <div class="footer-title">Navigate</div>
+    <a href="/home.html">Home</a>
     <a href="/crystals.html">Crystals</a>
     <a href="/readings.html">Rituals</a>
     <a href="/shop.html">Shop</a>

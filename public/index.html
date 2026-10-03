@@ -2,249 +2,69 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#17221d">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/img/favicon.svg">
 <meta name="robots" content="index, follow">
-<meta name="description" content="Crystals, tarot and ritual objects for slow mornings and small rituals. Crystals and jewellery chosen for how they sit in a room and feel in the hand.">
-<title>Astro Vetro — Crystals, Tarot &amp; Ritual Objects</title>
+<meta name="description" content="Astrovetro — crystals, jewellery, tarot and ritual objects. Choose Crystals or Rituals to begin.">
+<title>Astrovetro — Crystals &amp; Rituals</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
-<link rel="stylesheet" href="/assets/doors.css">
-
+<link rel="stylesheet" href="/assets/gateway.css">
 <link rel="canonical" href="/">
 <meta property="og:site_name" content="Astro Vetro">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Astro Vetro — Crystals, Tarot &amp; Ritual Objects">
-<meta property="og:description" content="Crystals, tarot and ritual objects for slow mornings and small rituals. Crystals and jewellery chosen for how they sit in a room and feel in the hand.">
+<meta property="og:title" content="Astrovetro — Crystals &amp; Rituals">
+<meta property="og:description" content="Astrovetro — crystals, jewellery, tarot and ritual objects. Choose Crystals or Rituals to begin.">
 <meta property="og:url" content="/">
 <meta property="og:image" content="/assets/img/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Astro Vetro — Crystals, Tarot &amp; Ritual Objects">
-<meta name="twitter:description" content="Crystals, tarot and ritual objects for slow mornings and small rituals. Crystals and jewellery chosen for how they sit in a room and feel in the hand.">
+<meta name="twitter:title" content="Astrovetro — Crystals &amp; Rituals">
+<meta name="twitter:description" content="Astrovetro — crystals, jewellery, tarot and ritual objects. Choose Crystals or Rituals to begin.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
+
+<!-- The gateway. This document is the whole entry experience: the brand and
+     two panels, locked to the viewport. There is no header, no footer, no
+     page content and no stored state — the homepage lives at /home.html and
+     the two destinations are /crystals.html and /readings.html.
+
+     The scroll lock lives in gateway.css, which only this page loads. -->
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
 
-<div id="siteHeader"></div>
+<div class="gateway">
 
-<!-- ── Landing hero: the gateway between the two Astrovetro experiences ────
-     CRYSTALS | RITUALS, side by side, filling the first viewport.
+  <h1 class="gateway-brand"><a href="/home.html">Astrovetro</a></h1>
 
-     It sits in the flow rather than floating over the page. The sections below
-     are real content, so nothing needs hiding, restoring or re-showing on
-     scroll - which is also what lets phones reach it: there is no breakpoint at
-     which the hero disappears.
+  <section class="hero-split" id="hero" data-clip="intentional" aria-label="Choose an experience">
+    <div class="hero-track">
 
-     Desktop: each panel is 66vw inside a 132vw track, so a single translate3d
-     opens one side and carries the other out of frame. Below 700px the track
-     collapses and the two panels stack full-width, each one tappable. -->
-<section class="hero-split" id="hero" data-clip="intentional" aria-label="Choose an experience">
- <div class="hero-track">
-
-  <a class="hero-panel hero-panel--crystals" href="/crystals.html" data-panel="crystals">
-   <span class="hero-bg" aria-hidden="true"></span>
-   <span class="hero-veil" aria-hidden="true"></span>
-   <span class="hero-body">
-    <span class="hero-name">Crystals</span>
-    <span class="hero-copy">Towers, points and jewellery chosen for texture,
-     presence, and the way they feel to hold.</span>
-    <span class="hero-go">Explore crystals <span class="hero-arrow" aria-hidden="true">&rarr;</span></span>
-   </span>
-  </a>
-
-  <a class="hero-panel hero-panel--rituals" href="/readings.html" data-panel="rituals">
-   <span class="hero-bg" aria-hidden="true"></span>
-   <span class="hero-veil" aria-hidden="true"></span>
-   <span class="hero-body">
-    <span class="hero-name">Rituals</span>
-    <span class="hero-copy">Readings, tarot and the small practices that keep
-     a week honest.</span>
-    <span class="hero-go">Enter rituals <span class="hero-arrow" aria-hidden="true">&rarr;</span></span>
-   </span>
-  </a>
-
- </div>
-</section>
-
-<main class="landing" id="main">
-
-  <section class="section intro" id="intro">
-    <div>
-      <div class="kicker">Our approach</div>
-      <h1>Come back to<br>yourself.</h1>
-    </div>
-    <p><b>Objects with intention. Rituals with meaning.</b> We make and gather a
-      small number of things: crystals, jewellery and tarot, chosen for how they
-      sit in a room and how they feel in the hand. Nothing here is decoration for
-      its own sake. Each piece is meant to be lived with, and to become more
-      yours over time.</p>
-  </section>
-
-  <section class="section intentions" id="intentions">
-    <div class="section-title">
-      <div class="kicker">Start here</div>
-      <h2>Pick what you need.</h2>
-    </div>
-    <div class="intention-grid">
-      <a class="intention-card" href="/shop.html?category=tower">
-        <div class="photo crystal"></div>
-        <div class="card-meta">
-          <h3 class="card-title"><span class="num">01</span>Crystals</h3>
-          <p>Towers, points and clusters for focus, grounding and clarity.</p>
-        </div>
+      <a class="hero-panel hero-panel--crystals" href="/crystals.html" data-panel="crystals">
+        <span class="hero-bg" aria-hidden="true"></span>
+        <span class="hero-veil" aria-hidden="true"></span>
+        <span class="hero-name">Crystals</span>
       </a>
-      <a class="intention-card" href="/shop.html?category=bracelet">
-        <div class="photo bracelet"></div>
-        <div class="card-meta">
-          <h3 class="card-title"><span class="num">02</span>Bracelets</h3>
-          <p>Stones set close to the skin, worn until they know you.</p>
-        </div>
+
+      <a class="hero-panel hero-panel--rituals" href="/readings.html" data-panel="rituals">
+        <span class="hero-bg" aria-hidden="true"></span>
+        <span class="hero-veil" aria-hidden="true"></span>
+        <span class="hero-name">Rituals</span>
       </a>
-      <a class="intention-card" href="/readings.html">
-        <div class="photo tarot"></div>
-        <div class="card-meta">
-          <h3 class="card-title"><span class="num">03</span>Rituals</h3>
-          <p>Readings and tarot, for the question you are actually holding.</p>
-        </div>
-      </a>
+
     </div>
   </section>
 
-  <section class="section products" id="products">
-    <div class="section-title">
-      <div class="kicker">The collection</div>
-      <h2>What we have in stock.</h2>
-    </div>
-    <div class="products-grid js-load" id="homeProducts"></div>
-    <div class="actions" id="homeProductsActions"></div>
-  </section>
+</div>
 
-  <!-- Rituals. This was a standalone "Tarot readings" section sitting above
-       the rituals story, which put tarot at the top level of the landing page.
-       Tarot is reached through Rituals now, so this is the Rituals section
-       and its tarot copy points down into the Rituals page. -->
-  <section class="section reading" id="rituals">
-    <div class="reading-copy">
-      <div class="kicker">Rituals</div>
-      <h2>A moment to look inward.</h2>
-      <p>Readings — tarot among them — for the questions, decisions and
-        reflections occupying your mind. Conducted online, at a time that suits
-        you.</p>
-      <div class="actions">
-        <a class="btn btn-light" href="/readings.html">Enter rituals</a>
-        <a class="btn btn-outline" href="/readings.html#tarot">Tarot readings</a>
-      </div>
-    </div>
-    <div class="reading-image"></div>
-  </section>
-
-  <section class="section rituals" id="practice">
-    <div class="ritual-copy">
-      <div class="kicker">The practice</div>
-      <h2>Make space for ritual.</h2>
-      <p>Ritual does not have to be elaborate to be real. It can be a candle
-        lit on the same evening each week, a stone held while you breathe, a
-        question written down before you sleep. The practice matters more than
-        the objects, but the right objects make it easier to begin.</p>
-      <div class="ritual-links">
-        <a href="/readings.html#tarot">Tarot</a>
-        <a href="/shop.html?category=tower">Crystals</a>
-        <a href="/shop.html?category=bracelet">Bracelets</a>
-        <a href="/journal.html">Journal</a>
-      </div>
-    </div>
-    <div class="ritual-image"></div>
-  </section>
-
-  <section class="section about" id="about">
-    <div class="about-copy">
-      <div class="kicker">About</div>
-      <h2>Why we started.</h2>
-      <p>AstroVetro began with a simple frustration: most of what is sold as
-        spiritual is loud, and most of what is genuinely useful is not sold at
-        all. We wanted the opposite of that &mdash; a small, quiet practice built
-        around objects that are honestly described, made to last, and priced
-        without theatre.</p>
-      <p>Everything is chosen in person, in small batches, and packed by hand.
-        If a stone is not right, we do not list it.</p>
-      <div class="actions">
-        <a class="btn btn-outline" href="/shop.html">Browse the collection</a>
-      </div>
-    </div>
-    <div class="about-image"></div>
-  </section>
-
-  <section class="section journal" id="journal">
-    <div class="section-title">
-      <div class="kicker">From the journal</div>
-      <h2>Notes on practice.</h2>
-    </div>
-    <div class="journal-grid js-load" id="homeJournal"></div>
-    <div class="actions" id="homeJournalActions"></div>
-  </section>
-
-  <section class="newsletter" id="newsletter">
-    <h2>Occasional notes,<br>now and then.</h2>
-    <p>Occasional notes on new pieces, practice and what we are learning.
-      No noise, and unsubscribing is one click.</p>
-    <form class="newsletter-form" id="newsletterForm" novalidate>
-      <label class="sr-only" for="nlEmail">Email address</label>
-      <input type="email" id="nlEmail" name="email" placeholder="Your email address"
-             autocomplete="email" required>
-      <button class="btn btn-light" type="submit">Subscribe</button>
-    </form>
-    <p class="form-msg" id="nlMsg" role="status" aria-live="polite"></p>
-  </section>
-
-  <section class="section contact" id="contact">
-    <div>
-      <div class="kicker">Contact</div>
-      <h2>Let&rsquo;s connect.</h2>
-      <p>Questions about a piece, a reading, or an order &mdash; write to us and
-        a person will reply. We answer every message.</p>
-    </div>
-    <form class="form-grid" id="contactForm" novalidate>
-      <div>
-        <label for="cName">Your name</label>
-        <input type="text" id="cName" name="name" autocomplete="name" required>
-      </div>
-      <div>
-        <label for="cEmail">Email</label>
-        <input type="email" id="cEmail" name="email" autocomplete="email" required>
-      </div>
-      <div class="full">
-        <label for="cMessage">Message</label>
-        <textarea id="cMessage" name="message" rows="4" required></textarea>
-      </div>
-      <div class="full">
-        <button class="btn btn-light" type="submit">Send message</button>
-      </div>
-      <p class="form-msg full" id="cMsg" role="status" aria-live="polite"></p>
-    </form>
-  </section>
-
-</main>
-
-<footer id="siteFooter"></footer>
-
-<script src="/assets/api.js"></script>
-<script src="/assets/store.js"></script>
 <script>
-/* ── Landing page content ───────────────────────────────────────────── */
-AV.boot();
-
 (function () {
-  /* A link fires on Enter but not on Space - Space scrolls. The hero is the
-     one control on the site that is meant to be operated like a button, so it
-     gets the missing key. preventDefault on keydown stops the scroll; .click()
-     then does exactly what a tap would, including the middle-click-free
-     default navigation. */
+  /* A link fires on Enter but not on Space - Space scrolls. These two panels
+     are meant to be operated like buttons, so they get the missing key.
+     preventDefault on keydown is what keeps the locked page from budging. */
   var hero = document.getElementById('hero');
   if (!hero) return;
   hero.addEventListener('keydown', function (e) {
@@ -254,112 +74,6 @@ AV.boot();
     e.preventDefault();
     panel.click();
   });
-})();
-
-(function () {
-  const empty = (msg) => '<div class="empty">' + AV.esc(msg) + '</div>';
-
-  /* Products rail. Renders the collection; the section stays useful (with a
-     direct link through) even when the API cannot be reached. */
-  async function loadProducts() {
-    const grid = AV.qs('#homeProducts');
-    const actions = AV.qs('#homeProductsActions');
-    grid.innerHTML = AV.skeletonCards(4);
-    AV.reveal(grid);
-    try {
-      const env = await AV.api.get('/api/products?limit=4&featured=true');
-      let items = env.data || [];
-      if (!items.length) {
-        const all = await AV.api.get('/api/products?limit=4&sort=createdAt&order=desc');
-        items = all.data || [];
-      }
-      if (!items.length) { grid.innerHTML = empty('The collection is being restocked just now.'); return; }
-      grid.innerHTML = items.map((p, i) => AV.productCard(p, i)).join('');
-      actions.innerHTML = '<a class="btn btn-outline" href="/shop.html">View the full collection</a>';
-    } catch (e) {
-      grid.innerHTML = empty('We could not load the collection right now.');
-      actions.innerHTML = '<a class="btn btn-outline" href="/shop.html">Open the shop</a>';
-    }
-  }
-
-  /* Journal rail */
-  async function loadJournal() {
-    const grid = AV.qs('#homeJournal');
-    const actions = AV.qs('#homeJournalActions');
-    grid.innerHTML = AV.skeletonCards(3, 'journal');
-    AV.reveal(grid);
-    try {
-      const env = await AV.api.get('/api/articles?limit=3');
-      const items = env.data || [];
-      if (!items.length) { grid.innerHTML = empty('New notes are on their way.'); return; }
-      grid.innerHTML = items.map((a, i) => AV.journalCard(a, i)).join('');
-      actions.innerHTML = '<a class="btn btn-outline" href="/journal.html">Read the journal</a>';
-    } catch (e) {
-      grid.innerHTML = empty('We could not load the journal right now.');
-      actions.innerHTML = '<a class="btn btn-outline" href="/journal.html">Open the journal</a>';
-    }
-  }
-
-  /* Newsletter */
-  const nlForm = AV.qs('#newsletterForm');
-  const nlMsg = AV.qs('#nlMsg');
-  if (nlForm) nlForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = AV.qs('#nlEmail').value.trim();
-    nlMsg.className = 'form-msg';
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      nlMsg.textContent = 'Please enter a valid email address.';
-      nlMsg.classList.add('show', 'err');
-      return;
-    }
-    const btn = AV.qs('button', nlForm);
-    AV.setBusy(btn, true);
-    try {
-      await AV.api.post('/api/newsletter/subscribe', { email });
-      nlForm.reset();
-      nlMsg.textContent = 'Thank you — you are on the list.';
-      nlMsg.classList.add('show', 'ok');
-    } catch (err) {
-      nlMsg.textContent = AV.firstErr(err);
-      nlMsg.classList.add('show', 'err');
-    } finally {
-      AV.setBusy(btn, false);
-    }
-  });
-
-  /* Contact */
-  const cForm = AV.qs('#contactForm');
-  const cMsg = AV.qs('#cMsg');
-  if (cForm) cForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const body = {
-      name: AV.qs('#cName').value.trim(),
-      email: AV.qs('#cEmail').value.trim(),
-      message: AV.qs('#cMessage').value.trim(),
-    };
-    cMsg.className = 'form-msg full';
-    if (!body.name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email) || !body.message) {
-      cMsg.textContent = 'Please add your name, a valid email and a message.';
-      cMsg.classList.add('show', 'err');
-      return;
-    }
-    const btn = AV.qs('button', cForm);
-    AV.setBusy(btn, true);
-    try {
-      await AV.api.post('/api/contact', body);
-      cForm.reset();
-      cMsg.textContent = 'Thank you — we will reply shortly.';
-      cMsg.classList.add('show', 'ok');
-    } catch (err) {
-      cMsg.textContent = AV.firstErr(err);
-      cMsg.classList.add('show', 'err');
-    } finally {
-      AV.setBusy(btn, false);
-    }
-  });
-
-  loadProducts();
-  loadJournal();
 })();
 </script>
 </body>

@@ -1,0 +1,254 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Astro Vetro — the gateway
+   ─────────────────────────────────────────────────────────────────────────
+
+   The entry screen. It is not the home page and it does not become one: the
+   whole document is the brand and two panels, sized to the viewport and
+   locked there. Nothing scrolls, nothing is reachable by accident, and there
+   is no stored state — whoever opens the site gets the same three words.
+
+   Only this page loads this file, which is what makes the scroll lock below
+   safe: on every other page <html> and <body> keep scrolling normally.
+
+   THE GEOMETRY, and why it is not flex-basis
+   -----------------------------------------
+   Both panels are half of a track that is 132% of the hero's width, so each
+   panel is 66% of the visible width. That leaves 50% of each showing with
+   16% of reserve on its outer side, so the seam between the two always lands
+   exactly on the midpoint and the pair always fills the frame with no gap and
+   no overhang.
+
+   Opening a panel is then a single translate3d of the track. The three offsets
+   are percentages of the track's own width:
+
+       rest           -12.1212%   crystals [0-50]   rituals [50-100]
+       crystals open       0%     crystals [0-66]   rituals [66-100]
+       rituals  open -24.2424%   crystals [0-34]   rituals [34-100]
+
+   One animated property on one element. Nothing in the layout tree changes
+   size, so the browser never re-lays-out or re-paints the two full-bleed
+   photographs. An earlier version animated the panels' own width, which is
+   the obvious way to write it and also the wrong one: resizing an
+   overflow:hidden box repaints its layer every frame.
+
+   Percentages rather than vw on purpose: 100vw includes the width of a
+   classic scrollbar, so a vw-sized track is always wider than the space it
+   has to fill and the seam lands a scrollbar-width left of centre.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── The lock ───────────────────────────────────────────────────────────
+   height:100% on the root and body is what makes overflow:hidden actually
+   bite — without a definite height on both, the document still grows to fit
+   its content and the bars reappear. overscroll-behavior stops the rubber-band
+   that a touch drag would otherwise trigger at the edges. */
+html,
+body {
+  height:100%;
+  overflow:hidden;
+  overscroll-behavior:none;
+}
+
+.gateway {
+  /* min-height 100svh keeps the smallest viewport fully covered; height
+     100dvh lets the screen track the collapsing browser chrome without ever
+     outgrowing it. Plain 100vh is deliberately not used: on a phone it
+     includes the area behind the URL bar, which is what pushes the second
+     panel below the fold and hands the user a scrollbar. */
+  min-height:100svh;
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:var(--ink);
+}
+
+/* ── The brand ──────────────────────────────────────────────────────────
+   Identity, not navigation: one wordmark, no links to a section, no menu. */
+.gateway-brand {
+  flex:0 0 auto;
+  margin:0;
+  padding:clamp(18px,3.2vh,34px) 20px clamp(10px,1.6vh,18px);
+  text-align:center;
+  font:400 clamp(19px,2.1vw,27px)/1 'Cormorant Garamond',Georgia,serif;
+  letter-spacing:.34em;
+  text-indent:.34em;          /* cancels the trailing letter-space so the word
+                                 sits optically centred, not nudged left */
+  text-transform:uppercase;
+}
+.gateway-brand a {
+  color:var(--cream);
+  text-decoration:none;
+}
+.gateway-brand a:hover { color:var(--white); }
+.gateway-brand a:focus-visible {
+  outline:2px solid var(--cream);
+  outline-offset:6px;
+  border-radius:2px;
+}
+
+/* ── The two panels ────────────────────────────────────────────────────── */
+.hero-split {
+  position:relative;
+  /* flex:1 with min-height:0 takes exactly the space left under the brand,
+     so the hero can never push the document past the viewport — no viewport
+     arithmetic here that a browser's chrome could invalidate. */
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+}
+
+.hero-track {
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:0;
+  width:132%;
+  display:flex;
+  transform:translate3d(-12.1212%,0,0);
+  transition:transform .78s cubic-bezier(.22,.68,.24,1);
+  will-change:transform;
+  backface-visibility:hidden;
+}
+
+.hero-panel {
+  position:relative;
+  flex:0 0 50%;               /* 66% of the visible width */
+  overflow:hidden;
+  contain:paint;
+  display:block;
+  color:var(--cream);
+  text-decoration:none;
+}
+
+/* Each label is centred on its panel's *visible* half rather than on its 66%
+   box, so the two read symmetrically at rest and neither drifts when the other
+   opens. `left` is the centre point - hence the translate(-50%) below.
+
+   The two percentages are not symmetric and must not be swapped. At rest the
+   track sits 16% of the viewport off the left edge:
+     Crystals box -16%..50%, window 0..50%,  centre 25%  -> 41/66 = 62.12%
+     Rituals  box  50%..116%, window 50..100%, centre 75%  -> 25/66 = 37.88%
+   Crystals therefore keeps its reserve on the right and its label late in the
+   box; Rituals keeps its on the left and its label early. */
+.hero-panel--crystals .hero-name { left:62.1212%; }
+.hero-panel--rituals  .hero-name { left:37.8788%; }
+
+/* Fixed at the half's full width: the photograph is measured once and then
+   only cropped differently, never rescaled. */
+.hero-bg {
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-position:center;
+  transform:scale(1.03);       /* hides the hairline seam mid-transition */
+}
+.hero-panel--crystals .hero-bg { background-image:url('/assets/img/crystal.jpg'); }
+.hero-panel--rituals  .hero-bg { background-image:url('/assets/img/hero-bg.jpg'); }
+
+/* Keeps the wordmark legible over any part of either photograph. */
+.hero-veil {
+  position:absolute;
+  inset:0;
+  transition:opacity .78s cubic-bezier(.22,.68,.24,1);
+  background:linear-gradient(180deg,
+    rgba(11,23,18,.62) 0%,
+    rgba(11,23,18,.34) 42%,
+    rgba(11,23,18,.78) 100%);
+}
+
+.hero-name {
+  position:absolute;
+  top:50%;
+  left:50%;
+  /* Anchored by its centre, so `left` above is the label's midpoint. Without
+     the -50% the label is left-aligned to that point and hangs off the far
+     edge of its panel. */
+  transform:translate(-50%,-50%);
+  width:min(30rem,42vw);
+  padding:0 6px;
+  text-align:center;
+  font:400 clamp(40px,6vw,92px)/.95 'Cormorant Garamond',Georgia,serif;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+
+/* Idle: both halves sit slightly veiled so neither reads as pre-selected. */
+.hero-split .hero-veil { opacity:.82; }
+.hero-panel:hover .hero-veil,
+.hero-panel:focus-visible .hero-veil { opacity:1; }
+
+/* ── The push ───────────────────────────────────────────────────────────
+   `:has()` rather than a sibling combinator: Rituals is second in the
+   markup, so `~` cannot reach back to Crystals. */
+.hero-split:has(.hero-panel--crystals:hover) .hero-track,
+.hero-split:has(.hero-panel--crystals:focus-visible) .hero-track {
+  transform:translate3d(0,0,0);
+}
+.hero-split:has(.hero-panel--rituals:hover) .hero-track,
+.hero-split:has(.hero-panel--rituals:focus-visible) .hero-track {
+  transform:translate3d(-24.2424%,0,0);
+}
+
+/* Keyboard focus gets the same treatment as hover, plus a ring inside the
+   panel so it is never clipped by the overflow:hidden. */
+.hero-panel:focus-visible {
+  outline:2px solid var(--cream);
+  outline-offset:-6px;
+}
+
+/* ── Phones and small tablets ───────────────────────────────────────────
+   The two panels stack instead of splitting. Nothing about the interaction
+   is hover-dependent: each panel is a plain link filling its own band, so a
+   tap lands on it directly and there is no state to be stranded in.
+
+   The reserve and the track both collapse to nothing here — at 100% width
+   there is no outer 16% to slide into, and the resting offset would push the
+   first panel off the left edge.
+
+   The track stays absolutely positioned. That is deliberate, and it is the one
+   thing here that is easy to get wrong: it is what gives the panels a definite
+   height. Return it to the flow (position:static) and the track's height
+   becomes auto — which for a column of panels whose children are all absolutely
+   positioned and whose own basis is 0 resolves to zero, so both panels end up
+   zero-height and the whole entry screen silently disappears. */
+@media (max-width:699px) {
+  .hero-track {
+    flex-direction:column;
+    width:100%;
+    transform:none;
+    transition:none;
+    will-change:auto;
+  }
+  .hero-panel {
+    /* 50% of the track's now-definite height, rather than flex-grow, which
+       would need a definite height to divide in the first place. */
+    flex:0 0 50%;
+    min-height:0;
+  }
+  .hero-panel--crystals .hero-name,
+  .hero-panel--rituals  .hero-name { left:50%; }
+  .hero-name {
+    width:min(30rem,86vw);
+    font-size:clamp(34px,11vw,58px);
+  }
+  /* A tap gives no hover state, so the veil lifts for the press rather than
+     staying permanently open. */
+  .hero-panel:active .hero-veil { opacity:1; }
+}
+
+/* Short landscape phones keep the side-by-side split: there is not enough
+   height to stack two full panels, and plenty of width for two halves. Both
+   are still plain links, so nothing here depends on hover. */
+
+/* ── Reduced motion ─────────────────────────────────────────────────────
+   No tween, but the state change itself is kept: hovering or focusing a panel
+   still opens it, it just arrives immediately. Without this the panels would
+   sit at 50/50 with no way to preview the destination and the only cue left
+   would be a colour shift. */
+@media (prefers-reduced-motion:reduce) {
+  .hero-track,
+  .hero-veil { transition:none; }
+  .hero-bg { transform:none; }
+  .hero-track { will-change:auto; }
+}
