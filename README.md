@@ -18,7 +18,7 @@ PORT=5199 node server.js               # or pick a port
 ```
 
 Nothing else is required. No MongoDB, no backend process, no environment
-variables. Every page works, and the shop, crystals, rituals and journal render
+variables. Every page works, and the shop, rituals and journal render
 real products.
 
 ## How the API is answered
@@ -177,7 +177,7 @@ authentication is actually switched on; do not reuse the development value.
 | `/cart.html`     | Bag (localStorage), shipping rule, stock-capped quantities    |
 | `/checkout.html` | Auth-gated checkout, address + payment, places the order     |
 | `/order.html`    | Order confirmation by number                                  |
-| `/crystals.html` | Crystals: how a piece is chosen, plus category tiles into the shop |
+| `/crystals.html` | **Forwards to `/shop.html`** (301). There is no crystals page.   |
 | `/home.html`     | The home page: intro, intentions, products, rituals, practice, about, journal, newsletter, contact |
 | `/readings.html` | Rituals: what you can book → top sellers → ritual experience → tarot |
 | `/booking.html`  | Book a reading                                               |
@@ -209,8 +209,11 @@ same three words are shown to everyone on every visit, and the real home page
 is never rendered behind it, so there is nothing to flash and nothing to
 remember.
 
-- Crystals → `/crystals.html`, which explains how a piece is chosen and links
-  into the shop by category.
+- Crystals → `/shop.html`. The panel keeps the word CRYSTALS because the
+  gateway's three words are fixed, but there is no separate crystals page: the
+  collection *is* the shop, so the panel goes there and `/crystals.html` and
+  `/crystals` both forward there too. Naming a page that does not exist would
+  make the gateway's one promise a lie.
 - Rituals → `/readings.html`, which runs the intended path in order: the
   rituals shop, top selling pieces, view more products, the ritual experience,
   and tarot last. Tarot has no entry in the nav or footer; it is reached
