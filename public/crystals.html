@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<meta name="robots" content="index, follow">
+<meta name="description" content="The Astrovetro crystal collection — towers, tumbled stone, clusters and jewellery, chosen for how they sit in a room and feel in the hand.">
+<title>Crystals — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/crystals.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Crystals — Astro Vetro">
+<meta property="og:description" content="The Astrovetro crystal collection — towers, tumbled stone, clusters and jewellery, chosen for how they sit in a room and feel in the hand.">
+<meta property="og:url" content="/crystals.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Crystals — Astro Vetro">
+<meta name="twitter:description" content="The Astrovetro crystal collection — towers, tumbled stone, clusters and jewellery, chosen for how they sit in a room and feel in the hand.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+
+<!-- ── Crystals ──────────────────────────────────────────────────────────
+     The Crystals side of the gateway. This is the editorial layer: what the
+     stones are and how they are chosen. The full, filterable catalogue is
+     one link away in the shop, and nothing here duplicates it.
+
+     Deliberately no readings, tarot or ritual content on this page — that
+     belongs to the other half of the gateway. -->
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/">&larr; Home</a>
+    <div class="eyebrow">Crystals</div>
+    <h1>Chosen for how<br>they feel in the hand.</h1>
+    <p class="sub">Towers, tumbled stone, clusters and jewellery. A small
+      collection, kept deliberately short so every piece has been held and
+      lived with before it goes on the shelf.</p>
+    <div class="actions">
+      <a class="btn btn-light" href="/shop.html">Browse the collection</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- How a piece is chosen -->
+  <section class="section expect" id="how">
+    <div class="wrap">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">How a piece is chosen</div>
+          <h2>Three questions we ask.</h2>
+        </div>
+        <p class="section-note">Nothing reaches the collection on trend alone.
+          Each piece has to survive all three.</p>
+      </div>
+      <div class="expect-grid">
+        <div class="expect-step">
+          <span class="num">01</span>
+          <h3>Does it sit still</h3>
+          <p>Weight and base matter more than size. A tower that will not stand
+            up on a shelf is a piece that ends up in a drawer.</p>
+        </div>
+        <div class="expect-step">
+          <span class="num">02</span>
+          <h3>Does the finish hold</h3>
+          <p>Pieces are turned by hand, so edges are softened and bases are
+            flattened. It should be comfortable to pick up and put down.</p>
+        </div>
+        <div class="expect-step">
+          <span class="num">03</span>
+          <h3>Is it worth the shelf</h3>
+          <p>Would we keep it ourselves? If a stone only makes sense while it
+            is in the box, it is not one of ours.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Categories, taken from the catalogue itself rather than hard-coded, so
+       a category that is retired simply stops appearing here. -->
+  <section class="section cream" id="shapes">
+    <div class="wrap">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Shapes &amp; forms</div>
+          <h2>Find your way in.</h2>
+        </div>
+        <p class="section-note">Each shape leads straight into the shop with that
+          filter already applied.</p>
+      </div>
+      <div class="shape-grid js-load" id="shapeGrid"></div>
+    </div>
+  </section>
+
+  <section class="page-hero page-hero--tail">
+    <div class="wrap">
+      <div class="eyebrow">The collection</div>
+      <h2>Everything, in one place.</h2>
+      <p class="sub">Search by stone, intention or shape, and sort by what you
+        actually want to compare.</p>
+      <div class="actions">
+        <a class="btn btn-light" href="/shop.html">Go to the shop</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+
+const esc = AV.esc;
+
+/* Human wording for the category slugs the catalogue uses. Anything not
+   listed here still renders — it just falls back to its own slug
+   capitalised, so a new category is never dropped from the page. */
+const SHAPE_WORDS = {
+  tower:     'Towers & points',
+  tumble:    'Tumbled stone',
+  cluster:   'Clusters',
+  raw:       'Raw & natural',
+  pendant:   'Pendants',
+  ring:      'Rings',
+  bracelet:  'Bracelets',
+};
+
+const ORDER = ['tower', 'tumble', 'cluster', 'raw', 'pendant', 'ring', 'bracelet'];
+
+function label(slug) {
+  return SHAPE_WORDS[slug]
+    || String(slug).charAt(0).toUpperCase() + String(slug).slice(1);
+}
+
+/* Builds the category tiles from the live catalogue: one tile per category
+   that actually has stock, carrying its real count. Links go to the shop with
+   `?category=` already set, which the shop reads on load — so these are
+   working filters, not decorative links to the top of a list. */
+async function loadShapes() {
+  const g = AV.qs('#shapeGrid');
+  g.innerHTML = AV.skeletonCards(3, 'journal');
+  AV.reveal(g);
+  try {
+    const env = await AV.api.get('/api/products?limit=60');
+    const items = env.data || [];
+
+    const counts = new Map();
+    items.forEach((p) => {
+      if (p.availability === false) return;
+      const c = String(p.category || '').trim();
+      if (!c) return;
+      counts.set(c, (counts.get(c) || 0) + 1);
+    });
+
+    if (!counts.size) {
+      g.innerHTML = '<div class="empty">The collection is being restocked just now — '
+        + '<a class="btn btn-ghost btn-sm" href="/shop.html">browse the shop</a></div>';
+      return;
+    }
+
+    /* Known shapes first in the order above, then anything new after them. */
+    const known = ORDER.filter((c) => counts.has(c));
+    const extra = [...counts.keys()]
+      .filter((c) => !ORDER.includes(c))
+      .sort((a, b) => counts.get(b) - counts.get(a));
+    const ordered = [...known, ...extra];
+
+    g.innerHTML = ordered.map((c, i) => {
+      const n = counts.get(c);
+      return `
+      <a class="shape-card" href="/shop.html?category=${encodeURIComponent(c)}">
+        <span class="shape-art ${AV.art(i)}" aria-hidden="true"></span>
+        <span class="shape-meta">
+          <h3>${esc(label(c))}</h3>
+          <p>${n} ${n === 1 ? 'piece' : 'pieces'}</p>
+        </span>
+      </a>`;
+    }).join('');
+  } catch (e) {
+    g.innerHTML = '<div class="empty">We could not reach the collection just now. '
+      + '<a class="btn btn-ghost btn-sm" href="/shop.html">browse the shop</a></div>';
+  }
+}
+
+loadShapes();
+</script>
+</body>
+</html>

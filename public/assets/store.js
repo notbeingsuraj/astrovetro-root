@@ -12,10 +12,14 @@ window.AV = window.AV || {};
   AV.SHIPPING = SHIPPING;
   AV.shippingFor = (subtotal) =>
     subtotal >= SHIPPING.freeAbove || subtotal === 0 ? 0 : SHIPPING.flat;
+  /* Nav order follows the gateway: the two experiences come first, the shop
+     is the catalogue behind them, then the supporting pages. There is no
+     Tarot item — tarot lives inside Rituals at /readings.html#tarot and is
+     reached through there, not from the top of the page. */
   const nav = [
-    ['Home', '/'],
+    ['Crystals', '/crystals.html'],
+    ['Rituals', '/readings.html'],
     ['Shop', '/shop.html'],
-    ['Readings', '/readings.html'],
     ['Journal', '/journal.html'],
     ['About', '/about.html'],
     ['Contact', '/contact.html'],
@@ -25,19 +29,13 @@ window.AV = window.AV || {};
     return location.pathname.replace(/^\//, '').split('?')[0].split('#')[0] === file;
   }
 
-  /* The landing page is served at "/" — index.html is the canonical home. */
-  function isHome() {
-    const p = location.pathname.replace(/\/+$/, '');
-    return p === '' || p === '/index.html';
-  }
-
   function headerHTML() {
     const links = nav
       .map(([label, href]) => {
         const on =
-          (href === '/' && isHome()) ||
-          (href === '/shop.html' && page('shop.html')) ||
+          (href === '/crystals.html' && page('crystals.html')) ||
           (href === '/readings.html' && page('readings.html')) ||
+          (href === '/shop.html' && page('shop.html')) ||
           (href === '/journal.html' && page('journal.html'));
         return `<a href="${href}"${on ? ' class="on"' : ''}>${label}</a>`;
       })
@@ -66,9 +64,9 @@ window.AV = window.AV || {};
   </div>
   <div>
     <div class="footer-title">Navigate</div>
-    <a href="/">Home</a>
+    <a href="/crystals.html">Crystals</a>
+    <a href="/readings.html">Rituals</a>
     <a href="/shop.html">Shop</a>
-    <a href="/readings.html">Readings</a>
     <a href="/journal.html">Journal</a>
     <a href="/about.html">About</a>
     <a href="/contact.html">Contact</a>

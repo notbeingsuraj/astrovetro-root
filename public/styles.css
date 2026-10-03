@@ -1,4 +1,8 @@
 :root {
+  /* Header height, shared so the landing hero can size itself to the space
+     left below it instead of guessing. Constant across breakpoints - only
+     the padding inside the bar changes. */
+  --header-h:78px;
   --forest:#18372c;
   --deep:#10261f;
   --moss:#536b4e;
@@ -49,7 +53,7 @@ button,input,textarea {
   position:sticky;
   top:0;
   z-index:50;
-  height:78px;
+  height:var(--header-h);
   padding:0 4vw;
   display:flex;
   align-items:center;

@@ -20,13 +20,14 @@ PORT=5199 node server.js               # or pick a port
 
 | Route            | Purpose                                                     |
 | ---------------- | ----------------------------------------------------------- |
-| `/`              | Home. On a first desktop/tablet visit it is covered by the Rituals \| Crystals door before the content is shown. |
+| `/`              | Landing. Opens with the Crystals \| Rituals gateway, then the full home page. |
 | `/shop.html`     | Product grid with search, category, intention, sort, pagination |
 | `/product.html`  | Product detail, quantity stepper, related products            |
 | `/cart.html`     | Bag (localStorage), shipping rule, stock-capped quantities    |
 | `/checkout.html` | Auth-gated checkout, address + payment, places the order     |
 | `/order.html`    | Order confirmation by number                                  |
-| `/readings.html` | Service offerings with type/format filters and sort           |
+| `/crystals.html` | Crystals: how a piece is chosen, plus category tiles into the shop |
+| `/readings.html` | Rituals: what you can book → top sellers → ritual experience → tarot |
 | `/booking.html`  | Book a reading                                               |
 | `/journal.html`  | Articles with category chips and pagination                   |
 | `/article.html`  | Article body                                                  |
@@ -40,35 +41,52 @@ PORT=5199 node server.js               # or pick a port
 `/` is the only home page. `/home.html` still exists in old links and is
 redirected permanently to `/`.
 
-## The first-visit door
+## The Crystals | Rituals gateway
 
-A first visitor on desktop or tablet sees `/` split into two halves — Rituals
-on the left, Crystals on the right — before any of the page's content.
-Hovering or focusing one opens it to 66% and carries the other out to 34%.
-Rituals goes to `/readings.html`; Crystals goes to `/`.
+`/` opens on a split hero — **Crystals** on the left, **Rituals** on the right —
+and the home page continues below it. It is the first thing in the document
+flow, not an overlay: there is no stored state, no first-visit gate, and no
+breakpoint at which it disappears. Phones get the same gateway with the two
+panels stacked, and everything still lands above the fold.
 
-It is deliberately a one-time thing and deliberately boring underneath:
+- Crystals → `/crystals.html`, which explains how a piece is chosen and links
+  into the shop by category.
+- Rituals → `/readings.html`, which runs the intended path in order: the
+  rituals shop, top selling pieces, view more products, the ritual experience,
+  and tarot last. Tarot has no entry in the nav or footer; it is reached
+  through Rituals.
+- Hovering or focusing a panel opens it to 66% and carries the other out to
+  34%. Each panel is a plain link filling its own box, so a tap lands on it
+  directly and nothing depends on hover.
+- `Space` is wired up explicitly. A link fires on `Enter` but not `Space`, and
+  the gateway is meant to be operable like a button.
 
-- The choice is stored as `av_intro_seen=1` in `localStorage`.
-- Whether to show it is decided in `<head>`, before first paint, so there is
-  no flash of the home page and no layout shift. `<html data-intro="skip">`
-  is the default, so a visitor without JS — or with storage blocked — goes
-  straight to the home page and can never be trapped.
-- Below 700px the door is `display:none` and phones never see it.
-- Crystals points at `/`, and we are already on `/`, so choosing it takes the
-  door down in place instead of reloading.
+### Geometry
 
-The motion is one `transform` on one element. Both halves are 66vw wide inside
-a 132vw track; the rest position sits at `-16vw`, which leaves 50vw of each
-showing and 16vw in reserve. Sliding the whole track to `0` or `-32vw` is what
-opens a side and pushes the other away, so nothing in the layout tree changes
-size and no photograph is rescaled. An earlier version animated the halves'
-own width and measured 37fps at 1920×1080; this measures 60.
+The motion is one `transform` on one element. Both panels are half of a track
+that is 132% of the hero's width, so each is 66% of the visible width, with
+16% of reserve on its outer side. Three offsets on that track — `-12.1212%`,
+`0`, `-24.2424%` — are the rest position and the two open positions, which
+puts the seam exactly on the centre in every state.
+
+The offsets are percentages of the track's own width rather than `vw` units on
+purpose: `100vw` includes the width of a classic scrollbar, so a `vw`-sized
+track is always wider than the space it has to fill and the seam lands a
+scrollbar-width left of centre. Sizing off the hero makes it exact either way.
+
+Nothing in the layout tree changes size when a panel opens, so the browser
+never re-lays-out or re-paints the two full-viewport photographs, and each
+label travels with its panel. An earlier version animated the panels' own
+width and measured 37fps at 1920×1080; this measures 60.
+
+The hero is `calc(100svh - var(--header-h))` because the header is sticky but
+in-flow — without the subtraction the hero is always one header taller than
+the viewport. `--header-h` is the single source of truth for that height.
 
 See `public/assets/doors.css`, which documents the geometry.
 
-The overlay carries `data-clip="intentional"`. Its contents overhang the
-viewport by design, so the alignment test is told to skip them. Geometry alone
+The hero carries `data-clip="intentional"`. Its track overhangs the viewport by
+design, so the alignment test is told to skip it. Geometry alone
 cannot distinguish that from content accidentally cut off — both look identical
 to an overflow check, and guessing wrong once hid a newsletter form that really
 was being clipped. Keep the attribute if you restructure the markup.
@@ -90,7 +108,7 @@ About and Contact live at `/about.html` and `/contact.html`.
 
 Four original images ship in `public/assets/img/`: `hero-bg.jpg`,
 `crystal.jpg`, `about.webp`, `journal-1.jpg`. `hero-bg.jpg` backs the Rituals
-half of the door and `crystal.jpg` the Crystals half. Anything without a
+panel of the gateway and `crystal.jpg` the Crystals panel. Anything without a
 photograph falls back to the original gradient art blocks, and products fall
 back to a gradient when the API has no image. No stock photography is
 hotlinked.

@@ -7,8 +7,8 @@
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/img/favicon.svg">
 <meta name="robots" content="index, follow">
-<meta name="description" content="Personal tarot readings for the questions, decisions and reflections on your mind. Held online, at a time that suits you.">
-<title>Tarot Readings</title>
+<meta name="description" content="The Astrovetro rituals experience — tarot and deep-dive readings, the crystals that support them, and a small daily practice. Held online, at a time that suits you.">
+<title>Rituals &amp; Tarot Readings — Astro Vetro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -17,34 +17,50 @@
 <link rel="canonical" href="/readings.html">
 <meta property="og:site_name" content="Astro Vetro">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Tarot Readings — Astro Vetro">
-<meta property="og:description" content="Personal tarot readings for the questions, decisions and reflections on your mind. Held online, at a time that suits you.">
+<meta property="og:title" content="Rituals &amp; Tarot Readings — Astro Vetro">
+<meta property="og:description" content="The Astrovetro rituals experience — tarot and deep-dive readings, the crystals that support them, and a small daily practice. Held online, at a time that suits you.">
 <meta property="og:url" content="/readings.html">
 <meta property="og:image" content="/assets/img/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Tarot Readings — Astro Vetro">
-<meta name="twitter:description" content="Personal tarot readings for the questions, decisions and reflections on your mind. Held online, at a time that suits you.">
+<meta name="twitter:title" content="Rituals &amp; Tarot Readings — Astro Vetro">
+<meta name="twitter:description" content="The Astrovetro rituals experience — tarot and deep-dive readings, the crystals that support them, and a small daily practice. Held online, at a time that suits you.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
+<!-- ── Rituals ──────────────────────────────────────────────────────────
+     The Rituals side of the gateway. Read top to bottom it follows the
+     intended path: the shop, the pieces people actually buy, the wider
+     catalogue, what a session is actually like, and finally tarot — the
+     most-booked of the readings, so it closes the loop rather than
+     competing with the grid above it. -->
 <header class="page-hero">
   <div class="wrap">
-    <a class="back" href="/">← Home</a>
-    <div class="eyebrow">Tarot readings</div>
+    <a class="back" href="/">&larr; Home</a>
+    <div class="eyebrow">Rituals</div>
     <h1>A moment to<br>look inward.</h1>
-    <p class="sub">A one-to-one tarot reading, held online at a time that suits
-      you. Bring a question, or bring nothing in particular.</p>
+    <p class="sub">Readings held online at a time that suits you, and the small
+      practices that keep a week honest. Bring a question, or bring nothing in
+      particular.</p>
   </div>
 </header>
 
 <main id="main">
-  <div class="page">
-    <div class="wrap">
 
-      <h2 class="sr-only">Available readings</h2>
+  <!-- 1 · Rituals shop -->
+  <section class="section" id="shop">
+    <div class="wrap">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">The rituals shop</div>
+          <h2>What you can book.</h2>
+        </div>
+        <p class="section-note">Every session is one-to-one and held online. Pick a
+          format, or write to us and we will find a time.</p>
+      </div>
+
       <div class="toolbar readings-toolbar">
         <div class="filters">
           <label class="sr-only" for="typeSelect">Reading type</label>
@@ -54,8 +70,8 @@
           <label class="sr-only" for="rSortSelect">Sort</label>
           <select id="rSortSelect" aria-label="Sort">
             <option value="featured">Featured first</option>
-            <option value="price-asc">Price · low to high</option>
-            <option value="price-desc">Price · high to low</option>
+            <option value="price-asc">Price &middot; low to high</option>
+            <option value="price-desc">Price &middot; high to low</option>
             <option value="duration-asc">Shortest first</option>
             <option value="duration-desc">Longest first</option>
             <option value="name">Name</option>
@@ -65,16 +81,35 @@
       </div>
 
       <div class="service-grid js-load" id="serviceGrid"></div>
-
     </div>
-  </div>
+  </section>
 
-  <!-- What happens in a session, so the commitment is clear before booking. -->
+  <!-- 2 · Top selling products -->
+  <section class="section cream" id="top-selling">
+    <div class="wrap">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Top selling pieces</div>
+          <h2>What people keep on the shelf.</h2>
+        </div>
+        <p class="section-note">The crystals that turn up most often alongside a
+          reading — a stone for the practice, not just the collection.</p>
+      </div>
+
+      <div class="products-grid js-load" id="topGrid"></div>
+
+      <div class="actions">
+        <a class="btn btn-outline" href="/shop.html">View more products</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · Ritual experience -->
   <section class="section expect" id="expect">
     <div class="wrap">
       <div class="section-title">
         <div>
-          <div class="eyebrow">What to expect</div>
+          <div class="eyebrow">The ritual experience</div>
           <h2>How a reading works.</h2>
         </div>
       </div>
@@ -101,6 +136,24 @@
     </div>
   </section>
 
+  <!-- 4 · Tarot — the end of the path -->
+  <section class="section cream" id="tarot">
+    <div class="wrap">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Tarot</div>
+          <h2>Where most people begin.</h2>
+        </div>
+        <p class="section-note">Tarot is the most-booked format we hold, so it sits
+          at the end of this page rather than competing with the grid above.</p>
+      </div>
+
+      <div class="ritual-list js-load" id="tarotList"></div>
+
+      <div class="actions" id="tarotMore"></div>
+    </div>
+  </section>
+
   <section class="section voices" id="voices">
     <div class="wrap">
       <div class="section-title">
@@ -117,7 +170,7 @@
     <div class="wrap">
       <div class="eyebrow">Ready when you are</div>
       <h2>Book a reading.</h2>
-      <p class="sub">Choose a format below, or write to us and we will find a
+      <p class="sub">Choose a format above, or write to us and we will find a
         time that suits you.</p>
       <div class="actions">
         <a class="btn btn-light" href="/contact.html">Write to us</a>
@@ -133,7 +186,9 @@
 <script>
 AV.boot();
 
-const grid   = AV.qs('#serviceGrid');
+const esc = AV.esc;
+
+const grid    = AV.qs('#serviceGrid');
 const countEl = AV.qs('#rCount');
 const typeSel = AV.qs('#typeSelect');
 const sortSel = AV.qs('#rSortSelect');
@@ -141,8 +196,6 @@ const sortSel = AV.qs('#rSortSelect');
 let all = [];
 let type = '';
 let sort = 'featured';
-
-const esc = AV.esc;
 
 function sortServices(list) {
   const c = list.slice();
@@ -199,6 +252,79 @@ function render() {
     </article>`).join('');
 }
 
+/* ── Top selling products ──────────────────────────────────────────────
+   Real catalogue entries, ordered by the two signals the catalogue actually
+   carries: `featured`, then star rating. Nothing is written by hand and no
+   piece is invented — if the API is unreachable the section says so and
+   leaves the link through to the shop as the way onward. */
+async function loadTop() {
+  const g = AV.qs('#topGrid');
+  g.innerHTML = AV.skeletonCards(3, 'product');
+  AV.reveal(g);
+  try {
+    const env = await AV.api.get('/api/products?limit=24');
+    const items = (env.data || [])
+      .filter((p) => p.availability !== false)
+      .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
+                   || (b.rating || 0) - (a.rating || 0))
+      .slice(0, 3);
+    if (!items.length) {
+      g.innerHTML = '<div class="empty">The collection is being restocked just now — '
+        + '<a class="btn btn-ghost btn-sm" href="/shop.html">Browse the shop</a></div>';
+      return;
+    }
+    g.innerHTML = items.map((p, i) => AV.productCard(p, i)).join('');
+  } catch (e) {
+    g.innerHTML = '<div class="empty">We could not reach the collection just now. '
+      + '<a class="btn btn-ghost btn-sm" href="/shop.html">Browse the shop</a></div>';
+  }
+}
+
+/* ── Tarot ─────────────────────────────────────────────────────────────
+   The bookable tarot sessions, drawn from the same services the shop above
+   renders (type === 'tarot') so the two can never drift apart, plus the
+   tarot entry from the journal if one has been published. */
+async function loadTarot() {
+  const list = AV.qs('#tarotList');
+  const more = AV.qs('#tarotMore');
+  list.innerHTML = AV.skeletonCards(2, 'service');
+  AV.reveal(list);
+
+  const sessions = all.filter((s) => String(s.type || '').toLowerCase() === 'tarot');
+
+  if (!sessions.length) {
+    list.innerHTML = '<div class="empty">Tarot sessions are fully booked at the moment — '
+      + '<a class="btn btn-ghost btn-sm" href="/contact.html">ask about a slot</a></div>';
+    return;
+  }
+
+  list.innerHTML = sessions.map((s) => `
+    <article class="ritual-row">
+      <div>
+        <h3>${esc(s.name)}</h3>
+        <p>${esc(s.shortDescription || s.description || '')}</p>
+        <span class="ritual-meta">
+          <span class="price">${AV.formatPrice(s.price)}</span>
+          ${s.duration ? `<span class="dur">${s.duration} min</span>` : ''}
+        </span>
+      </div>
+      <a class="btn btn-outline btn-sm" href="/booking.html?slug=${encodeURIComponent(s.slug)}">Book</a>
+    </article>`).join('');
+
+  /* Matched on the title rather than a hard-coded slug, so republishing the
+     article under a different slug cannot leave a dead link behind. */
+  try {
+    const env = await AV.api.get('/api/articles?limit=24');
+    const guide = (env.data || []).find((a) => /tarot/i.test(a.title || ''));
+    if (guide) {
+      more.innerHTML = '<a class="btn btn-outline" href="/article.html?slug='
+        + encodeURIComponent(guide.slug) + '">' + esc(guide.title) + '</a>';
+    }
+  } catch (e) {
+    /* The journal is a bonus here; the sessions above are the section. */
+  }
+}
+
 async function loadVoices() {
   const g = AV.qs('#voicesGrid');
   g.innerHTML = AV.skeletonCards(3, 'voice');
@@ -238,12 +364,15 @@ async function load() {
     });
 
     render();
+    loadTarot();
   } catch (e) {
     grid.innerHTML = '<div class="empty">We could not reach the booking system just now. '
       + '<a class="btn btn-ghost btn-sm" href="/contact.html">Write to us instead</a></div>';
     countEl.textContent = '';
+    AV.qs('#tarotList').innerHTML = '<div class="empty">Tarot sessions could not be loaded right now.</div>';
   }
 
+  loadTop();
   loadVoices();
 }
 

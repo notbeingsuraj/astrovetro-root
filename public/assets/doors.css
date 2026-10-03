@@ -1,78 +1,80 @@
-/* ─────────────────────────────────────────────────────────────────────
-   First-visit door — Rituals | Crystals
-   Two halves that slide past each other like doors.
+/* ─────────────────────────────────────────────────────────────────────────
+   Astro Vetro — landing hero: CRYSTALS | RITUALS
+   ─────────────────────────────────────────────────────────────────────────
 
-   How the motion is built
-   -----------------------
-   Each half is 66vw wide inside a 132vw track. At rest the track sits at
-   -16vw, which leaves 50vw of each half showing and the other 16vw hidden
-   just off-screen. Moving the whole track is therefore all it takes to open
-   one side and carry the other out of frame:
+   Two panels, equal at rest, filling the first viewport. This is the gateway
+   between the two Astrovetro experiences, so it is the first thing in the
+   document flow and the first thing on the page - there is no breakpoint at
+   which it disappears, and no stored state that can skip it.
 
-       track -16vw  →  50 / 50      (rest)
-       track   0vw  →  66 / 34      (Rituals open)
-       track -32vw  →  34 / 66      (Crystals open)
+   THE GEOMETRY, and why it is not flex-basis
+   -----------------------------------------
+   Both panels are half of a track that is 132% of the hero's width, so each
+   panel is 66% of the visible width. That leaves 50% of each panel showing
+   with 16% of reserve on its outer side, so the seam between the two always
+   lands exactly on the midpoint and the pair always fills the frame with no
+   gap and no overhang.
 
-   The two halves are 66vw wide and slide by 16vw, so the seam between them
-   always lands exactly on the boundary and the pair always fills the frame.
-   A second 16vw of each side stays in reserve for the open position.
+   Opening a panel is then a single translate3d of the track. The three
+   offsets are percentages of the track's own width, expressed against a
+   100%-wide reference frame:
 
-   Performance
-   -----------
-   This is one `transform` on one element. Nothing about size or position in
-   the layout tree changes, so the browser composites it on the GPU: no
-   layout, no repaint, no re-running `background-size:cover`, and no
-   distortion of either photograph. An earlier version animated the halves'
-   own width, which was correct visually but repainted two full-viewport
-   layers every frame and measured 37fps at 1920x1080. This measures 60.
+       rest           -12.1212%   crystals [0-50]   rituals [50-100]
+       crystals open       0%     crystals [0-66]   rituals [66-100]
+       rituals  open -24.2424%   crystals [0-34]   rituals [34-100]
 
-   Copy is centred on each half's *visible* 50vw, not its 66vw box, so the two
-   labels sit symmetrically at rest and travel with their door when pushed.
-   ───────────────────────────────────────────────────────────────────── */
+   One animated property on one element. Nothing in the layout tree changes
+   size, so the browser never re-lays-out or re-paints the two
+   full-viewport photographs, and the label on each panel travels with it
+   instead of jumping. An earlier version animated the panels' own width,
+   which is the obvious way to write it and also the wrong one: resizing an
+   overflow:hidden box repaints its layer every frame and measured 37fps at
+   1920x1080 under software rendering. This measures 60.
 
-[data-intro='show'] .doors { display:block; }
+   The copy is centred on each panel's *visible* half rather than its 66vw
+   box, so the two labels sit symmetrically at rest and stay put when a panel
+   opens. Rituals keeps its reserve on the left, so its visible window is
+   box-local 16-66%; Crystals keeps its on the right, so its window is
+   box-local 0-50%.
+   ───────────────────────────────────────────────────────────────────────── */
 
-.doors {
-  display:none;
-  position:fixed;
-  inset:0;
-  z-index:900;
-  overflow:hidden;         /* clips the 16vw of overhang on each side */
+.hero-split {
+  position:relative;
+  /* The header is sticky but in-flow, so the hero starts below it: subtract
+     its height or the hero is always one header taller than the viewport and
+     leaves that much below the fold.
+
+     svh, not vh: on a phone vh includes the area behind the collapsing URL
+     bar, which would push the bottom of the hero off-screen. svh is the
+     stable small viewport and does not resize when that bar slides. */
+  min-height:calc(100svh - var(--header-h, 78px));
+  min-height:calc(100vh - var(--header-h, 78px));   /* no-svh fallback */
+  overflow:hidden;
   background:var(--ink);
-  font-family:Georgia,'Times New Roman',serif;
 }
 
-/* While the doors are up, the page underneath is hidden rather than removed:
-   visibility:hidden keeps layout stable (no reflow, no scroll jump) while
-   taking it out of the tab order and the accessibility tree.
-
-   Scoped to min-width:700px to match the only width at which the doors
-   actually display. Without the scope, shrinking the window on a first visit
-   dropped .doors to display:none while this rule kept the page hidden —
-   a blank screen. Let CSS follow the same breakpoint the script gates on. */
-@media (min-width:700px) {
-  [data-intro='show'] body > *:not(.doors) { visibility:hidden; }
-  /* Stop a wheel or touch drag scrolling the page invisibly behind the door. */
-  [data-intro='show'],
-  [data-intro='show'] body { overflow:hidden; }
-}
-
-.doors-track {
+.hero-track {
   position:absolute;
   top:0;
   bottom:0;
   left:0;
-  width:132vw;
+  /* 132% of the hero, which is itself exactly as wide as the page's content
+     box. Percentages rather than vw on purpose: 100vw includes the width of a
+     classic scrollbar, so a vw-sized track is always wider than the space it
+     has to fill and the seam lands a scrollbar-width to the left of centre.
+     Every offset below is a percentage of THIS element, which is sized off
+     the hero, so the seam is exact whether or not a scrollbar is present. */
+  width:132%;
   display:flex;
-  transform:translate3d(-16vw,0,0);
+  transform:translate3d(-12.1212%,0,0);
   transition:transform .78s cubic-bezier(.22,.68,.24,1);
   will-change:transform;
   backface-visibility:hidden;
 }
 
-.door {
+.hero-panel {
   position:relative;
-  flex:0 0 50%;            /* 66vw of the 132vw track */
+  flex:0 0 50%;               /* 66% of the visible width */
   overflow:hidden;
   contain:paint;
   display:block;
@@ -80,26 +82,23 @@
   text-decoration:none;
 }
 
-/* Half of a 66vw box. Rituals keeps its overhang on the left, so its visible
-   window is box-local 16–66vw (centre 62.12%); Crystals keeps it on the
-   right, so its window is box-local 0–50vw (centre 37.88%). */
-.door--rituals  .door-body { left:62.1212%; }
-.door--crystals .door-body { left:37.8788%; }
+.hero-panel--crystals .hero-body { left:37.8788%; }
+.hero-panel--rituals  .hero-body { left:62.1212%; }
 
-/* Fixed at the half's full width: the photo is measured once and then only
-   cropped differently, never rescaled. */
-.door-bg {
+/* Fixed at the half's full width: the photograph is measured once and then
+   only cropped differently, never rescaled. */
+.hero-bg {
   position:absolute;
   inset:0;
   background-size:cover;
   background-position:center;
-  transform:scale(1.03);    /* hides the hairline seam mid-transition */
+  transform:scale(1.03);       /* hides the hairline seam mid-transition */
 }
-.door--rituals  .door-bg { background-image:url('/assets/img/hero-bg.jpg'); }
-.door--crystals .door-bg { background-image:url('/assets/img/crystal.jpg'); }
+.hero-panel--crystals .hero-bg { background-image:url('/assets/img/crystal.jpg'); }
+.hero-panel--rituals  .hero-bg { background-image:url('/assets/img/hero-bg.jpg'); }
 
 /* Keeps the type legible over any part of either photograph. */
-.door-veil {
+.hero-veil {
   position:absolute;
   inset:0;
   transition:opacity .78s cubic-bezier(.22,.68,.24,1);
@@ -109,7 +108,7 @@
     rgba(11,23,18,.78) 100%);
 }
 
-.door-body {
+.hero-body {
   position:absolute;
   top:50%;
   transform:translateY(-50%);
@@ -118,28 +117,20 @@
   padding:0 6px;
   text-align:center;
 }
-.door-num {
-  display:block;
-  margin-bottom:18px;
-  font:400 10px/1 'DM Sans',sans-serif;
-  letter-spacing:.32em;
-  text-transform:uppercase;
-  opacity:.62;
-}
-.door-name {
+.hero-name {
   display:block;
   font:400 clamp(38px,5.6vw,84px)/.95 'Cormorant Garamond',Georgia,serif;
   letter-spacing:-.015em;
   margin-bottom:20px;
 }
-.door-copy {
+.hero-copy {
   display:block;
   max-width:24rem;
   margin:0 auto;
   font:300 clamp(13px,1.05vw,15px)/1.75 'DM Sans',sans-serif;
   opacity:.72;
 }
-.door-go {
+.hero-go {
   display:inline-flex;
   align-items:center;
   gap:10px;
@@ -151,47 +142,102 @@
   border-bottom:1px solid rgba(241,234,220,.34);
   transition:border-color .5s ease;
 }
-.door-arrow {
+.hero-arrow {
   display:inline-block;
   transition:transform .5s cubic-bezier(.22,.68,.24,1);
 }
 
 /* Idle: both halves sit slightly veiled so neither reads as pre-selected. */
-.doors .door-veil { opacity:.82; }
-.door:hover .door-veil,
-.door:focus-visible .door-veil { opacity:1; }
-/* ── The push ──────────────────────────────────────────────────────────
-   `:has()` rather than the sibling combinator: Crystals is last, so `~`
-   cannot reach back to Rituals. */
-.doors:has(.door--rituals:hover) .doors-track,
-.doors:has(.door--rituals:focus-visible) .doors-track {
+.hero-split .hero-veil { opacity:.82; }
+.hero-panel:hover .hero-veil,
+.hero-panel:focus-visible .hero-veil { opacity:1; }
+
+/* ── The push ───────────────────────────────────────────────────────────
+   `:has()` rather than a sibling combinator: Rituals is second in the
+   markup, so `~` cannot reach back to Crystals. */
+.hero-split:has(.hero-panel--crystals:hover) .hero-track,
+.hero-split:has(.hero-panel--crystals:focus-visible) .hero-track {
   transform:translate3d(0,0,0);
 }
-.doors:has(.door--crystals:hover) .doors-track,
-.doors:has(.door--crystals:focus-visible) .doors-track {
-  transform:translate3d(-32vw,0,0);
+.hero-split:has(.hero-panel--rituals:hover) .hero-track,
+.hero-split:has(.hero-panel--rituals:focus-visible) .hero-track {
+  transform:translate3d(-24.2424%,0,0);
 }
 
-.door:hover .door-arrow,
-.door:focus-visible .door-arrow { transform:translateX(7px); }
-.door:hover .door-go,
-.door:focus-visible .door-go { border-color:rgba(241,234,220,.8); }
+.hero-panel:hover .hero-arrow,
+.hero-panel:focus-visible .hero-arrow { transform:translateX(7px); }
+.hero-panel:hover .hero-go,
+.hero-panel:focus-visible .hero-go { border-color:rgba(241,234,220,.8); }
 
-.door:focus-visible {
+/* Keyboard focus gets the same treatment as hover, plus a ring that is
+   inside the panel so it is never clipped by the overflow:hidden. */
+.hero-panel:focus-visible {
   outline:2px solid var(--cream);
   outline-offset:-6px;
 }
 
-/* Phones: no door, no split, no intro of any kind. */
-@media (max-width:699px) {
-  .doors { display:none !important; }
+/* ── Phones and small tablets ───────────────────────────────────────────
+   The two panels stack instead of splitting. Nothing about the interaction
+   is hover-dependent: each panel is a plain link filling its own band, so a
+   tap lands on it directly and there is no state to be stranded in.
+
+   The reserve and the track both collapse to nothing here - at 100% width
+   there is no outer 16% to slide into, and the resting offset would push the
+   first panel off the left edge. */
+@media (max-width:699px) and (min-height:521px) {
+  .hero-split {
+    /* Exactly the viewport minus the sticky header above it, so the two
+       stacked panels fill the first screen with nothing below the fold. */
+    min-height:calc(100svh - var(--header-h, 78px));
+    display:flex;
+    flex-direction:column;
+  }
+  .hero-track {
+    position:static;
+    inset:auto;
+    width:100%;
+    transform:none;
+    transition:none;
+    will-change:auto;
+    flex-direction:column;
+  }
+  .hero-panel {
+    flex:1 0 auto;
+    /* Half the available height each: both destinations are on screen at
+       once, which is the whole point of the gateway on a phone. */
+    min-height:calc((100svh - var(--header-h, 78px)) / 2);
+  }
+  .hero-panel--crystals .hero-body,
+  .hero-panel--rituals  .hero-body { left:50%; }
+  .hero-body {
+    width:min(30rem,86vw);
+    padding:0 24px;
+  }
+  .hero-name { font-size:clamp(34px,10vw,54px); }
+  .hero-copy { font-size:14px; }
+  .hero-go { margin-top:24px; }
+  /* A tap gives no hover state, so the veil lifts on the panel itself for
+     the duration of the press rather than staying permanently open. */
+  .hero-panel:active .hero-veil { opacity:1; }
+  .hero-panel:active .hero-arrow { transform:translateX(7px); }
 }
 
-/* Reduced motion: the choice is still offered, it simply does not move. */
+/* Short landscape phones keep the side-by-side split: there is not enough
+   height to stack two full panels, and there is plenty of width for two
+   halves. Both are still plain links, so nothing here depends on hover. */
+
+/* ── Reduced motion ─────────────────────────────────────────────────────
+   No tween, but the state change itself is kept: hovering or focusing a
+   panel still opens it, it just arrives immediately. Without this the panels
+   would be stuck at 50/50 with no way to preview the destination, and the
+   only cue left would be a colour shift. */
 @media (prefers-reduced-motion:reduce) {
-  .doors-track,
-  .door-veil,
-  .door-arrow,
-  .door-go { transition:none; }
-  .door-bg { transform:none; }
+  .hero-track,
+  .hero-veil,
+  .hero-arrow,
+  .hero-go { transition:none; }
+  .hero-bg { transform:none; }
+  /* :has() rules still apply, so the geometry is correct without a transition.
+     Restore the seam hiding that scale(1.03) was covering. */
+  .hero-track { will-change:auto; }
 }

@@ -465,6 +465,101 @@ td a { color: var(--sand); border-bottom: 1px dotted var(--line); }
 .service-card p { color: var(--sand); font-size: 13px; flex: 1; }
 .service-card .price { font: 400 24px 'Cormorant Garamond'; color: var(--white); }
 
+/* ── Rituals: section intro note + the tarot rows ─────────────────────── */
+
+/* The optional right-hand paragraph in a `.section-title`. Constrained and
+   right-aligned on wide screens so it sits beside the heading rather than
+   underlining it, and drops to full width on narrow ones. */
+.section-note {
+  max-width:34ch;
+  color: var(--sand);
+  font-size:13px;
+  line-height:1.8;
+}
+@media (max-width:899px) {
+  .section-note { max-width:none; margin-top:18px; }
+}
+
+/* Tarot sessions. A compact list rather than another card grid: the tarot
+   formats are already in the shop grid above, and this is the closing
+   summary of them, so repeating them as full cards would read as two
+   different catalogues. One row per session, price and length on the
+   left, the booking action on the right. */
+.ritual-list {
+  display:flex;
+  flex-direction:column;
+  border-top:1px solid var(--line);
+}
+.ritual-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:28px;
+  padding:26px 2px;
+  border-bottom:1px solid var(--line);
+}
+.ritual-row h3 { font-size:26px; margin-bottom:8px; }
+.ritual-row p  { color:var(--sand); font-size:13px; max-width:62ch; }
+.ritual-meta {
+  display:flex;
+  align-items:baseline;
+  gap:16px;
+  margin-top:14px;
+}
+.ritual-meta .price { font:400 24px 'Cormorant Garamond'; color:var(--white); }
+.ritual-meta .dur {
+  color:var(--sage);
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.ritual-row .btn { flex:0 0 auto; }
+
+/* The row stacks on narrow screens so the button is never squeezed against
+   the price, and stays full width for an easy tap. */
+@media (max-width:599px) {
+  .ritual-row { flex-direction:column; align-items:flex-start; gap:18px; }
+  .ritual-row .btn { width:100%; }
+}
+
+/* ── Crystals: category tiles ─────────────────────────────────────────
+   A compact grid rather than the tall `.intention-card`. That card is built
+   around a 470px photograph, which is right for three editorial cards on the
+   home page and absurd for seven shapes — these are wayfinding tiles, so the
+   art is a swatch and the row stays scannable. The swatch reuses the same
+   `AV.art()` gradients the product cards fall back to, so the collection
+   looks like one set. */
+.shape-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+  gap:18px;
+}
+.shape-card {
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-radius:20px;
+  text-decoration:none;
+  color:inherit;
+  transition:0.25s ease;
+}
+.shape-card:hover {
+  transform:translateY(-4px);
+  border-color:var(--moss);
+}
+.shape-art { height:118px; background-size:cover; background-position:center; }
+.shape-meta { padding:18px 20px 20px; }
+.shape-meta h3 { font-size:21px; line-height:1.2; }
+.shape-meta p {
+  margin-top:6px;
+  color:var(--sage);
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.shape-card:focus-visible { outline:2px solid var(--cream); outline-offset:3px; }
+
 /* ── Cart badge / avatar / active nav ─────────────────────────── */
 .cart-badge {
   position: absolute;

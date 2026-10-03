@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-intro="skip">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -27,68 +27,52 @@
 <meta name="twitter:title" content="Astro Vetro — Crystals, Tarot &amp; Ritual Objects">
 <meta name="twitter:description" content="Crystals, tarot and ritual objects for slow mornings and small rituals. Crystals and jewellery chosen for how they sit in a room and feel in the hand.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
-<script>
-/* First-visit door, decided before first paint so there is no flash of the
-   home page and no layout shift. Runs in <head>: the attribute it sets is
-   read by the stylesheet, so the doors are already in place when the page
-   first renders.
-
-   Shown only when all three hold: JS is on, storage is readable, and the
-   viewport is wide enough to have two halves. Anything else keeps the
-   "skip" default already on <html>, which is also what a visitor without
-   JS sees. */
-(function () {
-  var KEY = 'av_intro_seen';
-  var el = document.documentElement;
-  var seen = true;
-  try {
-    /* Storage blocked (private mode, cookies off) is treated as "seen": we
-       cannot record the choice, so we must not show the door every visit. */
-    seen = !!window.localStorage && localStorage.getItem(KEY) === '1';
-  } catch (e) { seen = true; }
-  var wide = window.matchMedia('(min-width:700px)').matches;
-  if (!seen && wide) el.setAttribute('data-intro', 'show');
-})();
-</script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 
-<!-- ── First-visit door: Rituals | Crystals ─────────────────────────────
-     Shown once, on desktop and tablet only. `data-intro` is flipped to
-     "show" by the head script before first paint (see below); it defaults
-     to "skip" so a visitor without JS simply gets the home page. -->
-<div class="doors" id="doors" data-clip="intentional" aria-label="Choose a section">
- <div class="doors-track">
+<div id="siteHeader"></div>
 
-  <a class="door door--rituals" href="/readings.html" data-door="rituals">
-    <span class="door-bg" aria-hidden="true"></span>
-    <span class="door-veil" aria-hidden="true"></span>
-    <span class="door-body">
-      <span class="door-num">01</span>
-      <span class="door-name">Rituals</span>
-      <span class="door-copy">Tarot, crystal readings and the small practices that keep a week honest.</span>
-      <span class="door-go">Enter the rituals <span class="door-arrow" aria-hidden="true">&rarr;</span></span>
-    </span>
+<!-- ── Landing hero: the gateway between the two Astrovetro experiences ────
+     CRYSTALS | RITUALS, side by side, filling the first viewport.
+
+     It sits in the flow rather than floating over the page. The sections below
+     are real content, so nothing needs hiding, restoring or re-showing on
+     scroll - which is also what lets phones reach it: there is no breakpoint at
+     which the hero disappears.
+
+     Desktop: each panel is 66vw inside a 132vw track, so a single translate3d
+     opens one side and carries the other out of frame. Below 700px the track
+     collapses and the two panels stack full-width, each one tappable. -->
+<section class="hero-split" id="hero" data-clip="intentional" aria-label="Choose an experience">
+ <div class="hero-track">
+
+  <a class="hero-panel hero-panel--crystals" href="/crystals.html" data-panel="crystals">
+   <span class="hero-bg" aria-hidden="true"></span>
+   <span class="hero-veil" aria-hidden="true"></span>
+   <span class="hero-body">
+    <span class="hero-name">Crystals</span>
+    <span class="hero-copy">Towers, points and jewellery chosen for texture,
+     presence, and the way they feel to hold.</span>
+    <span class="hero-go">Explore crystals <span class="hero-arrow" aria-hidden="true">&rarr;</span></span>
+   </span>
   </a>
 
-  <a class="door door--crystals" href="/" data-door="crystals">
-    <span class="door-bg" aria-hidden="true"></span>
-    <span class="door-veil" aria-hidden="true"></span>
-    <span class="door-body">
-      <span class="door-num">02</span>
-      <span class="door-name">Crystals</span>
-      <span class="door-copy">Towers, points and jewellery chosen for texture, presence and the quiet ritual of touch.</span>
-      <span class="door-go">Enter the collection <span class="door-arrow" aria-hidden="true">&rarr;</span></span>
-    </span>
+  <a class="hero-panel hero-panel--rituals" href="/readings.html" data-panel="rituals">
+   <span class="hero-bg" aria-hidden="true"></span>
+   <span class="hero-veil" aria-hidden="true"></span>
+   <span class="hero-body">
+    <span class="hero-name">Rituals</span>
+    <span class="hero-copy">Readings, tarot and the small practices that keep
+     a week honest.</span>
+    <span class="hero-go">Enter rituals <span class="hero-arrow" aria-hidden="true">&rarr;</span></span>
+   </span>
   </a>
 
  </div>
-</div>
+</section>
 
-<div id="siteHeader"></div>
-
-<main class="landing" id="main" tabindex="-1">
+<main class="landing" id="main">
 
   <section class="section intro" id="intro">
     <div>
@@ -125,8 +109,8 @@
       <a class="intention-card" href="/readings.html">
         <div class="photo tarot"></div>
         <div class="card-meta">
-          <h3 class="card-title"><span class="num">03</span>Tarot</h3>
-          <p>A reading for the question you are actually holding.</p>
+          <h3 class="card-title"><span class="num">03</span>Rituals</h3>
+          <p>Readings and tarot, for the question you are actually holding.</p>
         </div>
       </a>
     </div>
@@ -141,30 +125,35 @@
     <div class="actions" id="homeProductsActions"></div>
   </section>
 
-  <section class="section reading" id="readings">
+  <!-- Rituals. This was a standalone "Tarot readings" section sitting above
+       the rituals story, which put tarot at the top level of the landing page.
+       Tarot is reached through Rituals now, so this is the Rituals section
+       and its tarot copy points down into the Rituals page. -->
+  <section class="section reading" id="rituals">
     <div class="reading-copy">
-      <div class="kicker">Tarot readings</div>
+      <div class="kicker">Rituals</div>
       <h2>A moment to look inward.</h2>
-      <p>Personal tarot readings for the questions, decisions and reflections
-        occupying your mind. Conducted online, at a time that suits you.</p>
+      <p>Readings — tarot among them — for the questions, decisions and
+        reflections occupying your mind. Conducted online, at a time that suits
+        you.</p>
       <div class="actions">
-        <a class="btn btn-light" href="/readings.html">See all readings</a>
-        <a class="btn btn-outline" href="/readings.html">Book a session</a>
+        <a class="btn btn-light" href="/readings.html">Enter rituals</a>
+        <a class="btn btn-outline" href="/readings.html#tarot">Tarot readings</a>
       </div>
     </div>
     <div class="reading-image"></div>
   </section>
 
-  <section class="section rituals" id="rituals">
+  <section class="section rituals" id="practice">
     <div class="ritual-copy">
-      <div class="kicker">Rituals</div>
+      <div class="kicker">The practice</div>
       <h2>Make space for ritual.</h2>
       <p>Ritual does not have to be elaborate to be real. It can be a candle
         lit on the same evening each week, a stone held while you breathe, a
         question written down before you sleep. The practice matters more than
         the objects, but the right objects make it easier to begin.</p>
       <div class="ritual-links">
-        <a href="/readings.html">Tarot</a>
+        <a href="/readings.html#tarot">Tarot</a>
         <a href="/shop.html?category=tower">Crystals</a>
         <a href="/shop.html?category=bracelet">Bracelets</a>
         <a href="/journal.html">Journal</a>
@@ -244,40 +233,28 @@
 
 <footer id="siteFooter"></footer>
 
-<script>
-(function () {
-  /* The head script already decided whether the doors are up; this only
-     records the choice so the next visit goes straight to the page. */
-  var KEY = 'av_intro_seen';
-  var doors = document.getElementById('doors');
-  if (!doors || document.documentElement.getAttribute('data-intro') !== 'show') return;
-
-  doors.addEventListener('click', function (e) {
-    var door = e.target.closest('[data-door]');
-    if (!door) return;
-    try { localStorage.setItem(KEY, '1'); } catch (err) { /* storage blocked: the
-      link still navigates, the door just returns on the next visit. */ }
-
-    /* Crystals points at "/", and we are already on "/". Following the link
-       would reload the page for no reason, so the doors are simply taken
-       down and the home page is revealed in place. */
-    var here = location.pathname.replace(/\/+$/, '') + location.search;
-    var target = new URL(door.getAttribute('href'), location.href);
-    var there = target.pathname.replace(/\/+$/, '') + target.search;
-    if (here === there) {
-      e.preventDefault();
-      document.documentElement.setAttribute('data-intro', 'skip');
-      var main = document.getElementById('main');
-      if (main) { main.focus({ preventScroll: true }); }
-    }
-  });
-})();
-</script>
 <script src="/assets/api.js"></script>
 <script src="/assets/store.js"></script>
 <script>
 /* ── Landing page content ───────────────────────────────────────────── */
 AV.boot();
+
+(function () {
+  /* A link fires on Enter but not on Space - Space scrolls. The hero is the
+     one control on the site that is meant to be operated like a button, so it
+     gets the missing key. preventDefault on keydown stops the scroll; .click()
+     then does exactly what a tap would, including the middle-click-free
+     default navigation. */
+  var hero = document.getElementById('hero');
+  if (!hero) return;
+  hero.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' && e.key !== 'Spacebar') return;
+    var panel = e.target.closest('[data-panel]');
+    if (!panel) return;
+    e.preventDefault();
+    panel.click();
+  });
+})();
 
 (function () {
   const empty = (msg) => '<div class="empty">' + AV.esc(msg) + '</div>';
