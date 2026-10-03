@@ -1,12 +1,15 @@
 # Astro Vetro — Static Frontend
 
 The Astro Vetro storefront. Static HTML/CSS/JS pages, served by a small Express
-server that reverse-proxies `/api` to the Astro Vetro backend. Keeping the API
-same-origin is what lets the httpOnly session cookie work without CORS.
+server. `/api` is same-origin, which is what lets the httpOnly session cookie
+work without CORS once a backend exists.
+
+**It runs with no database.** The catalogue is served in-process from real
+product data, so the site is fully browsable on a fresh clone with nothing else
+installed. Persistence — orders, bookings, accounts, contact, newsletter — is
+switched off and says so, rather than pretending to succeed.
 
 ## Running
-
-The backend must be reachable on `http://localhost:5002`.
 
 ```bash
 npm install
@@ -14,7 +17,107 @@ npm start                              # http://localhost:5173
 PORT=5199 node server.js               # or pick a port
 ```
 
-`API_TARGET` overrides the backend address if it is not on port 5002.
+Nothing else is required. No MongoDB, no backend process, no environment
+variables. Every page works, and the shop, crystals, rituals and journal render
+real products.
+
+## How the API is answered
+
+`/api` is resolved in one of two ways, chosen at startup:
+
+| `API_TARGET`      | Behaviour                                                        |
+| ----------------- | ---------------------------------------------------------------- |
+| **unset** (default) | Serve the catalogue in-process from `src/data/catalogue.js`     |
+| **set**           | Reverse-proxy to the full Astro Vetro backend                    |
+
+`API_TARGET` is genuinely optional. It used to default to
+`http://localhost:5002`, which on Vercel meant every request fell through to a
+socket that does not exist there and the whole catalogue came back 502. An absent
+backend is now an explicit, supported mode.
+
+### Reads and writes are not treated alike
+
+Catalogue reads are answered. Anything needing persistence returns **503**:
+
+```json
+{
+  "success": false,
+  "message": "Persistent data services are not configured yet.",
+  "error": {
+    "code": "DATABASE_NOT_CONFIGURED",
+    "message": "Persistent data services are not configured yet.",
+    "endpoint": "/api/orders",
+    "detail": "\"POST /api/orders\" needs a database, which this deployment does not have. ..."
+  }
+}
+```
+
+This covers `POST /api/orders`, `/api/bookings`, `/api/auth/*`, `/api/contact`,
+`/api/newsletter/*`, `GET /api/users/me/*`, `/api/admin/stats`, and every
+mutation including `DELETE`.
+
+The 503 on writes is deliberate. Accepting an order into a JavaScript array would
+tell a customer their purchase was placed when no record of it exists anywhere.
+A storefront that can browse but cannot take money is honest; one that quietly
+loses orders is not.
+
+### The client knows before it asks
+
+`GET /api/status` reports the active provider, whether a database is attached,
+and whether writes are possible. The client fetches it once and caches it, so the
+UI can present unavailable features as unavailable instead of firing requests
+that are guaranteed to 503. `account.html` uses it to explain that accounts are
+switched off, rather than showing a sign-in form that could never work. Without
+this, every page load asked `/api/auth/me` and got a 503 back.
+
+## Data: where the catalogue comes from
+
+`src/data/catalogue.js` holds 12 products, 3 readings, 5 testimonials and 3
+journal entries. This is the **real** Astro Vetro catalogue, lifted from the
+backend seed (`astrovetro/server/seed/seed.js`) — not invented filler. Nothing
+here is randomised or generated.
+
+`images` is deliberately empty on every product. The seed references per-product
+files such as `/product-amethyst-ring.png`, but those live in the backend's
+public directory and are not served by this project. Attaching some other
+crystal photograph to every product would imply a picture of that item which
+does not exist, so cards fall back to the design's own gradient placeholders.
+Populate `images[]` when the real photography is added here and the cards pick it
+up with no other change.
+
+## Adding MongoDB later
+
+Nothing above needs to be undone. `src/providers/` is the seam:
+
+```
+UI  →  /api  →  src/providers/index.js  →  staticProvider  (today)
+                                         →  mongoProvider   (when ready)
+```
+
+Both implement the same contract, so they are interchangeable:
+
+```
+listProducts(query)  →  { data, meta }
+getProduct(slug)     →  product | null
+listIntentions()     →  [{ name }]
+listServices(query)  →  service[]
+getService(slug)     →  service | null
+listArticles(query)  →  article[]
+getArticle(slug)     →  article | null
+listTestimonials()   →  testimonial[]
+```
+
+To switch, implement the methods in `src/providers/mongoProvider.js` — they
+already exist and already refuse. `src/providers/index.js` picks the provider
+from the environment; today it warns and stays on the static catalogue even if
+`DATABASE_URL` is set, so a half-configured database can never silently serve an
+empty shop.
+
+The UI does not know or care which provider answered. No page, route handler or
+component changes.
+
+If instead a **separate backend** is deployed, set `API_TARGET` and this server
+proxies to it; `src/` is then bypassed entirely.
 
 ## Deploying
 
@@ -24,21 +127,16 @@ so, because most hosts run `npm run build` during deploy and fail the release
 if the script is missing. Do not point a host at `vite build` — there is no
 Vite here and no bundler to run.
 
-Two settings matter:
+| Setting         | Value                                              |
+| --------------- | -------------------------------------------------- |
+| Build command   | `npm run build` (or leave empty)                   |
+| Start command   | `npm start`                                        |
+| `PORT`          | set by the host                                    |
+| `API_TARGET`    | *optional* — the backend, when one exists          |
 
-| Setting         | Value                                                    |
-| --------------- | -------------------------------------------------------- |
-| Build command   | `npm run build` (or leave empty)                         |
-| Start command   | `npm start`                                               |
-| `PORT`          | set by the host                                           |
-| `API_TARGET`    | the Astro Vetro backend, e.g. `https://api.example.com`   |
-
-Deploy this as a **Node service**, not as static files. The frontend calls
-`/api/*` on its own origin and `server.js` is what proxies those calls to the
-backend; a static host has no Express, so every product and service list comes
-back empty and the shop renders blank. If you must deploy statically, you need
-a rewrite rule sending `/api/*` to the backend — but you lose the same-origin
-session cookie, which is the reason the proxy exists.
+Deploy this as a **Node service**, not as static files. `server.js` answers
+`/api/*`; a static host has no Express and every product and service list comes
+back empty.
 
 ### Vercel
 
@@ -47,21 +145,27 @@ request to it. Without that file Vercel assumes a static bundle, runs the build,
 and then fails with `No Output Directory named "dist" found` — which is what
 happens here, because there is no bundler to produce a `dist`.
 
-Set one environment variable in the project settings:
-
-| Variable      | Value                                                   |
-| ------------- | ------------------------------------------------------- |
-| `API_TARGET`  | the Astro Vetro backend, e.g. `https://api.example.com` |
-
-**The backend must be reachable from the public internet.** Vercel runs this
-somewhere that cannot see `localhost:5002` on your machine, so if the backend is
-not deployed, `/api` returns 502 (`BACKEND_UNAVAILABLE`) no matter how the
-frontend is configured. The homepage, shop shell and all static pages will still
-render; every data-driven list will be empty.
+**No environment variables are required.** Deploy with an empty settings page and
+the site works.
 
 `server.js` behaves differently in the two places, on purpose: run it locally
 and it calls `app.listen()`; on Vercel it exports the app and lets the platform
 own the socket, because binding a port inside a serverless function is wrong.
+
+Check a deployment with:
+
+```bash
+curl https://<your-domain>/api/status
+```
+
+`"database": false` with `"provider": "static"` is the expected healthy result.
+
+### JWT
+
+Authentication is off in this deployment and no JWT secret is shipped or
+required — not even a development one. `POST /api/auth/*` returns 503 like every
+other persistence endpoint. Configure a real secret on the backend when
+authentication is actually switched on; do not reuse the development value.
 
 ## Pages
 

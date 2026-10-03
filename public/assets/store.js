@@ -268,6 +268,15 @@ window.AV = window.AV || {};
     else localStorage.removeItem(USER_KEY);
   };
   AV.me = async () => {
+    /* Ask what this deployment supports before asking who we are. On a
+       deployment with no database /api/auth/me is guaranteed to 503, so the
+       probe turns a guaranteed failure on every page load into a single
+       cached 200 - and returns "signed out" without the pointless round trip. */
+    const caps = await AV.capabilities().catch(() => null);
+    if (caps && caps.database === false) {
+      AV.setUser(null);
+      return null;
+    }
     try {
       const env = await AV.api.get('/api/auth/me');
       AV.setUser(env.data);

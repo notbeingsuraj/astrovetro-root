@@ -57,6 +57,12 @@ let view = params.get('view') || 'overview';
 const next = params.get('next') || '/account.html';
 
 async function init() {
+  /* Accounts live in the database. When this deployment has none, say so
+     plainly instead of showing a sign-in form that cannot possibly succeed -
+     a control that looks live but is not is worse than an honest gap. */
+  const caps = await AV.capabilities().catch(() => null);
+  if (caps && caps.database === false) return renderUnavailable();
+
   const user = await AV.me();
   if (!user) return renderAuth();
   AV.setUser(user);
@@ -242,6 +248,31 @@ function password(_user, pane) {
     }
     AV.setBusy(btn, false);
   });
+}
+
+/* ── Accounts unavailable (no database attached) ───────────────────── */
+function renderUnavailable() {
+  AV.seo({
+    title: 'Accounts',
+    description: 'Accounts and order history are not available yet.',
+    noindex: true,
+  });
+  AV.qs('#pageTitle').textContent = 'Accounts.';
+  AV.qs('#pageSub').textContent =
+    'Order history and saved details arrive with accounts.';
+
+  root.innerHTML = `
+    <div class="empty" style="max-width:560px">
+      <p style="margin:0 0 1rem">
+        This site is running without a database, so accounts, order history and
+        saved details are switched off for now. Everything you can browse -
+        crystals, the shop, rituals and the journal - works as it is.
+      </p>
+      <p style="margin:0">
+        <a class="btn btn-light" href="/shop.html">Browse the collection</a>
+        <a class="btn btn-outline" href="/readings.html">Book a reading</a>
+      </p>
+    </div>`;
 }
 
 /* ── Auth (login / register) ──────────────────────────────────── */

@@ -42,6 +42,47 @@ window.AV = window.AV || {};
     del: (path) => request('DELETE', path),
   };
 
+  /* What this deployment can actually do -----------------------------------
+     GET /api/status reports the active data provider, whether a database is
+     attached, and whether writes are possible. It is fetched once and cached.
+
+     Why this exists: without it, every page load asks /api/auth/me and gets a
+     503 back, which is honest but pointless - it cannot succeed on a deployment
+     with no database. One cheap 200 tells the client which features are real,
+     so the UI can present them as unavailable instead of offering controls
+     that are guaranteed to fail.
+
+     A failed probe is treated as "no database": an API we cannot reach can
+     certainly not serve accounts, and the catalogue pages degrade on their own
+     regardless. */
+  let caps = null;
+  let capsPending = null;
+
+  AV.capabilities = function () {
+    if (caps) return Promise.resolve(caps);
+    if (capsPending) return capsPending;
+    capsPending = request('GET', '/api/status')
+      .then((env) => {
+        caps = Object.assign({ reachable: true, database: false, writable: false }, env && env.data);
+        return caps;
+      })
+      .catch(() => {
+        caps = { reachable: false, provider: 'unknown', database: false, writable: false };
+        return caps;
+      })
+      .finally(() => {
+        capsPending = null;
+      });
+    return capsPending;
+  };
+
+  /* True when an endpoint that needs persistence would be refused. */
+  AV.needsDatabase = async (code) => {
+    const c = await AV.capabilities();
+    if (c.database) return false;
+    return !code || code === 'DATABASE_NOT_CONFIGURED';
+  };
+
   /* Convenience helpers --------------------------------------------------- */
   AV.qs = (sel, root) => (root || document).querySelector(sel);
   AV.qsa = (sel, root) => Array.from((root || document).querySelectorAll(sel));
