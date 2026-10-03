@@ -588,10 +588,20 @@ p {
 .contact p {
   color:var(--moss);
 }
-form {
+/* Scoped, not bare. The old `form { flex-direction:column }` reached every
+   form on the site, including the search field and the newsletter bar,
+   which are rows — that alone stacked the shop search input above its
+   button and made the field 86px tall. Each form now declares its own. */
+.contact-form,
+.form-grid {
   display:flex;
   flex-direction:column;
-  gap:24px;
+  gap:var(--space-md);
+}
+.search-field,
+.newsletter-form,
+.search-form {
+  flex-direction:row;
 }
 label {
   font-size:var(--text-label);

@@ -1220,8 +1220,7 @@ select option { background:var(--deep); color:var(--text-primary); }
 }
 .service-card { padding:var(--space-lg); gap:var(--space-sm); }
 .service-card h3 { font-size:var(--text-h3); }
-.service-card p,
-.ritual-row p { color:var(--text-secondary); font-size:var(--text-small); line-height:1.65; }
+
 .service-card .dur,
 .ritual-meta .dur,
 .dur { color:var(--text-muted); font-size:var(--text-label); letter-spacing:.14em; }
@@ -1251,7 +1250,7 @@ select option { background:var(--deep); color:var(--text-primary); }
 .muted,
 .note,
 .hint { font-size:var(--text-small); }
-.product-card p { font-size:var(--text-small); line-height:1.65; }
+
 .empty { color:var(--text-secondary); }
 
 /* ── Prose ───────────────────────────────────────────────────────────
@@ -1354,4 +1353,71 @@ footer a { color:var(--text-muted); font-size:var(--text-small); }
 .link-quiet:hover { color:var(--text-primary); }
 @media (max-width:560px) {
   .contact-form .field--action .btn { align-self:stretch; }
+}
+
+/* ── One content edge, three ways of asking for it ───────────────────
+   home.html's sections put their content straight in the section, while
+   every other page wraps it. Rather than bolt a wrapper onto ten
+   sections, all three containers now resolve to the same edge:
+     · a gutter that grows into the margin on wide screens
+     · --page-max-width for .wrap and .header-inner
+   max(--page-pad, (100% - max-width)/2) is the standard fluid container.
+   100% rather than 100vw so a vertical scrollbar can't tip it over and
+   hand the page a horizontal scrollbar. */
+:root {
+  --gutter:max(var(--page-pad),calc((100% - var(--page-max-width)) / 2));
+}
+.section,
+.page,
+.page-hero,
+footer,
+.ritual-copy,
+.newsletter,
+.banner-content { padding-left:var(--gutter); padding-right:var(--gutter); }
+.section { padding-top:var(--space-3xl); padding-bottom:var(--space-3xl); }
+.page { padding-top:var(--space-2xl); padding-bottom:var(--space-3xl); }
+.page-hero { padding-top:var(--space-2xl); padding-bottom:var(--space-xl); }
+footer { padding-top:var(--space-2xl); padding-bottom:var(--space-lg); }
+@media (max-width:1024px) {
+  .section { padding-top:var(--space-2xl); padding-bottom:var(--space-2xl); }
+}
+
+/* ── Remaining small text ─────────────────────────────────────────────
+   .stock was pinned at 10px with !important and product/service
+   descriptions at 12–13px. Descriptions are body copy: they come back up
+   to the shared body size, and true metadata (labels, captions) sits on
+   --text-label. */
+.stock {
+  font-size:var(--text-label)!important;
+  color:var(--text-muted)!important;
+}
+.product-card p,
+.service-card p,
+.ritual-row p {
+  font-size:var(--text-body);
+  line-height:1.6;
+}
+.journal-card small,
+.journal-card .meta { font-size:var(--text-label); }
+.summary .row,
+table { font-size:var(--text-small); }
+
+/* ── Reduced motion ───────────────────────────────────────────────────
+   The gateway animates and several cards lift on hover. Where someone has
+   asked for less movement, those become instant rather than merely faster. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+  html { scroll-behavior:auto; }
+  .intention-card:hover,
+  .service-card:hover,
+  .shape-card:hover,
+  .product-card .art-link:hover .art,
+  .btn:hover { transform:none; }
 }
