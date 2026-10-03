@@ -1409,9 +1409,11 @@ table { font-size:var(--text-small); }
   *,
   *::before,
   *::after {
-    animation-duration:.01ms!important;
+    /* 0s, not .01ms: the project's own a11y and gateway suites assert the
+       computed duration is exactly zero under reduced motion. */
+    animation-duration:0s!important;
     animation-iteration-count:1!important;
-    transition-duration:.01ms!important;
+    transition-duration:0s!important;
     scroll-behavior:auto!important;
   }
   html { scroll-behavior:auto; }
