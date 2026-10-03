@@ -1,3 +1,93 @@
+/* ====================================================================
+   ASTRO VETRO — DESIGN TOKENS
+   The single source of truth for colour, type, space, radius and
+   motion. This file loads last on every page, so these values win over
+   styles.css without needing !important or a second copy of any rule.
+   Change a value here and the whole site moves together.
+   Contrast ratios below are measured against --deep (#10261f) and are
+   noted so nobody has to re-derive them.
+   ==================================================================== */
+:root {
+  /* Brand palette — the identity, unchanged. */
+  --forest:#18372c;
+  --deep:#10261f;
+  --moss:#536b4e;
+  --sage:#87947b;
+  --olive:#9a9b69;
+  --cream:#f1eadc;
+  --sand:#d9cbb5;
+  --clay:#a76d4d;
+  --ink:#17221d;
+  --white:#faf8f1;
+  --brown:#3f3026;
+  --espresso:#2d241f;
+  --maroon:#4b2727;
+  --walnut:#5a4031;
+  --ritual-gradient:linear-gradient(118deg,#10261f 0%,#18372c 45%,#4b3027 100%);
+
+  /* ── Text ──────────────────────────────────────────────────────────
+     --brown was the label colour and sat at 1.26:1 on the dark
+     gradient — effectively invisible. Nothing below is below 4.5:1. */
+  --text-primary:var(--white);        /* 14.98:1 */
+  --text-secondary:var(--sand);       /*  9.98:1 */
+  --text-muted:#9fae93;               /*  6.79:1 — small print, captions */
+  --text-accent:var(--olive);         /*  5.51:1 — ratings, numerals */
+  --text-on-cream:var(--ink);         /* 13.67:1 on --cream */
+  --text-on-cream-soft:#4a5c46;       /*  7.4:1  on --cream */
+
+  /* ── Borders ───────────────────────────────────────────────────────
+     --line was rgba(217,203,181,.24) = 1.81:1, too faint to see. Decorative
+     hairlines are lifted to .34; anything interactive uses --border-input,
+     which clears the 3:1 that WCAG asks of a control boundary. */
+  --border-subtle:rgba(217,203,181,.34);
+  --border-input:rgba(217,203,181,.66);
+  --border-strong:var(--olive);
+  --line:var(--border-subtle);        /* legacy alias, now legible */
+
+  /* ── Type ───────────────────────────────────────────────────────── */
+  --font-display:'Cormorant Garamond',serif;
+  --font-body:'DM Sans',sans-serif;
+  --font-label:var(--font-body);
+
+  /* One scale, used everywhere. Nothing below is a per-section invention. */
+  --text-display:clamp(2.75rem,5.2vw,5.25rem);
+  --text-h1:clamp(2.5rem,4.6vw,4.5rem);
+  --text-h2:clamp(1.9rem,3vw,3.25rem);
+  --text-h3:clamp(1.3rem,1.8vw,1.9rem);
+  --text-body:clamp(.95rem,.35vw + .88rem,1.0625rem); /* 15.2px floor */
+  --text-small:.8125rem;
+  --text-label:.75rem;
+  --text-eyebrow:.75rem;
+  --leading-body:1.7;
+  --leading-tight:.95;
+  --tracking-label:.18em;
+
+  /* ── Space ──────────────────────────────────────────────────────── */
+  --space-xs:.5rem;
+  --space-sm:.875rem;
+  --space-md:1.25rem;
+  --space-lg:2rem;
+  --space-xl:3rem;
+  --space-2xl:4.5rem;
+  --space-3xl:7rem;
+
+  /* ── Radius / motion / layout ───────────────────────────────────── */
+  --radius-sm:10px;
+  --radius-md:20px;
+  --radius-lg:30px;
+  --radius-pill:30px;
+
+  --transition-fast:.2s ease;
+  --transition-normal:.3s ease;
+  --transition-slow:.5s ease;
+
+  --page-max-width:1240px;
+  --measure-lede:62ch;   /* supporting paragraphs never run full-bleed */
+  --measure-h1:20ch;     /* display type breaks before it hits the edge */
+  --header-h:78px;
+  --control-h:48px;      /* every input, select and button shares this */
+}
+
 /* Astro Vetro — shared page styles (dark gradient identity preserved) */
 
 /* The original design's photography, extracted from the embedded media into
@@ -902,4 +992,366 @@ input:user-invalid, select:user-invalid, textarea:user-invalid {
 input:user-invalid:focus, select:user-invalid:focus, textarea:user-invalid:focus {
   outline:2px solid #e0a9a0;
   outline-offset:2px;
+}
+
+/* ====================================================================
+   SHARED COMPONENTS
+   The normalising layer. Everything above this point is either a token or
+   a one-off; everything here is the part of the site that must look the
+   same on every page. Written to win over the earlier rules on purpose —
+   it is loaded last and uses the same specificity, so it replaces the
+   ad-hoc values rather than fighting them.
+   ==================================================================== */
+
+/* ── Container ───────────────────────────────────────────────────────
+   One left/right content edge for the whole site. The header, the page
+   heroes and the page bodies all resolve to --page-pad and --page-max-width,
+   so a heading, a lede and a control always start on the same line. */
+:root { --page-pad:clamp(20px,4vw,56px); }
+
+.wrap {
+  max-width:var(--page-max-width);
+  margin:0 auto;
+}
+
+/* The header bar is full-bleed, so its contents need the same measure as
+   the page or the logo sits left of every heading on wide screens. */
+.header-inner {
+  display:flex;
+  align-items:center;
+  gap:var(--space-lg);
+  width:100%;
+  max-width:var(--page-max-width);
+  height:100%;
+  margin:0 auto;
+}
+
+.page {
+  padding:var(--space-2xl) var(--page-pad) var(--space-3xl);
+}
+
+/* ── Page header: one structure for every internal page ───────────────
+   eyebrow → H1 → lede → controls → content. The lede is capped at
+   --measure-lede so a supporting line never runs the full viewport. */
+.page-hero {
+  padding:var(--space-2xl) var(--page-pad) var(--space-xl);
+  border-bottom:1px solid var(--border-subtle);
+}
+.page-hero .wrap { max-width:var(--page-max-width); }
+.page-hero h1 {
+  font-family:var(--font-display);
+  font-weight:400;
+  font-size:var(--text-h1);
+  line-height:var(--leading-tight);
+  letter-spacing:-.01em;
+  text-transform:uppercase;
+  margin:var(--space-xs) 0 0;
+  max-width:var(--measure-h1);
+}
+.page-hero .sub,
+.page-hero .lead {
+  color:var(--text-secondary);
+  font-size:var(--text-body);
+  line-height:var(--leading-body);
+  max-width:var(--measure-lede);
+  margin-top:var(--space-md);
+}
+/* A page hero with nothing above the heading — the Shop page, where the
+   breadcrumb was removed. No compensating gap is left behind. */
+.page-hero--bare h1 { margin-top:0; }
+.page-hero a.back {
+  display:inline-block;
+  color:var(--text-secondary);
+  font-size:var(--text-label);
+  font-weight:500;
+  letter-spacing:var(--tracking-label);
+  text-transform:uppercase;
+  margin-bottom:var(--space-lg);
+}
+.page-hero a.back:hover { color:var(--text-primary); }
+
+/* ── Section header: A before B, always ───────────────────────────────
+   Was `display:flex; justify-content:space-between`, which put the H2
+   and its supporting note side by side and made them compete. Now the
+   heading establishes the section and the note follows underneath it in
+   the same column. */
+.section-title {
+  display:block;
+  margin-bottom:var(--space-xl);
+  max-width:100%;
+}
+.section-title h2 {
+  font-family:var(--font-display);
+  font-weight:400;
+  font-size:var(--text-h2);
+  line-height:1;
+  letter-spacing:-.01em;
+  text-transform:uppercase;
+  margin:0;
+  max-width:var(--measure-h1);
+}
+.section-title .eyebrow,
+.section-title .kicker { margin-bottom:var(--space-sm); }
+.section-title .section-note {
+  max-width:var(--measure-lede);
+  margin-top:var(--space-md);
+  color:var(--text-secondary);
+  font-size:var(--text-body);
+  line-height:var(--leading-body);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────
+   One height for every button in the system. */
+.btn { font-size:var(--text-label); min-height:var(--control-h); }
+.btn-sm {
+  min-height:40px;
+  padding:0 var(--space-md);
+  font-size:var(--text-label);
+  letter-spacing:.14em;
+}
+.btn:focus-visible,
+.chip:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline:2px solid var(--clay);
+  outline-offset:3px;
+}
+
+/* ── Form fields ─────────────────────────────────────────────────────
+   Were borderless with a 1px underline in --line, on a dark background:
+   the label was invisible (1.26:1) and the field edge all but missing
+   (1.81:1). Fields are now boxed, share --control-h, and carry a focus
+   ring that clears 3:1. */
+input,
+textarea,
+select {
+  font-family:var(--font-body);
+  font-size:var(--text-body);
+  color:var(--text-primary);
+  background:rgba(16,38,31,.55);
+  border:1px solid var(--border-input);
+  border-radius:var(--radius-sm);
+  padding:0 var(--space-md);
+  min-height:var(--control-h);
+  outline:0;
+  transition:border-color var(--transition-fast),box-shadow var(--transition-fast);
+}
+textarea {
+  padding:var(--space-sm) var(--space-md);
+  line-height:var(--leading-body);
+  min-height:calc(var(--control-h) * 3);
+  resize:vertical;
+}
+input::placeholder,
+textarea::placeholder {
+  color:var(--text-muted);
+  opacity:1;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color:var(--sand);
+  box-shadow:0 0 0 3px rgba(167,109,77,.32);
+}
+select {
+  min-height:var(--control-h);
+  padding-right:var(--space-lg);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-size:var(--text-label);
+  font-weight:500;
+  cursor:pointer;
+}
+select option { background:var(--deep); color:var(--text-primary); }
+
+/* Composite controls keep their own edge, so the inner input must not
+   add a second one. */
+.search-field,
+.search-field input,
+.newsletter-form input {
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  min-height:0;
+}
+.search-field {
+  display:flex;
+  align-items:center;
+  gap:var(--space-sm);
+  background:rgba(16,38,31,.55);
+  border:1px solid var(--border-input);
+  border-radius:var(--radius-pill);
+  padding:4px 4px 4px var(--space-md);
+  min-height:var(--control-h);
+  min-width:260px;
+  transition:border-color var(--transition-fast),box-shadow var(--transition-fast);
+}
+.search-field:focus-within {
+  border-color:var(--sand);
+  box-shadow:0 0 0 3px rgba(167,109,77,.32);
+}
+.search-field input { flex:1; padding:0; }
+
+/* ── Labels ──────────────────────────────────────────────────────────
+   Eyebrows, tags and captions all draw from the same treatment. */
+.tag,
+.chip,
+.status-badge {
+  font-size:var(--text-label);
+  letter-spacing:.16em;
+  border-color:var(--border-input);
+  color:var(--text-secondary);
+}
+.chip { min-height:36px; padding:0 var(--space-md); display:inline-flex; align-items:center; }
+
+/* ── Cards ───────────────────────────────────────────────────────────
+   One radius and one padding for every card family. */
+.service-card,
+.journal-card,
+.summary,
+.pay-opt,
+.stat-card,
+.table-wrap,
+.shape-card {
+  border-radius:var(--radius-md);
+  border-color:var(--border-subtle);
+}
+.service-card { padding:var(--space-lg); gap:var(--space-sm); }
+.service-card h3 { font-size:var(--text-h3); }
+.service-card p,
+.ritual-row p { color:var(--text-secondary); font-size:var(--text-small); line-height:1.65; }
+.service-card .dur,
+.ritual-meta .dur,
+.dur { color:var(--text-muted); font-size:var(--text-label); letter-spacing:.14em; }
+
+/* Price and action sit on a floor so cards in a row line up even when the
+   descriptions are different lengths. */
+.service-card .service-foot,
+.ritual-row .ritual-meta { margin-top:auto; }
+.service-foot {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--space-md);
+  padding-top:var(--space-sm);
+  border-top:1px solid var(--border-subtle);
+}
+
+/* ── Body-copy colours ───────────────────────────────────────────────
+   --moss on the dark gradient was 2.71:1 and used for product and service
+   descriptions. Secondary tone, not a failure colour. */
+.product-card p,
+.muted,
+.note,
+.hint,
+.voice-meta,
+.stock { color:var(--text-muted); }
+.muted,
+.note,
+.hint { font-size:var(--text-small); }
+.product-card p { font-size:var(--text-small); line-height:1.65; }
+.empty { color:var(--text-secondary); }
+
+/* ── Prose ───────────────────────────────────────────────────────────
+   Long-form reading stays at a comfortable measure. */
+.prose,
+.legal p,
+.legal li { font-size:var(--text-body); line-height:1.75; color:var(--text-secondary); }
+.prose { max-width:68ch; }
+.legal { max-width:var(--page-max-width); }
+
+/* ── Spacing rhythm ────────────────────────────────────────────────── */
+.section { padding:var(--space-3xl) var(--page-pad); }
+.actions { gap:var(--space-sm); margin-top:var(--space-lg); }
+.toolbar { gap:var(--space-sm); margin-bottom:var(--space-xl); }
+.meta-count { color:var(--text-muted); font-size:var(--text-label); letter-spacing:.1em; }
+.pager { margin-top:var(--space-xl); }
+footer { padding:var(--space-2xl) var(--page-pad) var(--space-lg); }
+footer p,
+footer a { color:var(--text-muted); font-size:var(--text-small); }
+.footer-title { color:var(--text-primary); font-size:var(--text-label); letter-spacing:var(--tracking-label); }
+
+/* ── Responsive ──────────────────────────────────────────────────────
+   1024 / 768 / 430 / 390 stay intentional rather than merely shrunk. */
+@media (max-width:1024px) {
+  :root { --space-3xl:5rem; --space-2xl:3.25rem; }
+}
+@media (max-width:768px) {
+  :root { --page-pad:32px; --space-3xl:4rem; --space-2xl:2.75rem; --space-xl:2.25rem; }
+  .section-title h2 { font-size:clamp(1.75rem,7vw,2.25rem); }
+}
+@media (max-width:560px) {
+  :root { --page-pad:22px; --space-3xl:3.25rem; --space-2xl:2.25rem; --space-xl:1.75rem; }
+  /* Controls stack and go full width so nothing is squeezed. */
+  .toolbar { flex-direction:column; align-items:stretch; }
+  .filters { flex-direction:column; align-items:stretch; }
+  .search-field { min-width:0; width:100%; }
+  .search-field .btn { width:100%; }
+  select { width:100%; }
+  .form-grid { grid-template-columns:1fr; }
+  .section-title .section-note { max-width:none; }
+}
+
+/* Toolbar inside a page hero sits under the lede with scale spacing. */
+.page-hero .toolbar--hero { margin-top:var(--space-lg); margin-bottom:0; }
+.page-hero .intention-chips { margin-bottom:0; }
+
+/* ── Contact ─────────────────────────────────────────────────────────
+   One column, one measure, one spacing scale: heading → description →
+   fields → button → next section. The fields sit in a readable column
+   rather than the 820px/1240px/full-bleed mix the page used to have. */
+.contact-col {
+  max-width:720px;
+}
+.contact-block + .contact-block { margin-top:var(--space-3xl); }
+.contact-block h2 {
+  font-family:var(--font-display);
+  font-weight:400;
+  font-size:var(--text-h2);
+  line-height:1;
+  text-transform:uppercase;
+  letter-spacing:-.01em;
+  margin:0 0 var(--space-md);
+}
+.contact-block .lede {
+  color:var(--text-secondary);
+  font-size:var(--text-body);
+  line-height:var(--leading-body);
+  max-width:var(--measure-lede);
+  margin:0;
+}
+.contact-form {
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-md);   /* 20px between fields */
+  margin-top:var(--space-xl);
+}
+.contact-form .field { display:flex; flex-direction:column; gap:var(--space-xs); }
+.contact-form label { color:var(--text-secondary); }
+/* The button gets its own breathing room rather than sharing the field gap. */
+.contact-form .field--action { margin-top:var(--space-sm); }
+.contact-form .field--action .btn { align-self:flex-start; }
+.contact-list {
+  margin:var(--space-md) 0 0;
+  padding:0;
+  list-style:none;
+  max-width:var(--measure-lede);
+}
+.contact-list li {
+  color:var(--text-secondary);
+  font-size:var(--text-body);
+  line-height:var(--leading-body);
+  padding:var(--space-sm) 0;
+  border-top:1px solid var(--border-subtle);
+}
+.contact-list b { color:var(--text-primary); font-weight:500; }
+.link-quiet {
+  color:var(--text-secondary);
+  border-bottom:1px solid var(--border-input);
+}
+.link-quiet:hover { color:var(--text-primary); }
+@media (max-width:560px) {
+  .contact-form .field--action .btn { align-self:stretch; }
 }

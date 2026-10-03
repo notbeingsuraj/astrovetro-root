@@ -47,7 +47,10 @@ window.AV = window.AV || {};
       })
       .join('');
     const initial = AV.user ? AV.user.firstName?.[0] || AV.user.email?.[0] : null;
+    /* .header-inner carries the same max-width and padding as the page body,
+       so the logo starts on the same vertical line as every page heading. */
     return `
+<div class="header-inner">
 <a href="/home.html" class="logo">Astro Vetro</a>
 <button class="icon menu" id="menuBtn" aria-label="Menu">\u2630</button>
 <nav id="siteNav">${links}</nav>
@@ -57,6 +60,7 @@ window.AV = window.AV || {};
   <a class="icon" href="${AV.user ? '/account.html' : '/account.html?view=login'}" aria-label="Account">
     ${initial ? `<span class="avatar">${AV.esc(initial.toUpperCase())}</span>` : '\u25ef'}
   </a>
+</div>
 </div>`;
   }
 

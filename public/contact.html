@@ -41,44 +41,46 @@
 
 <main id="main">
   <div class="page">
-    <div class="wrap legal">
-      <section>
-        <h2>Write to us</h2>
-        <p>Use the form below and it lands in the same inbox as the rest of the studio. If your question is about an order already placed, include the order number and we can find it faster.</p>
-      </section>
-    </div>
+    <div class="wrap">
+      <div class="contact-col">
 
-    <div class="wrap" style="max-width:820px;margin:0 auto">
-      <form class="form-grid" id="contactForm" novalidate>
-        <div>
-          <label for="cName">Your name</label>
-          <input type="text" id="cName" name="name" autocomplete="name" required>
-        </div>
-        <div>
-          <label for="cEmail">Email</label>
-          <input type="email" id="cEmail" name="email" autocomplete="email" required>
-        </div>
-        <div class="full">
-          <label for="cMessage">Message</label>
-          <textarea id="cMessage" name="message" rows="5" required></textarea>
-        </div>
-        <div class="full">
-          <button class="btn btn-light" type="submit">Send message</button>
-        </div>
-        <p class="form-msg full" id="cMsg" role="status" aria-live="polite"></p>
-      </form>
-    </div>
+        <!-- A, then B: heading establishes the section, the description
+             follows it in the same column, then the form. -->
+        <section class="contact-block">
+          <h2>Write to us</h2>
+          <p class="lede">Use the form below and it lands in the same inbox as the rest of the studio. If your question is about an order already placed, include the order number and we can find it faster.</p>
 
-    <div class="wrap legal">
-      <section>
-        <h2>Other ways to reach us</h2>
-        <p>Email <a href="mailto:hello@astrovetro.com" style="color:var(--sand);border-bottom:1px dotted var(--line)">hello@astrovetro.com</a> for anything that does not need a form.</p>
-        <ul>
-          <li><b>Readings</b> &mdash; book through <a href="/booking.html" style="color:var(--sand);border-bottom:1px dotted var(--line)">the booking page</a> and we will confirm a time by email.</li>
-          <li><b>Returns and orders</b> &mdash; see the <a href="/legal.html#shipping" style="color:var(--sand);border-bottom:1px dotted var(--line)">shipping and returns</a> details, including the 7-day window.</li>
-          <li><b>Journal letters</b> &mdash; occasional emails, no more than once a month, and you can leave at any time.</li>
-        </ul>
-      </section>
+          <form class="contact-form" id="contactForm" novalidate>
+            <div class="field">
+              <label for="cName">Your name</label>
+              <input type="text" id="cName" name="name" autocomplete="name" required>
+            </div>
+            <div class="field">
+              <label for="cEmail">Email</label>
+              <input type="email" id="cEmail" name="email" autocomplete="email" required>
+            </div>
+            <div class="field">
+              <label for="cMessage">Message</label>
+              <textarea id="cMessage" name="message" rows="6" required></textarea>
+            </div>
+            <div class="field field--action">
+              <button class="btn btn-light" type="submit">Send message</button>
+            </div>
+            <p class="form-msg" id="cMsg" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="contact-block">
+          <h2>Other ways to reach us</h2>
+          <ul class="contact-list">
+            <li><b>Email</b> &mdash; <a class="link-quiet" href="mailto:hello@astrovetro.com">hello@astrovetro.com</a> for anything that does not need a form.</li>
+            <li><b>Readings</b> &mdash; book through <a class="link-quiet" href="/booking.html">the booking page</a> and we will confirm a time by email.</li>
+            <li><b>Returns and orders</b> &mdash; see the <a class="link-quiet" href="/legal.html#shipping">shipping and returns</a> details, including the 7-day window.</li>
+            <li><b>Journal letters</b> &mdash; occasional emails, no more than once a month, and you can leave at any time.</li>
+          </ul>
+        </section>
+
+      </div>
     </div>
   </div>
 </main>

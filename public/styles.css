@@ -54,7 +54,7 @@ button,input,textarea {
   top:0;
   z-index:50;
   height:var(--header-h);
-  padding:0 4vw;
+  padding:0 var(--page-pad,4vw);
   display:flex;
   align-items:center;
   gap:30px;
@@ -84,9 +84,10 @@ button,input,textarea {
 }
 nav {
   display:flex;
-  gap:30px;
-  margin:auto;
-  font-size:11px;
+  gap:var(--space-lg);
+  margin-left:var(--space-lg);
+  font-size:var(--text-label);
+  font-weight:500;
   letter-spacing:.19em;
   text-transform:uppercase;
 }
@@ -117,11 +118,12 @@ nav a:hover {
   display:none;
 }
 .kicker {
-  font-size:11px;
-  letter-spacing:.18em;
+  font-size:var(--text-eyebrow);
+  letter-spacing:var(--tracking-label);
   text-transform:uppercase;
-  color:var(--sand);
-  margin-bottom:20px;
+  font-weight:500;
+  color:var(--text-secondary);
+  margin-bottom:var(--space-md);
 }
 .actions {
   display:flex;
@@ -134,11 +136,12 @@ nav a:hover {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:48px;
+  min-height:var(--control-h);
   padding:0 30px;
-  border-radius:30px;
+  border-radius:var(--radius-pill);
   border:1px solid transparent;
-  font-size:11px;
+  font-size:var(--text-label);
+  font-weight:500;
   letter-spacing:.14em;
   text-transform:uppercase;
   transition:.25s ease;
@@ -176,29 +179,36 @@ nav a:hover {
   color:var(--ink);
 }
 .eyebrow {
-  font-size:11px;
+  font-size:var(--text-eyebrow);
   text-transform:uppercase;
-  letter-spacing:.18em;
-  color:var(--sage);
-  margin-bottom:20px;
+  letter-spacing:var(--tracking-label);
+  font-weight:500;
+  color:var(--text-muted);
+  margin-bottom:var(--space-md);
 }
 .cream .eyebrow {
   color:var(--brown);
 }
 h2,
 .section h1 {
-  font:400 clamp(50px,6vw,84px)/.93 'Cormorant Garamond';
+  font-family:var(--font-display);
+  font-size:var(--text-display);
+  font-weight:400;
+  line-height:var(--leading-tight);
   margin:0;
   text-transform:uppercase;
   letter-spacing:-.01em;
 }
 h3 {
-  font:400 32px/1 'Cormorant Garamond';
+  font-family:var(--font-display);
+  font-size:var(--text-h3);
+  font-weight:400;
+  line-height:1.15;
   margin:0;
 }
 p {
-  font-size:14px;
-  line-height:1.8;
+  font-size:var(--text-body);
+  line-height:var(--leading-body);
 }
 .intro {
   min-height:560px;
@@ -584,10 +594,11 @@ form {
   gap:24px;
 }
 label {
-  font-size:11px;
+  font-size:var(--text-label);
   text-transform:uppercase;
-  letter-spacing:.14em;
-  color:var(--brown);
+  letter-spacing:var(--tracking-label);
+  font-weight:500;
+  color:var(--text-secondary);
 }
 input,textarea {
   border:0;
