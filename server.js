@@ -55,7 +55,18 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Astro Vetro frontend running at http://localhost:${PORT}`);
-  console.log(`Proxying /api -> ${API_TARGET}`);
-});
+/* Locally this file is the process: run it and it listens. On Vercel it is a
+   serverless function, where binding a port is wrong — the platform invokes
+   the exported handler and manages the socket itself. Calling listen() there
+   either hangs the build or leaves the function unreachable, so the two cases
+   are kept apart and the app is exported either way. */
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+if (!isServerless) {
+  app.listen(PORT, () => {
+    console.log(`Astro Vetro frontend running at http://localhost:${PORT}`);
+    console.log(`Proxying /api -> ${API_TARGET}`);
+  });
+}
+
+export default app;

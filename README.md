@@ -40,6 +40,29 @@ back empty and the shop renders blank. If you must deploy statically, you need
 a rewrite rule sending `/api/*` to the backend — but you lose the same-origin
 session cookie, which is the reason the proxy exists.
 
+### Vercel
+
+`vercel.json` builds `server.js` as a serverless function and routes every
+request to it. Without that file Vercel assumes a static bundle, runs the build,
+and then fails with `No Output Directory named "dist" found` — which is what
+happens here, because there is no bundler to produce a `dist`.
+
+Set one environment variable in the project settings:
+
+| Variable      | Value                                                   |
+| ------------- | ------------------------------------------------------- |
+| `API_TARGET`  | the Astro Vetro backend, e.g. `https://api.example.com` |
+
+**The backend must be reachable from the public internet.** Vercel runs this
+somewhere that cannot see `localhost:5002` on your machine, so if the backend is
+not deployed, `/api` returns 502 (`BACKEND_UNAVAILABLE`) no matter how the
+frontend is configured. The homepage, shop shell and all static pages will still
+render; every data-driven list will be empty.
+
+`server.js` behaves differently in the two places, on purpose: run it locally
+and it calls `app.listen()`; on Vercel it exports the app and lets the platform
+own the socket, because binding a port inside a serverless function is wrong.
+
 ## Pages
 
 | Route            | Purpose                                                     |
