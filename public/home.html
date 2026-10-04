@@ -189,6 +189,17 @@
     </form>
   </section>
 
+  <!-- Top selling pieces. The last block on the landing page: what people
+       actually come back for, then straight to the footer. -->
+  <section class="section products" id="top-selling">
+    <div class="section-title">
+      <div class="kicker">Top selling pieces</div>
+      <h2>What people keep on the shelf.</h2>
+    </div>
+    <div class="products-grid js-load" id="topGrid"></div>
+    <div class="actions" id="topSellingActions"></div>
+  </section>
+
 </main>
 
 <footer id="siteFooter"></footer>
@@ -201,6 +212,10 @@ AV.boot();
 
 (function () {
   const empty = (msg) => '<div class="empty">' + AV.esc(msg) + '</div>';
+
+  /* Slugs already rendered above. The top-selling block reads this so the two
+     product grids on this page never show the same piece twice. */
+  const shownHere = new Set();
 
   /* Products rail. Renders the collection; the section stays useful (with a
      direct link through) even when the API cannot be reached. */
@@ -217,8 +232,41 @@ AV.boot();
         items = all.data || [];
       }
       if (!items.length) { grid.innerHTML = empty('The collection is being restocked just now.'); return; }
+      items.forEach((p) => shownHere.add(p.slug));
       grid.innerHTML = items.map((p, i) => AV.productCard(p, i)).join('');
       actions.innerHTML = '<a class="btn btn-outline" href="/shop.html">View the full collection</a>';
+    } catch (e) {
+      grid.innerHTML = empty('We could not load the collection right now.');
+      actions.innerHTML = '<a class="btn btn-outline" href="/shop.html">Open the shop</a>';
+    }
+  }
+
+  /* Top selling pieces.
+     Same ordering rule the Rituals page uses — featured, then rating — so
+     "top selling" means the same thing on both pages. Anything the collection
+     rail above already showed is skipped: the catalogue carries six featured
+     pieces and that rail is a four-up, so taking the plain top three would
+     repeat three cards the visitor has only just scrolled past. */
+  async function loadTop() {
+    const grid = AV.qs('#topGrid');
+    const actions = AV.qs('#topSellingActions');
+    grid.innerHTML = AV.skeletonCards(3, 'product');
+    AV.reveal(grid);
+    try {
+      const env = await AV.api.get('/api/products?limit=24');
+      const items = (env.data || [])
+        .filter((p) => p.availability !== false)
+        .filter((p) => !shownHere.has(p.slug))
+        .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
+                     || (b.rating || 0) - (a.rating || 0))
+        .slice(0, 3);
+      if (!items.length) {
+        grid.innerHTML = empty('The collection is being restocked just now.');
+        actions.innerHTML = '<a class="btn btn-outline" href="/shop.html">Open the shop</a>';
+        return;
+      }
+      grid.innerHTML = items.map((p, i) => AV.productCard(p, i)).join('');
+      actions.innerHTML = '<a class="btn btn-outline" href="/shop.html">View more products</a>';
     } catch (e) {
       grid.innerHTML = empty('We could not load the collection right now.');
       actions.innerHTML = '<a class="btn btn-outline" href="/shop.html">Open the shop</a>';
@@ -301,7 +349,7 @@ AV.boot();
     }
   });
 
-  loadProducts();
+  loadProducts().then(loadTop);
   loadJournal();
 })();
 </script>

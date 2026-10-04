@@ -167,6 +167,98 @@ required — not even a development one. `POST /api/auth/*` returns 503 like eve
 other persistence endpoint. Configure a real secret on the backend when
 authentication is actually switched on; do not reuse the development value.
 
+## The design system
+
+Everything visual resolves to the token block at the top of
+`public/assets/app.css`. That file is linked last on every page, so its
+values win over `styles.css` without `!important` or a second copy of a
+rule. Change a value there and the whole site moves together.
+
+Three layers, in load order:
+
+1. `styles.css` — brand palette, typography faces, base elements, plus the
+   early landing-page composition.
+2. `app.css` — the tokens, then the shared components every page uses.
+3. `gateway.css` — loaded only by `/`, which shares nothing with the
+   internal site.
+
+### Tokens
+
+| Group | Tokens |
+| ----- | ------ |
+| Text | `--text-primary` `--text-secondary` `--text-muted` `--text-accent` `--text-on-cream` `--text-on-cream-soft` |
+| Type | `--text-display` `--text-h1` `--text-h2` `--text-h3` `--text-body` `--text-small` `--text-label` `--text-eyebrow` |
+| Space | `--space-xs` `--space-sm` `--space-md` `--space-lg` `--space-xl` `--space-2xl` `--space-3xl` |
+| Radius | `--radius-sm` `--radius-md` `--radius-lg` `--radius-pill` |
+| Border | `--border-subtle` `--border-input` `--border-strong` |
+| Motion | `--transition-fast` `--transition-normal` `--transition-slow` |
+| Layout | `--page-max-width` `--page-pad` `--gutter` `--measure-lede` `--measure-h1` `--header-h` `--control-h` |
+| Font | `--font-display` `--font-body` `--font-label` |
+
+### Contrast
+
+Text colours are chosen to a measured ratio against the dark gradient
+(`--deep`, `#10261f`), and the figure is written next to each token so it
+does not have to be re-derived:
+
+| Role | Token | Ratio |
+| ---- | ----- | ----- |
+| Body, headings | `--text-primary` `#faf8f1` | 14.98:1 |
+| Supporting copy | `--text-secondary` `#d9cbb5` | 9.98:1 |
+| Captions, metadata | `--text-muted` `#9fae93` | 6.79:1 |
+| Ratings, numerals | `--text-accent` `#9a9b69` | 5.51:1 |
+
+Two colours were previously used for text on the dark background and are no
+longer: `--brown` as a label colour (1.26:1 — effectively invisible) and
+`--moss` for product descriptions (2.71:1, below AA). `--line` was raised
+from `rgba(217,203,181,.24)` (1.81:1) so decorative hairlines are visible,
+and anything interactive uses `--border-input`, which clears the 3:1 that a
+control boundary needs.
+
+### One content edge
+
+Three containers resolve to the same left and right edge, so a logo, a
+heading and a control always start on the same line:
+
+- `--gutter` = `max(--page-pad, (100% - --page-max-width) / 2)`, used by
+  `.section`, `.page`, `.page-hero`, `footer` and the newsletter. `home.html`
+  puts content straight into its sections, so the gutter is what keeps it in
+  line with the rest of the site.
+- `--page-max-width` (1240px) on `.wrap` and `.header-inner`.
+- `--page-pad` — `clamp(20px, 4vw, 56px)`, then 32px at ≤768px and 22px at
+  ≤560px.
+
+### A before B
+
+`.section-title` is a block, not a flex row. The heading establishes the
+section and any `.section-note` follows underneath it in the same column,
+capped at `--measure-lede`. Previously they sat side by side
+(`justify-content: space-between`), which made the two compete for the same
+horizontal space and read at the same weight.
+
+### Columns that respond to their container
+
+`.form-grid` uses `repeat(auto-fit, minmax(220px, 1fr))` rather than a fixed
+`1fr 1fr`, so a form drops to one column based on the width it actually has
+instead of on a viewport guess. Section grids use `minmax(0, 1fr)` tracks,
+because a grid track's automatic minimum is its content's min-content width
+and a form control has a large one — without `minmax(0, …)` a track cannot
+narrow below it and pushes the page sideways.
+
+### Page headers
+
+Every internal page shares one shape: eyebrow → H1 → lede → controls →
+content. The lede is capped at `--measure-lede` so a supporting line never
+runs the full width. Shop has no breadcrumb or eyebrow; its `.page-hero` is
+marked `--bare` so the heading is the first thing after the header and no
+compensating gap is left behind.
+
+### Reduced motion
+
+`@media (prefers-reduced-motion: reduce)` in `app.css` resolves animation and
+transition durations to `0s`. It is `0s` and not `.01ms` on purpose: the
+`a11y` and `gateway` suites assert the computed duration is exactly zero.
+
 ## Pages
 
 | Route            | Purpose                                                     |

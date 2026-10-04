@@ -764,10 +764,19 @@ a.intention-card:focus-visible { outline:2px solid var(--brown); outline-offset:
 .skeleton-service { height: 260px; }
 .skeleton-voice { height: 210px; }
 
-/* What to expect */
-.expect { background: var(--cream); color: var(--ink); }
-.expect .eyebrow { color: var(--brown); }
-.expect h2 { color: var(--ink); }
+/* What to expect.
+
+   This section is what the "large white area" on the Rituals page was. The
+   migration to one continuous page-wide gradient listed every light section
+   it needed to neutralise, and .expect was not on that list — and because
+   app.css loads after styles.css, its `background: var(--cream)` won. A
+   near-white 390x765px block was left sitting between the top-selling
+   products and the tarot rows. The fix is the same one its siblings already
+   got: transparent background, gradient showing through, and text colours
+   that are legible on the dark gradient rather than dark-on-light. */
+.expect { background:transparent; color:var(--text-primary); }
+.expect .eyebrow { color:var(--text-muted); }
+.expect h2 { color:var(--text-primary); }
 .expect-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -775,13 +784,13 @@ a.intention-card:focus-visible { outline:2px solid var(--brown); outline-offset:
 }
 .expect-step .num {
   display: block;
-  color: var(--brown);
-  font: 400 15px/1 'Cormorant Garamond';
+  color: var(--text-accent);
+  font: 400 15px/1 var(--font-display);
   letter-spacing: 0.2em;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-sm);
 }
-.expect-step h3 { font-size: 26px; margin-bottom: 10px; color: var(--ink); }
-.expect-step p { color: var(--moss); max-width: 34ch; }
+.expect-step h3 { font-size: var(--text-h3); margin-bottom: var(--space-xs); color: var(--text-primary); }
+.expect-step p { color: var(--text-secondary); max-width: 34ch; }
 
 /* Past voices */
 .voices { background: var(--forest); }
@@ -1423,3 +1432,76 @@ table { font-size:var(--text-small); }
   .product-card .art-link:hover .art,
   .btn:hover { transform:none; }
 }
+
+/* ── Letting a track actually shrink ──────────────────────────────────
+   A grid item's automatic minimum is its content's min-content width, and a
+   form control has a large one (its default size, plus padding). So the 1fr
+   track holding a form could not narrow below it: at 768px the home page's
+   inline contact form pushed its column 16px past the viewport. min-width:0
+   lets the control shrink inside the track instead of widening the page. */
+input,
+textarea,
+select { min-width:0; }
+.form-grid > *,
+.contact > *,
+.pd > *,
+.cart-grid > *,
+.checkout-grid > * { min-width:0; }
+
+/* ── Columns that respond to the space they are given ────────────────
+   .form-grid was a hard 1fr 1fr. Inside the narrow second column of the
+   home page's contact section at 768px that left each field ~211px and the
+   pair ran past the viewport. auto-fit with a minimum asks the question the
+   right way round — "do I have room for two?" — so the grid drops to one
+   column based on its own width, not on a viewport guess that is wrong the
+   moment the form is moved somewhere else.
+
+   The section grids get minmax(0,1fr) for the same reason a track must be
+   able to narrow past its content, and they step down to a single column at
+   tablet width instead of holding two cramped ones. */
+.form-grid {
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:var(--space-md) var(--space-md);
+}
+.intro,
+.reading,
+.about,
+.rituals,
+.newsletter,
+.pd,
+.cart-grid,
+.checkout-grid { grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); }
+.about,
+.newsletter { grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); }
+.rituals { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+.contact { grid-template-columns:minmax(0,.8fr) minmax(0,1fr); }
+@media (max-width:900px) {
+  .intro,
+  .reading,
+  .about,
+  .rituals,
+  .newsletter,
+  .contact { grid-template-columns:minmax(0,1fr); }
+}
+
+/* Label/value pairs in the product meta stack on a narrow phone rather than
+   running off the edge: at 320px a "Stock" row plus its value was wider than
+   the viewport. */
+.pd-meta > div { flex-wrap:wrap; }
+.stock { overflow-wrap:anywhere; }
+
+/* The minmax() rules above sit after the original ≤980px collapse, so they
+   would have reinstated the two-column product/cart/checkout layouts on
+   tablets and phones. Restated after them, with minmax(0,1fr) so the single
+   column can still narrow properly. */
+@media (max-width:980px) {
+  .pd,
+  .cart-grid,
+  .checkout-grid,
+  .journal-list-grid { grid-template-columns:minmax(0,1fr); }
+  .pd-art .art { height:430px; }
+  .summary { position:static; }
+}
+/* The stepper and the stock note together are wider than a 320px screen, so
+   the note drops below the stepper instead of running off the edge. */
+.qty-row { flex-wrap:wrap; row-gap:var(--space-xs); }
