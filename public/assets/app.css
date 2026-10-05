@@ -1628,6 +1628,13 @@ select { min-width:0; }
    rest of the bag stays readable and no double-click can queue two writes. */
 .cart-line.is-busy { opacity: 0.55; pointer-events: none; }
 
+/* The same state on a wishlist card. The move-to-bag button sets `is-busy` on
+   its own .product-card, not on a .cart-line, so without this rule the class
+   matched nothing and the card showed no sign of working at all. `aria-busy` is
+   set alongside it in wishlist.html, which is what makes the wait perceivable
+   to a screen reader as well as to the eye. */
+.product-card.is-busy { opacity: 0.55; pointer-events: none; }
+
 /* A guest bag's figures are estimates until the server prices them. Saying so
    is the difference between a reassuring total and a wrong promise. */
 .bag-provisional {
@@ -1647,6 +1654,11 @@ select { min-width:0; }
 .summary .row { display: flex; justify-content: space-between; gap: 12px; color: var(--text-secondary); font-size: var(--text-small); padding: 9px 0; }
 .summary .row.total { color: var(--text-primary); font: 400 26px var(--font-display); border-top: 1px solid var(--border-subtle); margin-top: 10px; padding-top: 16px; }
 .summary .row .free { color: #b7d7c3; }
+/* The same accent outside the bag summary. C.totals marks a zero shipping row
+   with .free, and the order detail renders its totals in .order-totals, where
+   the .summary-scoped rule above did not reach — so "Free" appeared as plain
+   body text with nothing to distinguish it. */
+.order-totals .row .free { color: #b7d7c3; }
 
 /* ── Wishlist ─────────────────────────────────────────────────── */
 .wishlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-lg); }
@@ -1669,6 +1681,30 @@ select { min-width:0; }
   border: 1px solid transparent;
   transition: color var(--transition-fast), background var(--transition-fast);
 }
+/* Sign out is a button, not an <a href="#">. A link that only works when its
+   script runs is a dead link without JavaScript, it jumps to the top of the
+   page if the handler is lost, and it is unreachable by middle-click. The
+   button is styled to sit in the nav exactly as its sibling links do. */
+.acct-nav button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.acct-nav button:hover { color: var(--text-primary); background: rgba(241, 234, 220, 0.05); }
+
 .acct-nav a:hover { color: var(--text-primary); background: rgba(241, 234, 220, 0.05); }
 .acct-nav a[aria-current='page'] { color: var(--text-primary); background: var(--moss); border-color: var(--border-subtle); }
 .acct-nav .n { font: 400 15px var(--font-display); color: var(--text-accent); letter-spacing: 0; }
@@ -1760,6 +1796,10 @@ select { min-width:0; }
 .status-refunded { color: #e0a9a0; border-color: #e0a9a0; }
 
 .order-row-link { display: inline-block; color: var(--sand); border-bottom: 1px dotted var(--border-input); }
+/* The order number is the heading of each card in the history list, so it is
+   reachable by heading navigation rather than existing only as a styled link. */
+.order-card-title { margin: 0; font-size: inherit; font-weight: inherit; }
+.order-card-title a:focus-visible { outline: 2px solid var(--olive); outline-offset: 4px; }
 .order-lines { display: grid; gap: 10px; margin: var(--space-md) 0; }
 .order-line { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: center; }
 .order-line .art { height: 64px; border-radius: 8px; display: block; }
@@ -1773,6 +1813,18 @@ select { min-width:0; }
 .order-totals .row.total { color: var(--text-primary); font: 400 24px var(--font-display); border-top: 1px solid var(--border-subtle); margin-top: 8px; padding-top: 14px; }
 
 /* ── Tracking timeline ────────────────────────────────────────── */
+/* Shipment statuses. C.statusBadge derives its class from the string the server
+   stored, so every value in Shipment.SHIPMENT_STATUS needs a rule here — six of
+   them had none and rendered as an identical neutral pill, which made an
+   exception and an ordinary pickup indistinguishable. Colours follow the
+   existing scale: sage for movement made, sand for in flight, red for trouble. */
+.status-label_created,
+.status-picked_up,
+.status-in_transit { color: var(--sand); border-color: var(--sand); }
+.status-out_for_delivery { color: #b7d7c3; border-color: #b7d7c3; }
+.status-exception,
+.status-returned { color: #e0a9a0; border-color: #e0a9a0; }
+
 .track-steps { list-style: none; margin: var(--space-lg) 0 0; padding: 0; display: grid; gap: 0; }
 .track-step { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 16px; position: relative; padding-bottom: var(--space-lg); }
 .track-step:last-child { padding-bottom: 0; }
@@ -1796,8 +1848,58 @@ select { min-width:0; }
   z-index: 1;
 }
 .track-step.is-done .dot { border-color: #b7d7c3; background: #b7d7c3; }
+/* Not reached yet. The connector stops at the pending step rather than running
+   past it, so a stalled parcel reads as stalled. */
+.track-step.is-pending .dot { border-style: dashed; border-color: var(--border-input); background: var(--deep); }
+/* The four-stage rail. Same dot grammar as the event list, laid out across on
+   wide screens so the position of the parcel is one glance instead of a count;
+   the connector is the horizontal line behind the dots. */
+/* The order's status and the carrier's status appear on this page as two
+   separate pills. Each carries a word saying which document it came from, so a
+   disagreement between them is readable rather than just looking like two
+   unexplained coloured dots. */
+.track-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.track-badge-label {
+  font-size: 10px;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.track-progress-h { font: 400 var(--text-h2) var(--font-display); margin: 0 0 var(--space-md); }
+.track-steps--rail { grid-template-columns: repeat(4, 1fr); gap: var(--space-md); margin-top: 0; }
+.track-steps--rail .track-step { padding-bottom: 0; }
+.track-steps--rail .track-step::before {
+  left: 22px;
+  right: calc(var(--space-md) * -1);
+  top: 10px;
+  bottom: auto;
+  width: auto;
+  height: 1px;
+}
+.track-steps--rail .track-step:last-child::before { display: none; }
+/* Scoped tighter than .track-step h3 below, which is also 20px — same
+   specificity would have let the event list's size win depending on source
+   order, so the rail states its own. */
+.track-steps--rail .track-step h3 { margin: 0; font: 400 15px var(--font-body); color: var(--text-secondary); letter-spacing: 0.01em; }
+.track-steps--rail .is-done h3,
+.track-steps--rail .is-current h3 { color: var(--text-primary); }
 .track-step.is-current .dot { border-color: var(--olive); background: var(--olive); box-shadow: 0 0 0 4px rgba(154, 155, 105, 0.16); }
-.track-step h4 { margin: 0; font: 400 20px var(--font-display); color: var(--text-primary); }
+
+@media (max-width: 640px) {
+  /* Stacked rather than four cramped columns: the connector flips back to
+     vertical, which is the direction the event list already uses. */
+  .track-steps--rail { grid-template-columns: 1fr; gap: 0; }
+  .track-steps--rail .track-step { padding-bottom: var(--space-md); }
+  .track-steps--rail .track-step::before {
+    left: 10px;
+    right: auto;
+    top: 18px;
+    bottom: -4px;
+    width: 1px;
+    height: auto;
+  }
+}
+.track-step h3 { margin: 0; font: 400 20px var(--font-display); color: var(--text-primary); }
 .track-step .when { color: var(--text-muted); font-size: var(--text-small); }
 .track-step .desc { color: var(--text-secondary); font-size: var(--text-small); line-height: var(--leading-body); margin: 4px 0 0; }
 

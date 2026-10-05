@@ -69,7 +69,7 @@ AV.customer = (() => {
     target.innerHTML = `
       <div class="av-state">
         <${level}>${html(title)}</${level}>
-        ${body ? `<p>${body}</p>` : ''}
+        ${body ? `<p>${html(body)}</p>` : ''}
         ${actions.map((a) => `<a class="btn ${a.style || 'btn-outline'}" href="${html(a.href)}"${a.newTab ? ' target="_blank" rel="noopener"' : ''}>${html(a.label)}</a>`).join('\n        ')}
       </div>`;
     return target;
@@ -178,16 +178,25 @@ AV.customer = (() => {
       .join('<br>');
   }
 
-  /* One line item in a bag or an order. `qty` is shown as a multiplier so
-     "₹1,200 × 2" cannot be misread as the line total. */
+/* One line item in a bag or an order. `qty` is shown as a multiplier so
+     "₹1,200 × 2" cannot be misread as the line total.
+
+     The line total is printed exactly as the server sent it. It used to fall
+     back to `unitPrice * quantity`, which put a price calculation in the
+     browser: if the server ever priced a line the way it disagreed with — a
+     rounded total, a line-level discount, a tax folded into the unit — the
+     fallback would have quietly replaced the authoritative figure with a
+     locally invented one. A missing value is shown as "—" rather than guessed
+     at, so the absence is visible instead of filled in. */
   function orderLine(item, i) {
     const img = item.image
-      ? `<div class="art has-photo" style="background-image:url('${html(item.image)}')" role="img" aria-label="${html(item.name)}"></div>`
+      ? `<div class="art has-photo" style="background-image:url('${AV.cssUrl(item.image)}')" role="img" aria-label="${html(item.name)}"></div>`
       : `<div class="art ${AV.art(i)}" role="img" aria-label="${html(item.name)}"></div>`;
     const href = item.slug ? `/product.html?slug=${encodeURIComponent(item.slug)}` : null;
     const name = href
       ? `<a href="${href}">${html(item.name)}</a>`
       : html(item.name);
+    const lineTotal = item.lineTotal === undefined || item.lineTotal === null ? '—' : money(item.lineTotal);
     return `
       <div class="order-line">
         ${img}
@@ -195,7 +204,7 @@ AV.customer = (() => {
           <div class="nm">${name}</div>
           <div class="qt">${money(item.unitPrice)} each${item.quantity > 1 ? ` &middot; quantity ${item.quantity}` : ''}</div>
         </div>
-        <div class="nm">${money(item.lineTotal ?? item.unitPrice * item.quantity)}</div>
+        <div class="nm">${lineTotal}</div>
       </div>`;
   }
 
@@ -385,6 +394,45 @@ AV.customer = (() => {
   /* ── Page bootstrap ──────────────────────────────────────────────
      One sequence for every customer page: boot the shared chrome, then
      hand over to the page. Returns the root element to render into. */
+
+  /* A session that disappears mid-visit.
+
+     Every protected page opens by asking AV.me() whether there is a session, and
+     shows the sign-in gate when there is not. That covers the visitor who was
+     never signed in. It does not cover the one whose session expires while the
+     page is open: their next request 401s, api.js drops the cached identity, and
+     without this the page renders "We could not load this" — which is both
+     wrong (nothing failed that the customer did) and a dead end (there is no
+     way forward from an error box).
+
+     So a protected page turns a 401 into a redirect that carries the current
+     URL, so signing in returns the customer to where they were.
+
+     Guarded on three things, because a 401 does not always mean this:
+
+       - the page opted in, via <body data-av-auth="required">. Without that,
+         /api/auth/me's 401 would bounce every signed-out visitor in the site to
+         a sign-in page, including the pages that are meant to be readable
+         while signed out;
+       - the 401 was not the identity probe. That request is *expected* to 401
+         for anyone who is not signed in — it is how the page finds out;
+       - the 401 was not a rejected password. /api/auth/login answers 401 for a
+         wrong password, and that belongs in the form's error line, not in a
+         redirect that throws away what they typed.
+
+     Registered once, at module scope, so no page has to remember to call it. */
+  AV.on('auth', (event) => {
+    if (!event || event.user) return;
+    /* reason 'signed-out' is a deliberate, successful sign-out — the page that
+       asked for it navigates itself. Only an involuntary 401 is handled here. */
+    if (event.reason !== 'unauthorised') return;
+    if (document.body?.dataset.avAuth !== 'required') return;
+    if (/^\/api\/auth\/(me|login|register|logout)/.test(event.path || '')) return;
+    /* Already on the way to sign-in: redirecting again would strip the
+       destination this very redirect is adding. */
+    if (new URLSearchParams(location.search).get('view') === 'login') return;
+    authLost();
+  });
 
   async function start(selector, run) {
     AV.boot();

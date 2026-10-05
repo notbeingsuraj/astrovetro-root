@@ -762,12 +762,51 @@ footer p,footer a {
   gap:18px;
   border-bottom:1px solid var(--line);
 }
-/* --- Unified full-page gradient --- */ html, body {
+/* --- Unified full-page gradient ---
+   The design is one continuous gradient behind the whole document, with every
+   section transparent so it shows through. That gradient used to be painted by
+   `body { background: var(--ritual-gradient); background-attachment: fixed }`,
+   which is where the white area at the foot of the Home page came from.
+
+   Two things were wrong with that:
+
+     1. `html` had no background at all. When a root element has no background,
+        the browser's canvas is white — so the page had no safety net. Any part
+        of the document the body background failed to paint showed #ffffff.
+        Home is the longest page in the site (~12,600px on a phone), so it has
+        by far the largest region below the fold to go white, which is why the
+        symptom only ever appeared on Home, and only low down.
+
+     2. `background-attachment: fixed` is the one property in this stack that
+        mobile engines do not agree on. iOS Safari does not paint a
+        fixed-attachment background reliably across the scrolled document, so
+        the lower part of a long page can end up with nothing painted at all —
+        and with no root background, that nothing is white.
+
+   The gradient is now painted by a fixed-position layer instead. Visually it is
+   the same thing — a viewport-sized gradient that stays put while content
+   scrolls over it — but it uses only `position: fixed` and `inset`, which every
+   engine agrees on. `html` additionally carries the deep base colour, so even
+   with the layer removed the page degrades to dark green rather than white. */
+html, body {
   min-height: 100%;
 }
+html {
+  background: var(--deep);
+}
 body {
+  /* Transparent on purpose. The gradient lives on the layer below; if that
+     layer ever fails, an unpainted body must not become a white rectangle. */
+  background: transparent;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
   background: var(--ritual-gradient);
-  background-attachment: fixed;
+  /* The layer is decoration behind the page. It must never take a click. */
+  pointer-events: none;
 }
 /* Let the single page-wide gradient show continuously instead of restarting with different cream/sand/forest section backgrounds. */ .site-header, .section, .section.cream, .intentions, .products, .reading, .rituals, .about, .journal, .newsletter, .contact, footer {
   background: transparent;

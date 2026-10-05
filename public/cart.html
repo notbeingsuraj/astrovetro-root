@@ -91,7 +91,8 @@ C.start('#cartPane', async (root) => {
 /* Loads and redraws. Used on first paint and after every change. */
 async function refresh() {
   C.loading(pane, 'Loading your bag');
-  summary.innerHTML = '';
+  C.loading(summary, 'Loading your bag');
+  summary.removeAttribute('aria-label');
   try {
     bag = await AV.bag.load();
     render();
@@ -100,7 +101,39 @@ async function refresh() {
     /* A failed load is not an empty bag. Saying so matters: an error that
        renders as "your bag is empty" would send someone to the shop to
        re-buy what they already chose. */
-    C.error(pane, err, { retry: refresh, title: 'We could not load your bag' });
+    if (err && err.status === 401) {
+      /* The session expired while this page was open. Nothing about the bag
+         failed — the browser simply stopped being allowed to ask about it.
+         Sign-in is the only thing that fixes that, so offer it and carry this
+         page as the destination. */
+      C.error(pane, err, {
+        title: 'Your session has ended',
+        level: 'h2',
+        retry: () => {
+          location.href = `/account.html?view=login&next=${encodeURIComponent(location.pathname + location.search)}`;
+        },
+      });
+      C.empty(summary, {
+        level: 'h3',
+        title: 'Order summary',
+        body: 'Sign in and your bag comes back with you — nothing here is lost.',
+        actions: [
+          {
+            label: 'Sign in',
+            href: `/account.html?view=login&next=${encodeURIComponent(location.pathname + location.search)}`,
+            style: 'btn-light',
+          },
+        ],
+      });
+      return;
+    }
+    C.error(pane, err, { retry: refresh, title: 'We could not load your bag', level: 'h2' });
+    /* The summary cannot be rendered without the bag it summarises. It says so
+       rather than being left as an empty bordered box beside the error. */
+    C.error(summary, err, {
+      retry: refresh,
+      title: 'No totals to show',
+    });
   }
 }
 
@@ -117,7 +150,14 @@ function render() {
         { label: 'See what you saved', href: '/wishlist.html' },
       ],
     });
-    summary.innerHTML = '';
+    /* The summary is a bordered column in its own right, so leaving it blank
+       would read as a panel that failed to draw. With nothing in the bag there
+       are no totals to show, and that is worth saying rather than implying. */
+    C.empty(summary, {
+      level: 'h3',
+      title: 'Nothing to total yet',
+      body: 'Your subtotal, shipping and total appear here as soon as there is something in your bag.',
+    });
     return;
   }
 
@@ -163,14 +203,19 @@ function lineHTML(item, i) {
   /* Flagged means the server changed this line. Kept visible rather than
      removed, so the customer can see what happened and correct it. */
   const flagged = outOfStock;
-  const img = item.image
-    ? `<div class="art has-photo" style="background-image:url('${AV.esc(item.image)}')" role="img" aria-label="${AV.esc(item.name)}"></div>`
-    : `<div class="art ${AV.art(i)}" role="img" aria-label="${AV.esc(item.name)}"></div>`;
   const href = item.slug ? `/product.html?slug=${encodeURIComponent(item.slug)}` : null;
+
+  /* The product is linked once, by name. The image link is kept for the usual
+     "click the picture" affordance but is hidden from assistive technology and
+     taken out of the tab order, so a screen-reader user meets one link to this
+     product rather than two identical ones. With no slug there is nothing to
+     link to, so the image is a plain figure rather than an href="#" that would
+     jump to the top of the page. */
+  const art = `<div class="art ${item.image ? 'has-photo' : AV.art(i)}"${item.image ? ` style="background-image:url('${AV.cssUrl(item.image)}')"` : ''} role="img" aria-label="${AV.esc(item.name)}"></div>`;
 
   return `
     <div class="cart-line${flagged ? ' is-flagged' : ''}${busyLines.has(key(item)) ? ' is-busy' : ''}" data-line="${AV.esc(key(item))}">
-      <a href="${href || '#'}"${href ? '' : ' aria-hidden="true" tabindex="-1"'}>${img}</a>
+      ${href ? `<a href="${href}" aria-hidden="true" tabindex="-1">${art}</a>` : art}
       <div class="cart-line-body">
         <h3>${href ? `<a href="${href}">${AV.esc(item.name)}</a>` : AV.esc(item.name)}</h3>
         <div class="price">${C.money(item.unitPrice)}</div>
@@ -178,11 +223,11 @@ function lineHTML(item, i) {
         <div class="line-actions">
           <div class="stepper line-qty">
             <button type="button" data-dec aria-label="Decrease quantity of ${AV.esc(item.name)}"${outOfStock ? ' disabled' : ''}>−</button>
-            <span aria-live="off">${item.quantity}</span>
+            <span aria-live="polite" aria-atomic="true">${item.quantity}</span>
             <button type="button" data-inc aria-label="Increase quantity of ${AV.esc(item.name)}"
               ${outOfStock || atCap ? 'disabled' : ''}>+</button>
           </div>
-          <button class="remove" type="button" data-remove>Remove</button>
+          <button class="remove" type="button" data-remove aria-label="Remove ${AV.esc(item.name)} from your bag">Remove</button>
         </div>
         ${atCap && !outOfStock ? `<p class="line-note">That is all we have in stock.</p>` : ''}
       </div>
@@ -198,23 +243,30 @@ function key(item) {
 }
 
 function renderSummary() {
-  const free = Number(bag.shipping) === 0;
   summary.innerHTML = `
     <h3>Order summary</h3>
     ${C.bagTotals(bag)}
     ${freeShipNote()}
-    <a class="btn btn-light btn-block" href="/checkout.html" id="checkoutBtn">Checkout · ${C.money(bag.total)}</a>
+    <a class="btn btn-light btn-block" href="/checkout.html">Checkout · ${C.money(bag.total)}</a>
     ${guestCheckoutNote()}
     <p class="note" style="margin-top:14px">
       ${bag.authoritative
         ? 'This is your bag on your account. We will check stock again when you order.'
-        : 'Shipping is estimated until you sign in. Free above ' + AV.formatPrice(AV.SHIPPING.freeAbove) + '.'}
+        : 'Shipping is estimated until you sign in, and confirmed before you pay.'}
     </p>`;
 }
 
+/* Only ever rendered from a number the server sent. A guest bag has no server
+   behind it, so there is no authoritative free-shipping gap to show and none is
+   invented here — the guest copy above says shipping is estimated instead.
+
+   The threshold itself is never hard-coded either: for a signed-in customer it
+   is read from the bag (`freeShippingThreshold`), because a constant in this
+   file would be the site's idea of the shipping rules while the server's idea
+   is the one that is charged. */
 function freeShipNote() {
   const gap = Number(bag.amountToFreeShipping);
-  if (!Number.isFinite(gap) || gap <= 0) return '';
+  if (!bag.authoritative || !Number.isFinite(gap) || gap <= 0) return '';
   return `<div class="free-ship">Add ${AV.formatPrice(gap)} more for free shipping.</div>`;
 }
 

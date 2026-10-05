@@ -26,7 +26,7 @@
 <meta name="twitter:description" content="Confirm your delivery address and place your order.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
-<body>
+<body data-av-auth="required">
 <a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
@@ -118,19 +118,27 @@ C.start('#checkoutPane', async (root) => {
 
 async function load() {
   C.loading(pane, 'Loading checkout');
-  summary.innerHTML = '';
+  C.loading(summary, 'Loading checkout');
   try {
     /* Both in parallel: neither depends on the other, and the page cannot be
-       drawn without both. */
+       drawn without both.
+
+       The address list is NOT swallowed. Treating a failed request as an empty
+       list is the worst possible failure here: the customer would be shown
+       "you have no saved addresses" for an address their account already holds,
+       and be invited to type it in again — over a checkout that is about to
+       charge them. A 401 also means the session ended, which is a sign-in, not
+       an empty list. So both failures are allowed to reach the handler below. */
     const [cart, addrList, caps] = await Promise.all([
       AV.bag.load(),
-      AV.addresses.list().catch(() => ({ addresses: [], count: 0 })),
+      AV.addresses.list(),
       AV.capabilities().catch(() => null),
     ]);
 
     if (!cart.authoritative) {
       /* Reached only if the session ended between AV.me() and here. The guest
          bag is untouched; sending them to sign in keeps it. */
+      C.empty(summary, { level: 'h2', title: 'No totals to show', body: 'Sign in again to continue.' });
       return C.gate(pane, { reason: 'Your session ended while we were loading.' });
     }
 
@@ -139,6 +147,15 @@ async function load() {
     paymentsLive = Boolean(caps?.paymentsLive);
 
     if (!bag.lines.length) {
+      /* Both regions are cleared, not just the pane. Returning here with the
+         summary still on its skeleton left the page showing "Loading checkout"
+         forever beside a finished empty state — the totals for an order that
+         cannot exist. */
+      C.empty(summary, {
+        level: 'h2',
+        title: 'No totals to show',
+        body: 'There is nothing in your bag to total up.',
+      });
       return C.empty(pane, {
         level: 'h2',
         title: 'There is nothing to check out',
@@ -154,7 +171,15 @@ async function load() {
     render();
   } catch (err) {
     C.clearBusy(pane);
-    C.error(pane, err, { retry: load, title: 'We could not open checkout' });
+    /* An ended session is a sign-in, not a failure to report. The shared auth
+       listener in customer.js turns the 401 itself into a redirect; this branch
+       only has to stop pretending the bag could not be opened. */
+    if (err && err.status === 401) {
+      C.empty(summary, { level: 'h2', title: 'No totals to show', body: 'Sign in again to continue.' });
+      return C.gate(pane, { reason: 'Your session ended while we were loading.' });
+    }
+    C.error(pane, err, { retry: load, title: 'We could not open checkout', level: 'h2' });
+    C.error(summary, err, { retry: load, title: 'No totals to show' });
   }
 }
 
@@ -344,7 +369,13 @@ function wire() {
 
 /* The new-address form saves through POST /api/me/addresses, then selects the
    address the server created. Selecting the returned id — rather than assuming
-   one was made — keeps the order bound to an address that actually exists. */
+   one was made — keeps the order bound to an address that actually exists.
+
+   The response is checked before it is used. `create` hands back the address
+   from the envelope, and reading `.id` off an absent one throws a TypeError
+   whose message ("Cannot read properties of undefined") would then be printed
+   into the form as though the server had said it. Failing on a missing address
+   is fine; failing with a JavaScript error is not. */
 function wireAddressForm() {
   const form = AV.qs('#addrForm');
   if (!form) return;
@@ -361,6 +392,9 @@ function wireAddressForm() {
       pincode: body.pincode,
       country: body.country,
     });
+    if (!created || !created.id) {
+      throw new Error('That address was not saved. Please try again.');
+    }
     addresses.push(created);
     selectedAddressId = created.id;
     AV.toast('Address saved.', 'ok');
@@ -410,6 +444,11 @@ async function place() {
       paymentMethod,
       /* The account's own address id. No address fields, no items, no money. */
       addressId: selectedAddressId,
+      /* The order's contact details. The server falls back to the account's own
+         email and phone when these are absent, so they are optional; they are
+         sent because the address form may have collected a number that differs
+         from the one on the account. The server still decides what to store. */
+      contactEmail: user.email || undefined,
       contactPhone: user.phone || undefined,
     };
 
@@ -426,8 +465,16 @@ async function place() {
   } catch (err) {
     /* A failure here has not created an order — the server refused, or the
        provider dialog was dismissed. The page stays put with the reason
-       shown, and the idempotency key is kept so a retry cannot duplicate. */
-    C.say(AV.qs('.form-msg') || statusEl(wrap), AV.firstErr(err), false);
+       shown, and the idempotency key is kept so a retry cannot duplicate.
+
+       The message goes into #placeWrap, next to the button the customer just
+       pressed, and NOT into whichever .form-msg happens to be first in the
+       document. That used to reach the one inside the new-address form, which
+       lives in a [hidden] container — so the reason a COD or card order failed
+       was written somewhere invisible, and since the "Placing your order…"
+       status above is removed in the finally block, the customer was left with
+       a button that had simply stopped working and no explanation at all. */
+    C.say(statusEl(wrap), AV.firstErr(err), false);
   } finally {
     placing = false;
     live.remove();

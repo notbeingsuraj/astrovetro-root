@@ -26,7 +26,13 @@
 <meta name="twitter:description" content="Your orders, saved pieces, addresses and details.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
-<body>
+<!-- data-av-auth is safe here even though this is also the sign-in page: the
+     redirect is guarded on the 401 not coming from /api/auth/me or
+     /api/auth/login, and those are the only signed-out 401s this page can
+     produce. Without it, a session expiring while the profile or address form
+     was open left the customer on a form whose every save 401s with no route
+     back to signing in. -->
+<body data-av-auth="required">
 <a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
@@ -146,7 +152,7 @@ function renderShell() {
         ${PANELS.map(([key, label]) => navLink(key, label, navCount(key, c))).join('\n        ')}
         <a href="/orders.html">All orders</a>
         ${user.role === 'admin' ? '<a href="/admin.html">Admin desk</a>' : ''}
-        <a href="#" data-signout>Sign out</a>
+        <button type="button" data-signout>Sign out</button>
       </nav>
       <div>
         ${pendingEmailNote()}
@@ -211,7 +217,10 @@ function overviewMarkup() {
   return `
     <div class="stat-grid">
       <a class="stat-card" href="/orders.html"><div class="n">${c.orders ?? 0}</div><div class="l">Orders</div></a>
-      <div class="stat-card"><div class="n">${c.inTransit ?? 0}</div><div class="l">On the way</div></div>
+      <div class="stat-card" title="Orders that have been dispatched, including any already delivered">
+        <div class="n">${c.inTransit ?? 0}</div>
+        <div class="l" aria-label="Dispatched, including delivered">Dispatched</div>
+      </div>
       <a class="stat-card" href="/wishlist.html"><div class="n">${c.wishlist ?? 0}</div><div class="l">Saved</div></a>
       <a class="stat-card" href="/cart.html"><div class="n">${c.bag ?? 0}</div><div class="l">In your bag</div></a>
     </div>
@@ -346,7 +355,9 @@ function wireShell() {
   );
 
   root.querySelector('[data-signout]')?.addEventListener('click', async (e) => {
-    e.preventDefault();
+    /* A real button, so there is no link default to suppress any more. */
+    const btn = e.currentTarget;
+    AV.setBusy(btn, true);
     try {
       await AV.auth.logout();
     } catch (_err) {
@@ -666,11 +677,11 @@ function renderAuth() {
 
   root.innerHTML = `
     <div style="max-width:480px;margin:0 auto">
-      <div class="tabs" role="tablist">
-        <button class="tab${mode === 'login' ? ' active' : ''}" role="tab" aria-selected="${mode === 'login'}" data-mode="login">Sign in</button>
-        <button class="tab${mode === 'register' ? ' active' : ''}" role="tab" aria-selected="${mode === 'register'}" data-mode="register">Create account</button>
+      <div class="tabs" role="tablist" aria-label="Sign in or create an account">
+        <button class="tab${mode === 'login' ? ' active' : ''}" type="button" role="tab" id="tab-login" aria-selected="${mode === 'login'}" aria-controls="authForm" tabindex="${mode === 'login' ? '0' : '-1'}" data-mode="login">Sign in</button>
+        <button class="tab${mode === 'register' ? ' active' : ''}" type="button" role="tab" id="tab-register" aria-selected="${mode === 'register'}" aria-controls="authForm" tabindex="${mode === 'register' ? '0' : '-1'}" data-mode="register">Create account</button>
       </div>
-      <form id="authForm" novalidate>
+      <form id="authForm" role="tabpanel" aria-labelledby="tab-${mode}" tabindex="-1" novalidate>
         <p class="form-msg"></p>
         ${mode === 'register' ? '<label>Full name<input name="name" required autocomplete="name" autofocus></label>' : ''}
         <label>Email<input type="email" name="email" required autocomplete="email"${mode === 'login' ? ' autofocus' : ''}></label>
@@ -687,7 +698,11 @@ function renderAuth() {
       </p>
     </div>`;
 
-  root.querySelectorAll('[data-mode]').forEach((b) =>
+  /* Roving tabindex plus arrow keys: a tablist is one stop in the tab order,
+     with arrow keys moving between the tabs. Left as two ordinary buttons in
+     the tab order, it read as a tablist to a screen reader but behaved like
+     two links, and the selected state was announced on neither. */
+  root.querySelectorAll('[data-mode]').forEach((b) => {
     b.addEventListener('click', () => {
       C.setParams({ view: b.dataset.mode });
       /* The mode is the navigation state here, so it is read back from the URL
@@ -696,8 +711,24 @@ function renderAuth() {
       const url = new URL(location.href);
       authMode = AUTH_VIEWS.includes(url.searchParams.get('view')) ? url.searchParams.get('view') : 'login';
       renderAuth();
-    })
-  );
+      /* The DOM is rebuilt, so focus is placed on the now-current tab rather
+         than left on <body>. `autofocus` in the markup cannot do this job: the
+         HTML parser ignores it on dynamically inserted content. */
+      AV.qs(`#tab-${authMode}`)?.focus();
+    });
+
+    b.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+      e.preventDefault();
+      const tabs = [...root.querySelectorAll('[data-mode]')];
+      const i = tabs.indexOf(b);
+      const next = e.key === 'Home' ? 0
+        : e.key === 'End' ? tabs.length - 1
+        : (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      tabs[next].focus();
+      tabs[next].click();
+    });
+  });
 
   C.onSubmit(AV.qs('#authForm'), async (body) => {
     if (mode === 'register') {

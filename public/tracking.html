@@ -26,7 +26,7 @@
 <meta name="twitter:description" content="Where your parcel is and what happens next.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
-<body>
+<body data-av-auth="required">
 <a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
@@ -101,12 +101,16 @@ async function load() {
     render(await AV.orders.tracking(ref));
   } catch (err) {
     C.clearBusy(pane);
-    C.error(pane, err, { level: 'h2', title: 'We could not load tracking for that order' });
+    C.error(pane, err, { level: 'h2', title: 'We could not load tracking for that order', retry: load });
+    /* The heading level is configurable, so the recovery note is placed after
+       whatever heading C.error actually rendered rather than assuming h3.
+       Reaching for a fixed tag meant the note and its escape route were silently
+       dropped on every page that used level:'h2'. */
     const el = AV.qs('.av-state', pane);
     if (el) {
       const p = document.createElement('p');
       p.innerHTML = 'It may belong to another account, or the reference may be wrong. <a href="/orders.html">See all your orders</a>.';
-      el.querySelector('h3')?.after(p);
+      (el.querySelector('h1, h2, h3, h4') || el).after(p);
     }
     AV.qs('#trackTitle').textContent = 'Tracking unavailable.';
     AV.qs('#trackSub').textContent = 'We could not match that reference to an order on your account.';
@@ -132,7 +136,16 @@ function render(data) {
             <span>${C.money(order.total)}</span>
           </div>
         </div>
-        ${C.statusBadge(order.status)}
+        ${/* The order's own status, and the shipment's, are two different
+              enums from two different documents and they can disagree — an
+              order marked delivered while the last carrier scan says in transit,
+              or a shipment flagged as an exception on a still-processing order.
+              Two bare pills of different colours gave the customer no way to
+              tell which was which, so both are named. */ ''}
+        <div class="track-badges">
+          <span class="track-badge-label">Order</span>
+          ${C.statusBadge(order.status)}
+        </div>
       </div>
       <div class="order-card-actions">
         <a class="btn btn-outline btn-sm" href="/orders/${encodeURIComponent(order.orderNumber)}">View the full order</a>
@@ -144,6 +157,10 @@ function render(data) {
 
 function subtitle(order, tracking, trackable) {
   if (tracking?.deliveredAt) return 'Delivered. Thank you for ordering with us.';
+  /* A carrier is attached but the order is not marked shipped yet. The server
+     still considers that "not trackable", so the honest line is "the courier
+     details are below" — not "here is where your parcel has got to". */
+  if (tracking && !trackable) return 'A courier has been booked. We will update this page once it moves.';
   if (trackable) return 'Here is where your parcel has got to.';
   return 'This one has not been handed to a courier yet.';
 }
@@ -152,9 +169,24 @@ function body({ tracking, trackable, message }) {
   /* Shipped, and the carrier has a record: the useful case. */
   if (tracking && trackable) return carrierSection(tracking);
 
+  /* A courier record exists but the order is not in a shipped state. That
+     window is real — an admin can attach the carrier while the order is still
+     paid or processing — and falling through to the "not on its way yet" branch
+     threw away the carrier name and tracking number the server had just sent,
+     while telling the customer the opposite of what it knew. */
+  if (tracking) {
+    return `
+      ${summary(tracking)}
+      <div class="av-state">
+        <h3>Booked, not yet moving</h3>
+        <p>${AV.esc(message || 'Your courier details are above. Movement will appear here as soon as the parcel is scanned.')}</p>
+        <button class="btn btn-light" type="button" id="reload">Check again</button>
+      </div>`;
+  }
+
   /* Shipped per the order status, but the carrier has nothing yet. A real and
      common gap — the handover takes a scan we may not have seen. */
-  if (trackable && !tracking) {
+  if (trackable) {
     return `
       <div class="av-state">
         <h3>Waiting for the first scan</h3>
@@ -176,10 +208,64 @@ function body({ tracking, trackable, message }) {
 
 function carrierSection(t) {
   return `
+    ${progress(t)}
     ${summary(t)}
     ${timeline(t.events || [])}
     ${t.trackingUrl ? `<p class="note" style="margin-top:28px">You can also follow it on the carrier's own site:
       <a href="${AV.esc(t.trackingUrl)}" target="_blank" rel="noopener noreferrer">${AV.esc(t.carrier)} tracking ${AV.esc(t.trackingNumber)}</a>.</p>` : ''}`;
+}
+
+/* ── The four-step position of the parcel ────────────────────────────────
+   Fixed stages a customer recognises, mapped from the shipment status the
+   server stored. The previous version marked whichever event happened to be
+   last in the array as the current step, which meant an exception or a return
+   was drawn as a normally-progressing parcel: the last entry was always
+   "current" and every earlier one filled in, so the visual grammar said "on
+   track" whatever the carrier had actually reported. The step now comes from
+   the status, and a parcel that has gone wrong stops at the stage it reached
+   instead of pretending to have moved past it. */
+const STAGES = [
+  { key: 'placed', label: 'Order placed' },
+  { key: 'processing', label: 'Processing' },
+  { key: 'transit', label: 'In transit' },
+  { key: 'delivered', label: 'Delivered' },
+];
+
+/* Shipment.status -> stage. The carrier's own enum, not the order's: this rail
+   is about the parcel. `exception` and `returned` deliberately map to transit,
+   the last stage actually reached, so the rail shows where things went wrong
+   rather than a completed delivery. */
+const STAGE_OF_STATUS = {
+  label_created: 2,
+  picked_up: 2,
+  in_transit: 2,
+  out_for_delivery: 2,
+  exception: 2,
+  returned: 2,
+  delivered: 3,
+};
+
+function progress(t) {
+  /* A delivered parcel is shown from the delivery date, because the carrier
+     can leave the last event as `in_transit` on a hand-delivered order. */
+  const index = t.deliveredAt ? 3 : STAGE_OF_STATUS[t.status] ?? 2;
+
+  return `
+    <h2 class="track-progress-h">Where it has got to</h2>
+    <ol class="track-steps track-steps--rail" aria-label="Delivery progress">
+      ${STAGES.map((s, i) => {
+        const state = i < index ? 'is-done' : i === index ? 'is-current' : 'is-pending';
+        const word = i < index ? 'done' : i === index ? 'current step' : 'not reached';
+        return `
+        <li class="track-step ${state}" ${i === index ? 'aria-current="step"' : ''}>
+          <span class="dot" aria-hidden="true"></span>
+          <div>
+            <h3>${AV.esc(s.label)}</h3>
+            <span class="sr-only">${word}</span>
+          </div>
+        </li>`;
+      }).join('')}
+    </ol>`;
 }
 
 function summary(t) {
@@ -194,7 +280,10 @@ function summary(t) {
           </div>
           ${deliveryLine(t)}
         </div>
-        ${delivered ? '' : C.statusBadge(t.status)}
+        ${delivered ? '' : `<div class="track-badges">
+          <span class="track-badge-label">Carrier</span>
+          ${C.statusBadge(t.status)}
+        </div>`}
       </div>
     </div>`;
 }
@@ -205,13 +294,31 @@ function deliveryLine(t) {
   if (t.deliveredAt) {
     return `<div class="num" style="font-size:26px">Delivered ${AV.formatDate(t.deliveredAt)}</div>`;
   }
+  /* The headline is the carrier's own status, read from the server. It used to
+     be the constant "In transit", chosen only because no delivery date had been
+     recorded — which printed "In transit" directly underneath a badge reading
+     EXCEPTION or RETURNED, on the same card. */
+  const headline = SHIPMENT_HEADLINE[t.status] || 'With the carrier';
   if (t.estimatedDelivery) {
-    return `<div class="num" style="font-size:26px">Estimated ${AV.formatDate(t.estimatedDelivery)}</div>
-      <div class="meta"><span>Estimated by ${AV.esc(t.carrier || 'the carrier')}</span></div>`;
+    return `<div class="num" style="font-size:26px">${AV.esc(headline)}</div>
+      <div class="meta"><span>Estimated ${AV.formatDate(t.estimatedDelivery)} by ${AV.esc(t.carrier || 'the carrier')}</span></div>`;
   }
-  return `<div class="num" style="font-size:26px">In transit</div>
+  return `<div class="num" style="font-size:26px">${AV.esc(headline)}</div>
     <div class="meta"><span>No delivery estimate yet</span></div>`;
 }
+
+/* Customer-facing wording per shipment status. Presentation only — the status
+   string itself is what the server stored, and the badge beside this line shows
+   it verbatim rather than having it softened into something friendlier. */
+const SHIPMENT_HEADLINE = {
+  label_created: 'Label created',
+  picked_up: 'Collected by the courier',
+  in_transit: 'In transit',
+  out_for_delivery: 'Out for delivery',
+  exception: 'Delivery delayed',
+  returned: 'Returning to us',
+  delivered: 'Delivered',
+};
 
 /* Events arrive oldest-first, so the list reads downwards as a story rather
    than needing to be reversed by the reader. The newest event is marked
@@ -235,7 +342,7 @@ function timeline(events) {
         <li class="track-step ${isCurrent ? 'is-current' : 'is-done'}">
           <span class="dot" aria-hidden="true"></span>
           <div>
-            <h4>${AV.esc(e.title || e.status || 'Update')}</h4>
+            <h3 class="track-event-h">${AV.esc(e.title || e.status || 'Update')}</h3>
             <div class="when">
               <time datetime="${AV.esc(e.occurredAt || '')}">${AV.formatDate(e.occurredAt)}</time>
               ${e.occurredAt ? ` at ${AV.formatTime(e.occurredAt)}` : ''}
@@ -250,8 +357,15 @@ function timeline(events) {
     </ol>`;
 }
 
+/* Delegated on `pane`, which survives the innerHTML re-renders. The button is
+   disabled while the request is in flight — two clicks meant two concurrent
+   GETs, and the slower one could land last and overwrite the newer result with
+   older tracking. */
 pane.addEventListener('click', (e) => {
-  if (e.target.closest('#reload')) load();
+  const btn = e.target.closest('#reload');
+  if (!btn) return;
+  AV.setBusy(btn, true);
+  load().finally(() => AV.setBusy(btn, false));
 });
 </script>
 </body>

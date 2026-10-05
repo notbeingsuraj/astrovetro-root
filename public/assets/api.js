@@ -81,11 +81,19 @@ window.AV = window.AV || {};
       /* 401 means the session is gone or expired — an expired cookie, a revoked
          token, or a password change. Cached identity is now a lie, so it is
          dropped once here rather than left to look signed-in. Retrying is
-         pointless: the same cookie would fail again. */
+         pointless: the same cookie would fail again.
+
+         The path travels with the event so the customer pages can tell a lost
+         session from a rejected password. `AV.me()` probes /api/auth/me and
+         expects a 401 from every signed-out visitor — that is the normal answer,
+         not a session that expired — and /api/auth/login answers 401 for a wrong
+         password, which must be shown as a form error rather than turned into a
+         redirect. Only a 401 from anything else means a session that was there
+         has gone. */
       if (res.status === 401 && !handlingUnauthorised) {
         handlingUnauthorised = true;
         AV.setUser?.(null);
-        AV.emit('auth', null);
+        AV.emit('auth', { user: null, reason: 'unauthorised', path });
         /* Released on a later turn, not synchronously. Resetting in the same
            tick meant the flag was already false when the next response of the
            same burst was handled, so every parallel 401 re-ran the whole signed-
@@ -168,6 +176,24 @@ window.AV = window.AV || {};
       .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       .toLowerCase();
 
+  /* For a value interpolated into a CSS url('…') inside a style attribute.
+
+     AV.esc is not enough here, and the reason is worth stating: AV.esc turns a
+     single quote into &#39;, and the HTML parser decodes that back to a real
+     quote before the CSS is parsed. So a crafted image value could close the
+     url() and append declarations of its own. Not script execution — the modern
+     engines block javascript: URLs in CSS — but CSS injection into a style
+     attribute nonetheless.
+
+     Anything that could end the url(), start a new declaration or begin an
+     escape sequence is dropped. A URL that survives this is a plain absolute
+     path or https URL, which is all a product image ever is. */
+  AV.cssUrl = (u) =>
+    String(u ?? '')
+      .replace(/["'()\\<>]/g, '')
+      .replace(/[\u0000-\u001f\u007f]/g, '')
+      .trim();
+
   AV.formatPrice = (n) => `\u20b9${Number(n || 0).toLocaleString('en-IN')}`;
   AV.formatDate = (iso) => {
     if (!iso) return '\u2014';
@@ -190,17 +216,40 @@ window.AV = window.AV || {};
     }
     return err.message || 'Something went wrong.';
   };
+  /* Toasts are the only feedback on a good number of account actions — an
+     address saved, a default changed, a sign-out. With no live region they
+     existed only for sighted users, so every one of those confirmations was
+     silent to a screen reader. The region is created empty and announced,
+     and each toast carries role="status" so its own removal is also
+     announced rather than leaving a stale line behind. */
   AV.toast = (msg, type = 'ok') => {
-    let wrap = AV.qs('.toast-wrap') || (() => {
-      const d = document.createElement('div');
-      d.className = 'toast-wrap';
-      document.body.appendChild(d);
-      return d;
-    })();
-    const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.textContent = msg;
-    wrap.appendChild(t);
+    let wrap = AV.qs('.toast-wrap');
+    /* A live region has to be in the document *before* the text goes in, or
+       assistive tech sees only the finished node and stays silent. So a newly
+       created region gets one frame to register before anything is added. */
+    const fresh = !wrap;
+    if (fresh) {
+      wrap = document.createElement('div');
+      wrap.className = 'toast-wrap';
+      wrap.setAttribute('role', 'status');
+      wrap.setAttribute('aria-live', 'polite');
+      wrap.setAttribute('aria-atomic', 'false');
+      document.body.appendChild(wrap);
+    }
+    const add = () => {
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.setAttribute('role', 'status');
+      t.textContent = msg;
+      wrap.appendChild(t);
+      setTimeout(() => {
+        t.style.opacity = '0';
+        t.style.transition = 'opacity .3s ease';
+        setTimeout(() => t.remove(), 320);
+      }, 3200);
+    };
+    if (fresh) requestAnimationFrame(add);
+    else add();
     setTimeout(() => {
       t.style.opacity = '0';
       t.style.transition = 'opacity .3s ease';
@@ -340,7 +389,7 @@ window.AV = window.AV || {};
       const data = unwrap(await request('POST', '/api/auth/login', { email, password }));
       if (data?.user) {
         AV.setUser?.(data.user);
-        AV.emit('auth', data.user);
+        AV.emit('auth', { user: data.user, reason: 'signed-in' });
       }
       return data?.user ?? null;
     },
@@ -352,14 +401,14 @@ window.AV = window.AV || {};
       const data = unwrap(await request('POST', '/api/auth/register', body));
       if (data?.user) {
         AV.setUser?.(data.user);
-        AV.emit('auth', data.user);
+        AV.emit('auth', { user: data.user, reason: 'signed-in' });
       }
       return data?.user ?? null;
     },
     logout: async () => {
       await request('POST', '/api/auth/logout');
       AV.setUser?.(null);
-      AV.emit('auth', null);
+      AV.emit('auth', { user: null, reason: 'signed-out' });
     },
   };
 

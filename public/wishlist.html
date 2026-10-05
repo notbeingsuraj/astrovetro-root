@@ -26,7 +26,7 @@
 <meta name="twitter:description" content="The pieces you have set aside for later.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
-<body>
+<body data-av-auth="required">
 <a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
@@ -180,6 +180,9 @@ async function move(productId, btn) {
   moving = productId;
   const card = btn.closest('[data-wish]');
   card.classList.add('is-busy');
+  /* Perceivable as well as visible: the card is mid-request, and a screen-reader
+     user gets no other signal that the button press did anything. */
+  card.setAttribute('aria-busy', 'true');
   btn.disabled = true;
   const original = btn.textContent;
   AV.setBusy(btn, true);
@@ -201,6 +204,7 @@ async function move(productId, btn) {
   } finally {
     moving = null;
     card.classList.remove('is-busy');
+    card.removeAttribute('aria-busy');
     btn.textContent = original;
     btn.disabled = false;
   }

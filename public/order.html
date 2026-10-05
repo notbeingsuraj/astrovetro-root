@@ -26,7 +26,7 @@
 <meta name="twitter:description" content="The detail of one of your orders.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
-<body>
+<body data-av-auth="required">
 <a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
@@ -83,6 +83,18 @@ const ref = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop(
    changes the wording of the confirmation, nothing else. */
 const justPlaced = C.readParam('placed') === '1';
 
+/* How the customer reads the payment method. The stored value is a machine
+   enum, and "cod" / "card" / "upi" were shown raw while the admin desk spelled
+   the same values out. Display wording only — the stored enum is what an order
+   is matched on, so it is never altered. */
+const PAYMENT_LABEL = {
+  cod: 'Cash on delivery',
+  card: 'Card',
+  upi: 'UPI',
+  netbanking: 'Net banking',
+  wallet: 'Wallet',
+};
+
 C.start('#orderPane', async (root) => {
   if (await C.needsDatabase()) return C.databaseUnavailable(pane);
 
@@ -107,17 +119,23 @@ async function load() {
     C.clearBusy(pane);
     /* 404 here means either "no such order" or "not yours". Both render the
        same way on purpose: distinguishing them would confirm which order
-       numbers exist. */
+       numbers exist. A 404 therefore gets no retry — trying again cannot make
+       an order appear. Everything else (500s, a dropped connection, a timeout)
+       is worth another attempt, and load() is safe to repeat. */
+    const missing = err && (err.status === 404 || err.status === 400);
     C.error(pane, err, {
       level: 'h2',
       title: 'We could not find that order',
-      retry: null,
+      retry: missing ? null : load,
     });
+    /* Placed after whichever heading C.error rendered. Looking for a fixed 'h3'
+       silently did nothing on this page, which asked for level:'h2' — so the
+       note and its only route out of the dead end were dropped. */
     const el = AV.qs('.av-state', pane);
     if (el) {
       const p = document.createElement('p');
       p.innerHTML = 'It may belong to another account, or the reference may be wrong. <a href="/orders.html">See all your orders</a>.';
-      el.querySelector('h3')?.after(p);
+      (el.querySelector('h1, h2, h3, h4') || el).after(p);
     }
     AV.qs('#orderTitle').textContent = 'Order not found.';
     AV.qs('#orderSub').textContent = 'We could not match that reference to an order on your account.';
@@ -139,6 +157,12 @@ function render(o) {
     : `Order ${o.orderNumber}.`;
   AV.qs('#orderSub').textContent = subtitle(o, paid);
 
+  /* Every totals row the server sent is listed, including tax. Tax is currently
+     zero and was therefore left out, which meant the visible rows summed to the
+     total only by coincidence — the first non-zero tax rate would have shown a
+     set of figures that did not add up, with nothing to indicate a line was
+     missing. The subtotal, the discount, the tax and the total are all server
+     values; only the sign of the discount is a display convention. */
   pane.innerHTML = `
     ${justPlaced ? confirmationNote(paid) : ''}
     <div class="order-card" style="margin-bottom:24px">
@@ -153,7 +177,7 @@ function render(o) {
         </div>
         <div style="display:grid;gap:6px;justify-items:end">
           ${C.statusBadge(o.status)}
-          <span class="meta" style="color:var(--text-muted)">${AV.esc(o.paymentMethod)}${o.paymentStatus && o.paymentStatus !== 'pending' ? ` · ${AV.esc(o.paymentStatus)}` : ''}</span>
+          <span class="meta" style="color:var(--text-muted)">${AV.esc(PAYMENT_LABEL[o.paymentMethod] || o.paymentMethod || '')}${o.paymentStatus && o.paymentStatus !== 'pending' ? ` · ${AV.esc(o.paymentStatus)}` : ''}</span>
         </div>
       </div>
       <div class="order-card-actions">
@@ -171,6 +195,7 @@ function render(o) {
       { label: 'Subtotal', value: o.subtotal },
       { label: 'Shipping', value: o.shipping, free: Number(o.shipping) === 0 },
       Number(o.discount) ? { label: 'Discount', value: -Math.abs(o.discount) } : null,
+      Number(o.tax) ? { label: 'Tax', value: o.tax } : null,
     ].filter(Boolean), { total: o.total, totalLabel: `Total (${AV.esc(o.currency || 'INR')})` })}
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;margin-top:36px">

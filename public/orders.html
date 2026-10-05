@@ -26,15 +26,15 @@
 <meta name="twitter:description" content="Every order you have placed with Astro Vetro.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
-<body>
+<body data-av-auth="required">
 <a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
 <header class="page-hero">
   <div class="wrap">
-    <a class="back" href="/account.html">← Your account</a>
+    <a class="back" href="/account.html?view=orders">← Your account</a>
     <div class="eyebrow">Everything you have chosen</div>
-    <h1>Your orders.</h1>
+    <h1 id="pageTitle">Your orders.</h1>
   </div>
 </header>
 
@@ -116,8 +116,18 @@ function render(orders) {
   C.clearBusy(pane);
 
   if (!orders.length) {
-    /* A filter that found nothing is not the same as having no orders, but the
-       only filter here is the page number, so one empty state covers both. */
+    /* Empty because the customer has never ordered, and empty because the page
+       number is past the end of the list, are different situations and read
+       identically here — a customer who reached page 4 by accident saw "No
+       orders yet", as though none existed. */
+    if (page > 1) {
+      return C.empty(pane, {
+        level: 'h2',
+        title: 'Nothing on this page',
+        body: 'You have gone past the end of your order history.',
+        actions: [{ label: 'Back to the newest orders', href: '/orders.html?page=1' }],
+      });
+    }
     return C.empty(pane, {
       level: 'h2',
       title: 'No orders yet',
@@ -131,7 +141,8 @@ function render(orders) {
 
   pane.innerHTML = `
     <div class="order-list">${orders.map(cardHTML).join('\n')}</div>
-    ${hasMore || page > 1 ? '<div id="pager" style="margin-top:28px;display:flex;gap:10px;justify-content:center"></div>' : ''}`;
+    ${hasMore || page > 1 ? '<div id="pager" role="group" aria-label="Order history pages" style="margin-top:28px;display:flex;gap:10px;justify-content:center"></div>' : ''}
+    <p class="sr-only" role="status" aria-live="polite" id="pageNote"></p>`;
   renderPager();
 }
 
@@ -145,7 +156,7 @@ function cardHTML(o) {
     <article class="order-card">
       <div class="order-card-head">
         <div>
-          <a class="num order-row-link" href="${href}">${AV.esc(o.orderNumber)}</a>
+          <h2 class="order-card-title"><a class="num order-row-link" href="${href}">${AV.esc(o.orderNumber)}</a></h2>
           <div class="meta">
             <span>${AV.formatDate(o.createdAt)}</span>
             <span>${AV.esc(C.pieces(itemCount))}</span>
@@ -193,7 +204,13 @@ function renderPager() {
       /* In the URL so a refresh keeps its place; replaceState so browsing
          history does not fill up with one entry per page. */
       C.setParams({ page: page > 1 ? page : null });
-      load();
+      load().then(() => {
+        /* The list was replaced wholesale and focus is now on nothing useful.
+           Announcing the move, and landing focus on the first order, keeps a
+           keyboard or screen-reader user oriented after the swap. */
+        AV.qs('#pageNote').textContent = `Showing page ${page} of your orders.`;
+        AV.qs('.order-card-title a')?.focus();
+      });
     })
   );
 }
