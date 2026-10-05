@@ -1,40 +1,110 @@
-/* Astro Vetro — API client. Talks to the backend through the same-origin /api proxy.
-   Every backend response uses the envelope: { success, message, data, meta }. */
+/* Astro Vetro — the one place the browser talks to the backend.
+
+   Every backend response uses the envelope: { success, message, data, meta }, so
+   `request` unwraps nothing and the resource modules below hand callers the
+   `data` value directly.
+
+   This module is the only file allowed to call `fetch`. Customer pages go
+   through AV.cart / AV.wishlist / AV.orders / etc., which means:
+
+     - one definition of what an error looks like;
+     - one place that knows a 401 means "signed out", so no page has to invent
+       its own reaction;
+     - one subscriber list, so the header cart badge can react to a cart change
+       on any page instead of every component polling for it.
+
+   Nothing here computes money. Totals, stock and payment state are whatever the
+   server returned; the client only renders them.
+*/
 
 window.AV = window.AV || {};
 
 (async function () {
-  async function request(method, path, body) {
-    const opts = { method, credentials: 'include', headers: {} };
-    if (body !== undefined) {
-      opts.headers['Content-Type'] = 'application/json';
-      opts.body = JSON.stringify(body);
+  /* Emitted whenever the server cart or wishlist changes, so a badge anywhere in
+     the document updates from one request rather than each component fetching
+     its own copy. Payload is the authoritative collection from the API. */
+  const listeners = { cart: new Set(), wishlist: new Set(), auth: new Set() };
+  AV.on = (channel, fn) => {
+    const set = listeners[channel];
+    if (!set) throw new Error(`Unknown channel: ${channel}`);
+    set.add(fn);
+    return () => set.delete(fn);
+  };
+  AV.emit = (channel, payload) => listeners[channel]?.forEach((fn) => {
+    try {
+      fn(payload);
+    } catch (err) {
+      /* A subscriber that throws must not stop the others, and must never
+         surface as an unhandled rejection on a page that otherwise worked. */
+      console.error(`[av] ${channel} subscriber failed`, err);
     }
+  });
+
+  /* Set while a request is 401-ing, so a burst of parallel calls from one page
+     triggers a single sign-out/redirect rather than one per call. */
+  let handlingUnauthorised = false;
+
+  async function request(method, path, body, opts = {}) {
+    const headers = opts.headers || {};
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+    const init = { method, credentials: 'include', headers };
+    if (body !== undefined) init.body = JSON.stringify(body);
+
+    /* Idempotency-Key is sent as a header so a retried POST cannot become a
+       second order. The backend treats a replay as the original response. */
+    if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey;
+
     let res;
     try {
-      res = await fetch(path, opts);
+      res = await fetch(path, init);
     } catch (_e) {
       const e = new Error('Could not reach the server. Is it running?');
       e.code = 'NETWORK';
       throw e;
     }
+
     let data = null;
     try {
       data = await res.json();
     } catch (_e) {
       /* non-JSON response */
     }
+
     if (!res.ok || !data || data.success === false) {
       const errInfo = (data && data.error) || {};
       const e = new Error(errInfo.message || data?.message || `Request failed (${res.status})`);
       e.code = errInfo.code || 'ERROR';
       e.status = res.status;
       e.details = errInfo.details;
+
+      /* 401 means the session is gone or expired — an expired cookie, a revoked
+         token, or a password change. Cached identity is now a lie, so it is
+         dropped once here rather than left to look signed-in. Retrying is
+         pointless: the same cookie would fail again. */
+      if (res.status === 401 && !handlingUnauthorised) {
+        handlingUnauthorised = true;
+        AV.setUser?.(null);
+        AV.emit('auth', null);
+        /* Released on a later turn, not synchronously. Resetting in the same
+           tick meant the flag was already false when the next response of the
+           same burst was handled, so every parallel 401 re-ran the whole signed-
+           out path. */
+        setTimeout(() => {
+          handlingUnauthorised = false;
+        }, 0);
+      }
+
+      /* 503 DATABASE_NOT_CONFIGURED is the no-database deployment, not a
+         failure. `code` lets a page show "not available yet" instead of an
+         error, without treating it as an outage. */
       throw e;
     }
+
     return data;
   }
 
+  /* Raw verbs, kept for the catalogue and the pages that already use them. */
   AV.api = {
     get: (path) => request('GET', path),
     post: (path, body) => request('POST', path, body),
@@ -63,11 +133,11 @@ window.AV = window.AV || {};
     if (capsPending) return capsPending;
     capsPending = request('GET', '/api/status')
       .then((env) => {
-        caps = Object.assign({ reachable: true, database: false, writable: false }, env && env.data);
+        caps = Object.assign({ reachable: true, database: false, writable: false, paymentsLive: false }, env && env.data);
         return caps;
       })
       .catch(() => {
-        caps = { reachable: false, provider: 'unknown', database: false, writable: false };
+        caps = { reachable: false, provider: 'unknown', database: false, writable: false, paymentsLive: false };
         return caps;
       })
       .finally(() => {
@@ -147,5 +217,208 @@ window.AV = window.AV || {};
       btn.textContent = btn.dataset.avText || text || 'Submit';
       btn.disabled = false;
     }
+  };
+  /* ── Commerce resources ───────────────────────────────────────────────
+     One function per backend route, and the only place a customer page needs
+     to know a URL. Names mirror the backend routes so the contract is checkable
+     by reading both files side by side.
+
+     Every function returns `data` — the useful part of the envelope — rather
+     than the envelope, because no page has any business reaching into `meta`.
+     Cart-shaped results additionally broadcast, which is what keeps the header
+     badge correct after an add, a quantity change or a checkout. */
+
+  const unwrap = (env) => env?.data;
+  const broadcastCart = (env) => {
+    const cart = unwrap(env);
+    if (cart?.cart) AV.emit('cart', cart.cart);
+    return cart;
+  };
+
+  /* The server bag. Raw resource access — pages should use AV.bag in store.js,
+     which decides between this and the guest bag rather than each page deciding
+     for itself. */
+  AV.cart = {
+    /* GET /api/cart — the authoritative bag. Totals in this object are computed
+       by the server from live product prices and stock. */
+    get: async () => broadcastCart(await request('GET', '/api/cart')),
+
+    /* POST /api/cart/items { productId, quantity }
+       productId is the database id from the catalogue, never a slug: the server
+       resolves the slug-or-id question itself and is the only thing that decides
+       what a line costs. */
+    add: async (productId, quantity = 1) => {
+      const env = await request('POST', '/api/cart/items', { productId, quantity });
+      return broadcastCart(env);
+    },
+
+    /* PATCH /api/cart/items/:productId { quantity } */
+    setQuantity: async (productId, quantity) => {
+      const env = await request('PATCH', `/api/cart/items/${encodeURIComponent(productId)}`, { quantity });
+      return broadcastCart(env);
+    },
+
+    remove: async (productId) => broadcastCart(await request('DELETE', `/api/cart/items/${encodeURIComponent(productId)}`)),
+    clear: async () => broadcastCart(await request('DELETE', '/api/cart')),
+  };
+
+  AV.wishlist = {
+    get: async () => {
+      const data = unwrap(await request('GET', '/api/wishlist'));
+      if (data?.wishlist) AV.emit('wishlist', data.wishlist);
+      return data?.wishlist ?? { items: [], count: 0 };
+    },
+    add: async (productId) => {
+      const data = unwrap(await request('POST', `/api/wishlist/${encodeURIComponent(productId)}`));
+      if (data?.wishlist) AV.emit('wishlist', data.wishlist);
+      return data?.wishlist ?? { items: [], count: 0 };
+    },
+    remove: async (productId) => {
+      const data = unwrap(await request('DELETE', `/api/wishlist/${encodeURIComponent(productId)}`));
+      if (data?.wishlist) AV.emit('wishlist', data.wishlist);
+      return data?.wishlist ?? { items: [], count: 0 };
+    },
+    /* POST /api/wishlist/:productId/move-to-cart
+       The backend decides whether the item stays saved. It only unsaves once the
+       cart add has actually succeeded, so a sold-out piece is never lost from
+       both lists. This does not second-guess that: it takes whatever comes back. */
+    moveToCart: async (productId, quantity = 1) => {
+      const data = unwrap(
+        await request('POST', `/api/wishlist/${encodeURIComponent(productId)}/move-to-cart`, { quantity })
+      );
+      if (data?.cart) AV.emit('cart', data.cart);
+      if (data?.wishlist) AV.emit('wishlist', data.wishlist);
+      return data;
+    },
+  };
+
+  AV.addresses = {
+    list: async () => unwrap(await request('GET', '/api/me/addresses')) ?? { addresses: [], count: 0 },
+    create: async (address) => unwrap(await request('POST', '/api/me/addresses', address))?.address,
+    update: async (addressId, patch) =>
+      unwrap(await request('PATCH', `/api/me/addresses/${encodeURIComponent(addressId)}`, patch))?.address,
+    /* Default is set by the server and read back from its response. The page
+       re-renders from that response rather than flipping a class locally, so the
+       UI cannot claim a default the database did not accept. */
+    setDefault: async (addressId) =>
+      unwrap(await request('POST', `/api/me/addresses/${encodeURIComponent(addressId)}/default`))?.address,
+    remove: async (addressId) => unwrap(await request('DELETE', `/api/me/addresses/${encodeURIComponent(addressId)}`)),
+  };
+
+  AV.orders = {
+    /* GET /api/orders — the signed-in customer's history. The server scopes this
+       to the session; there is no user id to pass and none is accepted.
+
+       `meta` is carried alongside `orders` rather than dropped, because paging a
+       list needs `hasMore`: without it a page that happens to hold exactly the
+       page size is indistinguishable from the last one. */
+    list: async (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      const env = await request('GET', `/api/orders${qs ? `?${qs}` : ''}`);
+      return { ...(unwrap(env) ?? { orders: [], trackable: false }), meta: env.meta ?? null };
+    },
+    /* GET /api/orders/:orderId — one order, by its own request. Deliberately
+       not "list then filter": that would fetch every order a customer has ever
+       placed just to render one. */
+    get: async (orderId) => unwrap(await request('GET', `/api/orders/${encodeURIComponent(orderId)}`))?.order,
+    /* GET /api/orders/:orderId/tracking */
+    tracking: async (orderId) => unwrap(await request('GET', `/api/orders/${encodeURIComponent(orderId)}/tracking`)),
+  };
+
+  AV.account = {
+    /* GET /api/me — the account aggregate: identity, counts, default address and
+       latest order, in one request, so the dashboard is never a page of
+       separately-loaded panels that can disagree with each other. */
+    summary: async () => unwrap(await request('GET', '/api/me')),
+    updateProfile: async (patch) => unwrap(await request('PATCH', '/api/me', patch))?.user,
+    changePassword: async (currentPassword, newPassword) =>
+      unwrap(await request('POST', '/api/me/password', { currentPassword, newPassword })),
+  };
+
+  AV.auth = {
+    login: async (email, password) => {
+      const data = unwrap(await request('POST', '/api/auth/login', { email, password }));
+      if (data?.user) {
+        AV.setUser?.(data.user);
+        AV.emit('auth', data.user);
+      }
+      return data?.user ?? null;
+    },
+    /* `phone` is optional in the schema and only used to prefill a later
+       address, so it is sent when known and omitted otherwise. */
+    register: async (name, email, password, phone) => {
+      const body = { name, email, password };
+      if (phone) body.phone = phone;
+      const data = unwrap(await request('POST', '/api/auth/register', body));
+      if (data?.user) {
+        AV.setUser?.(data.user);
+        AV.emit('auth', data.user);
+      }
+      return data?.user ?? null;
+    },
+    logout: async () => {
+      await request('POST', '/api/auth/logout');
+      AV.setUser?.(null);
+      AV.emit('auth', null);
+    },
+  };
+
+  AV.checkout = {
+    /* POST /api/checkout/cod — places the order. No items, no prices, no
+       totals: the server reads the customer's own cart and prices it. An
+       idempotency key is generated per attempt so a double-click or a retry
+       after a dropped response cannot become a second order. */
+    cod: async (payload, idempotencyKey) => {
+      /* A caller-supplied key is honoured so every retry of one attempt carries
+         the same token. Generating a fresh key per call would turn a retry after
+         a dropped response into a second order. */
+      const env = await request('POST', '/api/checkout/cod', payload, {
+        idempotencyKey: idempotencyKey || AV.newIdempotencyKey(),
+      });
+      const data = unwrap(env);
+      /* The server empties the bag on success. Broadcasting keeps the header
+         badge honest on the confirmation page it is about to navigate to. */
+      if (data?.order) AV.emit('cart', { itemCount: 0, lines: [] });
+      return data?.order ?? null;
+    },
+
+    /* POST /api/checkout/session — creates the provider order and returns only
+       what the Razorpay script legitimately needs: keyId, the order id, and the
+       amount the SERVER calculated. The amount is passed through to Razorpay,
+       never computed here. */
+    session: async (payload, idempotencyKey) => {
+      /* Same rule as COD: reuse the caller's key when given one. The session is
+         what creates the provider order, so a key minted per call would leave a
+         retry with a second pending order behind the first. */
+      const key = idempotencyKey || AV.newIdempotencyKey();
+      const data = unwrap(await request('POST', '/api/checkout/session', payload, { idempotencyKey: key }));
+      return { ...(data ?? {}), idempotencyKey: key };
+    },
+
+    /* POST /api/checkout/confirm — the only thing that decides whether an order
+       is paid. The browser never asserts payment succeeded; it hands over the
+       provider's response and the server verifies the signature. */
+    confirm: async (payload, idempotencyKey) => {
+      const env = await request('POST', '/api/checkout/confirm', payload, { idempotencyKey });
+      const data = unwrap(env);
+      if (data?.order?.paymentStatus === 'paid') AV.emit('cart', { itemCount: 0, lines: [] });
+      return data?.order ?? null;
+    },
+  };
+
+  /* One key per checkout attempt, reused across the retries of that attempt.
+     crypto.randomUUID is available in every browser that supports the rest of
+     this site; the fallback is for the rare case it is not. */
+  AV.newIdempotencyKey = () =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `k-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
+  /* Whether this deployment can take a payment at all, from /api/status.
+     Checked so checkout can offer cash on delivery and explain why card is
+     absent, rather than rendering a payment step that cannot complete. */
+  AV.paymentsAvailable = async () => {
+    const caps = await AV.capabilities().catch(() => null);
+    return Boolean(caps && caps.paymentsLive);
   };
 })();

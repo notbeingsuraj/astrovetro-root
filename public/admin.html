@@ -7,7 +7,7 @@
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/img/favicon.svg">
 <meta name="robots" content="noindex, nofollow">
-<meta name="description" content="Internal dashboard.">
+<meta name="description" content="Internal order and inventory desk.">
 <title>Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,12 +18,12 @@
 <meta property="og:site_name" content="Astro Vetro">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Admin — Astro Vetro">
-<meta property="og:description" content="Internal dashboard.">
+<meta property="og:description" content="Internal order and inventory desk.">
 <meta property="og:url" content="/admin.html">
 <meta property="og:image" content="/assets/img/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Admin — Astro Vetro">
-<meta name="twitter:description" content="Internal dashboard.">
+<meta name="twitter:description" content="Internal order and inventory desk.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
@@ -35,7 +35,7 @@
     <a class="back" href="/account.html">← Account</a>
     <div class="eyebrow">Astro Vetro desk</div>
     <h1>Admin</h1>
-    <p class="sub">Orders, readings, inventory and messages.</p>
+    <p class="sub">Order fulfilment and inventory.</p>
   </div>
 </header>
 
@@ -49,14 +49,72 @@
 
 <script src="/assets/api.js"></script>
 <script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
 <script>
 AV.boot();
+const C = AV.customer;
 const root = AV.qs('#admRoot');
 let view = new URLSearchParams(location.search).get('view') || 'dashboard';
 
-const CATEGORIES = ['ring', 'bracelet', 'pendant', 'tower', 'cluster', 'tumble', 'raw', 'other'];
-const ORDER_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'];
+/* The order state machine, mirrored from the backend so the menu can offer only
+   the moves the server will accept. The server still refuses anything invalid —
+   this is a courtesy to the person clicking, not the authority. An illegal edge
+   here would produce a rejected request and an error toast, so it is left out
+   entirely and a terminal status simply offers no moves. */
+const ORDER_STATUSES = [
+  'pending', 'paid', 'processing', 'shipped', 'in_transit',
+  'delivered', 'payment_failed', 'cancelled', 'refunded',
+];
+
+const TRANSITIONS = {
+  pending: ['paid', 'processing', 'shipped', 'payment_failed', 'cancelled'],
+  paid: ['processing', 'shipped', 'cancelled', 'refunded'],
+  processing: ['shipped', 'cancelled', 'refunded'],
+  shipped: ['in_transit', 'delivered'],
+  in_transit: ['delivered'],
+  delivered: [],
+  payment_failed: ['pending', 'cancelled'],
+  cancelled: [],
+  refunded: [],
+};
+
+const SHIPMENT_STATUSES = [
+  'label_created', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'exception', 'returned',
+];
+
+/* Labels for the internal enum values, so the desk reads as English rather than
+   as snake_case column names. */
+const STATUS_LABELS = {
+  pending: 'Pending',
+  paid: 'Paid',
+  processing: 'Processing',
+  shipped: 'Shipped',
+  in_transit: 'In transit',
+  delivered: 'Delivered',
+  payment_failed: 'Payment failed',
+  cancelled: 'Cancelled',
+  refunded: 'Refunded',
+  label_created: 'Label created',
+  picked_up: 'Picked up',
+  out_for_delivery: 'Out for delivery',
+  exception: 'Exception',
+  returned: 'Returned',
+  cod: 'Cash on delivery',
+  card: 'Card',
+  upi: 'UPI',
+};
+
+const label = (v) => STATUS_LABELS[v] || String(v || '').replace(/_/g, ' ');
+const nextStatuses = (from) => [from, ...(TRANSITIONS[from] || [])];
+
+/* C.error fills an element rather than returning markup, so it is pointed at a
+   detached node whose HTML is then adopted into the pane. */
+const fail = (pane, err) => {
+  const holder = document.createElement('div');
+  C.error(holder, err, { retry: () => route(pane), level: 'h2' });
+  pane.innerHTML = holder.innerHTML;
+  pane.querySelector('[data-retry]')?.addEventListener('click', () => route(pane));
+};
 
 async function init() {
   const user = await AV.me();
@@ -71,13 +129,14 @@ async function init() {
     </div>`;
     return;
   }
+  /* Only the sections the API actually serves. Readings, subscribers and
+     messages had no backend at all — the old page called /api/bookings,
+     /api/newsletter and /api/contact, none of which exist, so each of those tabs
+     could only ever have shown an error. */
   const tabs = [
     ['dashboard', 'Overview'],
     ['orders', 'Orders'],
-    ['bookings', 'Readings'],
-    ['products', 'Products'],
-    ['subscribers', 'Subscribers'],
-    ['messages', 'Messages'],
+    ['products', 'Inventory'],
   ];
   view = tabs.some(([k]) => k === view) ? view : 'dashboard';
   root.innerHTML = `<div class="tabs" id="admTabs">${tabs.map(([k, l]) => `<button class="tab${k === view ? ' active' : ''}" data-view="${k}">${l}</button>`).join('')}</div><div id="admPane"></div>`;
@@ -97,264 +156,272 @@ async function route(pane) {
   pane.innerHTML = '<div class="empty">Loading…</div>';
   if (view === 'dashboard') await dashboard(pane);
   else if (view === 'orders') await orders(pane);
-  else if (view === 'bookings') await bookings(pane);
-  else if (view === 'products') await products(pane);
-  else if (view === 'subscribers') await subscribers(pane);
-  else if (view === 'messages') await messages(pane);
+  else if (view === 'products') await inventory(pane);
 }
 
 /* ── Dashboard ─────────────────────────────────────────────────── */
+/* GET /api/admin/dashboard. Counts only — no revenue figure, because the
+   endpoint does not report one and inventing one client-side from a page of
+   orders would be a number this page cannot stand behind. */
 async function dashboard(pane) {
+  C.skeleton(pane, 3);
   try {
-    const s = (await AV.api.get('/api/admin/stats')).data;
+    const s = (await AV.api.get('/api/admin/dashboard')).data;
+    const byStatus = s.byStatus || {};
+    const rows = ORDER_STATUSES.filter((k) => byStatus[k]).map(
+      (k) => `<div class="row"><span>${AV.esc(label(k))}</span><span>${byStatus[k]}</span></div>`
+    );
     pane.innerHTML = `
       <div class="stat-grid">
-        <div class="stat-card"><div class="n">${s.orderCount}</div><div class="l">Orders</div></div>
-        <div class="stat-card"><div class="n">${AV.formatPrice(s.revenue)}</div><div class="l">Revenue</div></div>
-        <div class="stat-card"><div class="n">${s.todayOrders}</div><div class="l">Orders today</div></div>
-        <div class="stat-card"><div class="n">${s.bookingCount}</div><div class="l">Readings</div></div>
-        <div class="stat-card"><div class="n">${s.productCount}</div><div class="l">Products</div></div>
-        <div class="stat-card"><div class="n">${s.subscriberCount}</div><div class="l">Subscribers</div></div>
-        <div class="stat-card"><div class="n">${s.messageCount}</div><div class="l">New messages</div></div>
+        <div class="stat-card"><div class="n">${s.total}</div><div class="l">Orders</div></div>
+        <div class="stat-card"><div class="n">${s.unpaid}</div><div class="l">Awaiting payment</div></div>
+        <div class="stat-card"><div class="n">${s.lowStock}</div><div class="l">Low stock</div></div>
       </div>
-      <div class="notice">A glimpse of the shop floor. Use the tabs above for orders, readings, inventory, subscribers and messages.</div>`;
+      ${rows.length ? `<h2 style="font:400 var(--text-h2) var(--font-display);margin:34px 0 10px">By status</h2>
+      <div class="order-totals">${rows.join('\n        ')}</div>` : ''}
+      <div class="notice" style="margin-top:26px">Fulfilment happens on the Orders tab: move an order through its states and attach a tracking number so the customer can follow it.</div>`;
   } catch (e) {
-    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+    fail(pane, e);
   }
 }
 
 /* ── Orders ───────────────────────────────────────────────────── */
+/* Every row is keyed by the order's own id, never its order number: the status
+   and shipment endpoints both take an id, and the number is display text. */
+function orderRow(o) {
+  return `
+    <tr>
+      <td><a href="/orders/${encodeURIComponent(o.orderNumber)}">${AV.esc(o.orderNumber)}</a>
+        <div class="muted">${AV.formatDate(o.createdAt)}</div></td>
+      <td>${AV.esc(o.customerEmail || '—')}</td>
+      <td>${AV.formatPrice(o.total)}<div class="muted">${AV.esc(label(o.paymentMethod))}</div></td>
+      <td>${C.statusBadge(o.status)}</td>
+      <td>${C.statusBadge(o.paymentStatus)}</td>
+      <td><button class="btn btn-ghost btn-sm" data-manage="${AV.esc(o.id)}">Manage</button></td>
+    </tr>`;
+}
+
 async function orders(pane) {
+  C.skeleton(pane, 4);
   try {
-    const env = await AV.api.get('/api/orders?limit=50');
-    const list = env.data || [];
+    const qs = new URLSearchParams({ page: '1', limit: '50' });
+    const env = await AV.api.get(`/api/admin/orders?${qs}`);
+    const list = env.data?.orders || [];
     pane.innerHTML = list.length
       ? `<div class="table-wrap"><table>
-        <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Date</th><th>Status</th></tr></thead>
-        <tbody>${list.map((o) => `
-          <tr>
-            <td><a href="/order.html?number=${encodeURIComponent(o.orderNumber)}">${AV.esc(o.orderNumber)}</a></td>
-            <td>${AV.esc(o.customer?.name || '—')}</td>
-            <td>${AV.formatPrice(o.total)}</td>
-            <td class="muted">${AV.formatDate(o.createdAt)}</td>
-            <td><select data-order="${o._id}">${statusOptions(ORDER_STATUSES, o.status)}</select></td>
-          </tr>`).join('')}
-        </tbody></table></div>`
+        <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Payment</th><th></th></tr></thead>
+        <tbody>${list.map(orderRow).join('')}</tbody></table></div>`
       : '<div class="empty">No orders yet.</div>';
 
-    AV.qs('tbody').addEventListener('change', async (e) => {
-      const sel = e.target.closest('[data-order]');
-      if (!sel) return;
-      try {
-        await AV.api.patch(`/api/orders/${sel.dataset.order}`, { status: sel.value });
-        AV.toast('Order status updated.', 'ok');
-      } catch (err) {
-        AV.toast(AV.firstErr(err), 'err');
-      }
+    pane.querySelector('tbody')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-manage]');
+      if (!btn) return;
+      manageOrder(btn.dataset.manage);
     });
   } catch (e) {
-    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+    fail(pane, e);
   }
 }
 
-/* ── Bookings ─────────────────────────────────────────────────── */
-async function bookings(pane) {
-  try {
-    const env = await AV.api.get('/api/bookings?limit=50');
-    const list = env.data || [];
-    pane.innerHTML = list.length
-      ? `<div class="table-wrap"><table>
-        <thead><tr><th>Reading</th><th>Name</th><th>Contact</th><th>When</th><th>Status</th></tr></thead>
-        <tbody>${list.map((b) => `
-          <tr>
-            <td>${AV.esc(b.serviceName)}</td>
-            <td>${AV.esc(b.name)}</td>
-            <td class="muted">${AV.esc(b.email)}</td>
-            <td class="muted">${AV.formatDate(b.preferredDate)} ${AV.esc(b.preferredTime || '')}</td>
-            <td><select data-booking="${b._id}">${statusOptions(BOOKING_STATUSES, b.status)}</select></td>
-          </tr>`).join('')}
-        </tbody></table></div>`
-      : '<div class="empty">No reading requests yet.</div>';
+/* One order at a time: its legal next states, and — once it is on its way — the
+   tracking details the customer will see. */
+async function manageOrder(orderId) {
+  const body = document.createElement('div');
+  C.loading(body, 'Loading this order…');
+  const dlg = AV.qs('#admDialog') || (() => {
+    const d = document.createElement('dialog');
+    d.id = 'admDialog';
+    d.className = 'adm-dialog';
+    document.body.appendChild(d);
+    return d;
+  })();
+  dlg.innerHTML = '';
+  dlg.appendChild(body);
+  if (!dlg.open) dlg.showModal();
+  C.loading(body, 'Loading this order…');
 
-    AV.qs('tbody').addEventListener('change', async (e) => {
-      const sel = e.target.closest('[data-booking]');
-      if (!sel) return;
-      try {
-        await AV.api.patch(`/api/bookings/${sel.dataset.booking}`, { status: sel.value });
-        AV.toast('Reading status updated.', 'ok');
-      } catch (err) {
-        AV.toast(AV.firstErr(err), 'err');
-      }
-    });
-  } catch (e) {
-    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  let data;
+  try {
+    data = (await AV.api.get(`/api/admin/orders/${encodeURIComponent(orderId)}`)).data;
+  } catch (err) {
+    C.error(body, err, { retry: () => manageOrder(orderId), level: 'h2' });
+    return;
   }
+
+  const o = data.order;
+  const moves = (TRANSITIONS[o.status] || []).map(
+    (s) => `<option value="${s}"${s === o.status ? ' selected' : ''}>${AV.esc(label(s))}</option>`
+  );
+
+  body.innerHTML = `
+    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:4px">${AV.esc(o.orderNumber)}</h2>
+    <p class="note">${AV.esc(o.customerEmail)} · ${C.statusBadge(o.status)} · ${C.statusBadge(o.paymentStatus)}</p>
+
+    <h3 style="margin:24px 0 8px">Move this order on</h3>
+    ${moves.length
+      ? `<form id="statusForm" class="form-narrow">
+          <label>New status<select name="status">${moves.join('')}</select></label>
+          <label>Note <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional, shown on delivery)</span>
+            <input name="note" maxlength="300"></label>
+          <button class="btn btn-light btn-sm" type="submit">Update status</button>
+          <p class="form-msg"></p>
+        </form>`
+      : `<p class="note">This order is ${AV.esc(label(o.status))}, which is a final state. There is nothing further to change.</p>`}
+
+    <h3 style="margin:28px 0 8px">Tracking</h3>
+    ${data.tracking ? shipmentBlock(data.tracking) : `
+      <form id="shipForm" class="form-narrow">
+        <label>Carrier<input name="carrier" required placeholder="Delhivery"></label>
+        <label>Tracking number<input name="trackingNumber" required></label>
+        <label>Tracking link <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
+          <input name="trackingUrl" type="url"></label>
+        <label>Estimated delivery <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
+          <input name="estimatedDelivery" type="date"></label>
+        <button class="btn btn-light btn-sm" type="submit">Attach tracking</button>
+        <p class="form-msg"></p>
+      </form>
+      <p class="note">Attaching a tracking number is what makes the customer's tracking page show a timeline.</p>`}
+
+    ${data.tracking ? eventForm(data.tracking) : ''}
+    <div style="margin-top:24px"><button class="btn btn-ghost btn-sm" type="button" id="admClose">Close</button></div>`;
+
+  AV.qs('#admClose').addEventListener('click', () => dlg.close());
+
+  AV.qs('#statusForm', body)?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    const msg = e.target.querySelector('.form-msg');
+    try {
+      await AV.api.patch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
+        status: f.status.value,
+        note: f.note.value.trim() || undefined,
+      });
+      AV.toast('Order status updated.', 'ok');
+      dlg.close();
+      orders(pane);
+    } catch (err) {
+      C.say(msg, AV.firstErr(err), false);
+    }
+  });
+
+  AV.qs('#shipForm', body)?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    const msg = e.target.querySelector('.form-msg');
+    try {
+      await AV.api.post(`/api/admin/orders/${encodeURIComponent(orderId)}/shipment`, {
+        carrier: f.carrier.value.trim(),
+        trackingNumber: f.trackingNumber.value.trim(),
+        trackingUrl: f.trackingUrl.value.trim() || undefined,
+        /* Sent as midnight UTC so the date the admin picked is the date stored,
+           rather than being shifted by a timezone on the way in. */
+        estimatedDelivery: f.estimatedDelivery.value ? new Date(`${f.estimatedDelivery.value}T00:00:00Z`).toISOString() : undefined,
+      });
+      AV.toast('Tracking attached.', 'ok');
+      dlg.close();
+      orders(pane);
+    } catch (err) {
+      C.say(msg, AV.firstErr(err), false);
+    }
+  });
+
+  AV.qs('#eventForm', body)?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    const msg = e.target.querySelector('.form-msg');
+    try {
+      await AV.api.post(`/api/admin/orders/${encodeURIComponent(orderId)}/tracking-events`, {
+        status: f.status.value,
+        title: f.title.value.trim(),
+        description: f.description.value.trim() || undefined,
+        location: f.location.value.trim() || undefined,
+      });
+      AV.toast('Tracking event added.', 'ok');
+      dlg.close();
+      manageOrder(orderId);
+    } catch (err) {
+      C.say(msg, AV.firstErr(err), false);
+    }
+  });
 }
 
-/* ── Products ─────────────────────────────────────────────────── */
-async function products(pane) {
+const shipmentBlock = (t) => `
+  <p class="note">${AV.esc(t.carrier)} · ${AV.esc(t.trackingNumber)} ${C.statusBadge(t.status)}</p>
+  ${t.events?.length
+    ? `<ol class="track-list">${t.events.map((ev) => `
+        <li><strong>${AV.esc(ev.title)}</strong>
+          <div class="muted">${AV.formatDate(ev.occurredAt)}</div>
+          ${ev.description ? `<div>${AV.esc(ev.description)}</div>` : ''}</li>`).join('')}</ol>`
+    : '<p class="note">No events recorded yet.</p>'}`;
+
+const eventForm = (t) => `
+  <form id="eventForm" class="form-narrow" style="margin-top:18px">
+    <label>Event<select name="status">${SHIPMENT_STATUSES.map(
+      (s) => `<option value="${s}"${s === t.status ? ' selected' : ''}>${AV.esc(label(s))}</option>`
+    ).join('')}</select></label>
+    <label>Title<input name="title" required placeholder="Picked up from the studio"></label>
+    <label>Description <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
+      <input name="description" maxlength="400"></label>
+    <label>Location <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
+      <input name="location" maxlength="120"></label>
+    <button class="btn btn-light btn-sm" type="submit">Add event</button>
+    <p class="form-msg"></p>
+  </form>`;
+
+/* ── Inventory ────────────────────────────────────────────────── */
+/* PATCH /api/admin/products/:productId/inventory. Stock counts and availability
+   are the only product writes the API exposes — there is no create, edit or
+   delete endpoint, so those controls are not offered rather than faked.
+
+   The catalogue list reports `inStock` but not the raw count, so each row asks
+   for its own figure where one is needed. */
+async function inventory(pane) {
+  C.skeleton(pane, 4);
   try {
-    const env = await AV.api.get('/api/products?limit=50');
+    const env = await AV.api.get('/api/products?limit=100');
     const list = env.data || [];
     pane.innerHTML = `
-      <details class="notice" style="margin-bottom:30px">
-        <summary style="cursor:pointer;color:var(--white)">＋ Add a product</summary>
-        <form id="prodForm" class="form-grid" style="margin-top:20px">
-          <label>Name<input name="name" required></label>
-          <label>Category<select name="category">${CATEGORIES.map((c) => `<option>${c}</option>`).join('')}</select></label>
-          <label>Price (₹)<input type="number" name="price" min="0" step="1" required></label>
-          <label>Short description<input name="shortDescription" maxlength="300"></label>
-          <label class="full">Description<textarea name="description" rows="3"></textarea></label>
-          <label class="full">Intentions (comma separated)<input name="intentions" placeholder="Abundance, Focus"></label>
-          <div class="full" style="display:flex;gap:28px;flex-wrap:wrap">
-            <label style="display:flex;gap:10px;align-items:center;text-transform:none;color:var(--sand)"><input type="checkbox" name="availability" checked> Available</label>
-            <label style="display:flex;gap:10px;align-items:center;text-transform:none;color:var(--sand)"><input type="checkbox" name="featured"> Featured</label>
-          </div>
-          <button class="btn btn-light btn-sm" type="submit" style="justify-self:start">Create product</button>
-        </form>
-      </details>
+      <p class="note" style="margin-bottom:18px">Setting a count of 0 takes a piece off the shop without deleting it, so past orders still resolve. Clearing tracking makes a piece untracked.</p>
       ${list.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <thead><tr><th>Product</th><th>Price</th><th>In shop</th><th style="text-align:right">Stock</th></tr></thead>
         <tbody>${list.map((p) => `
-          <tr>
-            <td><a href="/product.html?slug=${encodeURIComponent(p.slug)}">${AV.esc(p.name)}</a></td>
-            <td class="muted">${AV.esc(p.category)}</td>
-            <td>${AV.formatPrice(p.price)}</td>
-            <td>${p.availability ? 'In stock' : 'Unavailable'}</td>
+          <tr data-product="${AV.esc(p.id)}">
+            <td><a href="/product.html?slug=${encodeURIComponent(p.slug)}">${AV.esc(p.name)}</a>
+              <div class="muted">${AV.esc(p.category)}</div></td>
+            <td>${AV.formatPrice(p.effectivePrice ?? p.price)}</td>
+            <td>${p.inStock ? 'Yes' : 'No'}</td>
             <td style="text-align:right">
-              <button class="btn btn-ghost btn-sm" data-avail="${p._id}" data-cur="${p.availability}">${p.availability ? 'Mark unavailable' : 'Mark available'}</button>
-              <button class="btn btn-ghost btn-sm" data-del="${p._id}" data-name="${AV.esc(p.name)}">Delete</button>
-            </td>
-          </tr>`).join('')}
-        </tbody></table></div>` : '<div class="empty">No products.</div>'}`;
-
-    AV.qs('#prodForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const f = e.target.elements;
-      try {
-        await AV.api.post('/api/products', {
-          name: f.name.value.trim(),
-          category: f.category.value,
-          price: Number(f.price.value),
-          shortDescription: f.shortDescription.value.trim(),
-          description: f.description.value.trim(),
-          intentions: f.intentions.value.split(',').map((s) => s.trim()).filter(Boolean),
-          availability: f.availability.checked,
-          featured: f.featured.checked,
-        });
-        AV.toast('Product created.', 'ok');
-        products(pane);
-      } catch (err) {
-        AV.toast(AV.firstErr(err), 'err');
-      }
-    });
-
-    const tbody = AV.qs('tbody');
-    tbody.addEventListener('click', async (e) => {
-      const av = e.target.closest('[data-avail]');
-      const del = e.target.closest('[data-del]');
-      if (av) {
-        try {
-          await AV.api.patch(`/api/products/${av.dataset.avail}`, { availability: av.dataset.cur !== 'true' });
-          AV.toast('Product updated.', 'ok');
-          products(pane);
-        } catch (err) {
-          AV.toast(AV.firstErr(err), 'err');
-        }
-      }
-      if (del) {
-        if (!confirm(`Delete “${del.dataset.name}”? This cannot be undone.`)) return;
-        try {
-          await AV.api.del(`/api/products/${del.dataset.del}`);
-          AV.toast('Product deleted.', 'ok');
-          products(pane);
-        } catch (err) {
-          AV.toast(AV.firstErr(err), 'err');
-        }
-      }
-    });
-  } catch (e) {
-    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
-  }
-}
-
-/* ── Subscribers ──────────────────────────────────────────────── */
-async function subscribers(pane) {
-  try {
-    const env = await AV.api.get('/api/newsletter');
-    const list = env.data || [];
-    pane.innerHTML = list.length
-      ? `<div class="table-wrap"><table>
-        <thead><tr><th>Email</th><th>Source</th><th>Subscribed</th><th style="text-align:right">Action</th></tr></thead>
-        <tbody>${list.map((s) => `
-          <tr>
-            <td>${AV.esc(s.email)}</td>
-            <td class="muted">${AV.esc(s.source || '—')}</td>
-            <td class="muted">${AV.formatDate(s.createdAt)}</td>
-            <td style="text-align:right"><button class="btn btn-ghost btn-sm" data-sub="${s._id}">Delete</button></td>
-          </tr>`).join('')}
-        </tbody></table></div>`
-      : '<div class="empty">No subscribers yet.</div>';
-
-    AV.qs('tbody').addEventListener('click', async (e) => {
-      const b = e.target.closest('[data-sub]');
-      if (!b) return;
-      if (!confirm('Remove this subscriber?')) return;
-      try {
-        await AV.api.del(`/api/newsletter/${b.dataset.sub}`);
-        AV.toast('Subscriber removed.', 'ok');
-        subscribers(pane);
-      } catch (err) {
-        AV.toast(AV.firstErr(err), 'err');
-      }
-    });
-  } catch (e) {
-    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
-  }
-}
-
-/* ── Messages ─────────────────────────────────────────────────── */
-async function messages(pane) {
-  try {
-    const env = await AV.api.get('/api/contact');
-    const list = env.data || [];
-    pane.innerHTML = list.length
-      ? `<div class="table-wrap"><table>
-        <thead><tr><th>From</th><th>Subject</th><th>Date</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
-        <tbody>${list.map((m) => `
-          <tr>
-            <td>${AV.esc(m.name)}<div class="muted">${AV.esc(m.email)}</div></td>
-            <td>${AV.esc(m.subject)}<div class="muted">${AV.esc((m.message || '').slice(0, 80))}</div></td>
-            <td class="muted">${AV.formatDate(m.createdAt)}</td>
-            <td><span class="status-badge status-${m.status === 'new' ? 'new' : 'confirmed'}">${AV.esc(m.status)}</span></td>
-            <td style="text-align:right">
-              ${m.status === 'new' ? `<button class="btn btn-ghost btn-sm" data-read="${m._id}">Mark read</button>` : ''}
-              <button class="btn btn-ghost btn-sm" data-mdel="${m._id}">Delete</button>
+              <input type="number" min="0" step="1" data-stock value="${p.inStock ? '' : '0'}"
+                placeholder="not tracked" style="width:110px" aria-label="Stock count for ${AV.esc(p.name)}">
+              <button class="btn btn-ghost btn-sm" data-save-stock>Save</button>
             </td>
           </tr>`).join('')}
         </tbody></table></div>`
-      : '<div class="empty">No messages yet.</div>';
+      : '<div class="empty">No products.</div>'}`;
 
-    AV.qs('tbody').addEventListener('click', async (e) => {
-      const rd = e.target.closest('[data-read]');
-      const dl = e.target.closest('[data-mdel]');
+    pane.querySelector('tbody')?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-save-stock]');
+      if (!btn) return;
+      const row = btn.closest('[data-product]');
+      const input = row.querySelector('[data-stock]');
+      AV.setBusy(btn, true);
       try {
-        if (rd) await AV.api.patch(`/api/contact/${rd.dataset.read}/read`, {});
-        if (dl) { if (!confirm('Delete this message?')) return; await AV.api.del(`/api/contact/${dl.dataset.mdel}`); }
-        if (rd || dl) { AV.toast('Updated.', 'ok'); messages(pane); }
+        /* An empty box means "stop tracking", which is a distinct instruction
+           from a count of 0 — that is why it is sent rather than guessed. */
+        const raw = input.value.trim();
+        const body = raw === '' ? { trackStock: false } : { stock: Number(raw), trackStock: true };
+        await AV.api.patch(`/api/admin/products/${encodeURIComponent(row.dataset.product)}/inventory`, body);
+        AV.toast('Stock updated.', 'ok');
+        inventory(pane);
       } catch (err) {
         AV.toast(AV.firstErr(err), 'err');
+      } finally {
+        AV.setBusy(btn, false);
       }
     });
   } catch (e) {
-    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+    fail(pane, e);
   }
-}
-
-function statusOptions(allowed, current) {
-  return allowed
-    .map((s) => `<option value="${s}"${s === current ? ' selected' : ''}>${s}</option>`)
-    .join('');
 }
 
 init();

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Every order you have placed with Astro Vetro.">
+<title>Your Orders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/orders.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Your Orders — Astro Vetro">
+<meta property="og:description" content="Every order you have placed with Astro Vetro.">
+<meta property="og:url" content="/orders.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Your Orders — Astro Vetro">
+<meta name="twitter:description" content="Every order you have placed with Astro Vetro.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/account.html">← Your account</a>
+    <div class="eyebrow">Everything you have chosen</div>
+    <h1>Your orders.</h1>
+  </div>
+</header>
+
+<main id="main">
+  <div class="page">
+    <div class="wrap" id="ordersPane" style="max-width:900px">
+      <div class="av-skeleton" aria-hidden="true">
+        <div class="line-lg"></div><div class="line-lg"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
+<script>
+/* ====================================================================
+   ORDER HISTORY
+
+   A list of this customer's own orders, newest first, from GET /api/orders.
+   The server scopes the query to the session, so there is no id to pass and
+   none is accepted — the page cannot ask for anyone else's orders.
+
+   Each card links to the real order route, /orders/:orderNumber. Tracking is
+   offered per order rather than as one page-level link, because whether an
+   order can be tracked depends on whether it has shipped, and `hasTracking`
+   comes from the server per order. A blanket "track" link would send people to
+   a page that can only say "not yet".
+
+   Pagination follows meta.hasMore. Orders are not silently truncated: a
+   customer with more than one page of history gets a real way to reach the
+   rest.
+   ==================================================================== */
+
+const C = AV.customer;
+const pane = AV.qs('#ordersPane');
+
+const PAGE_SIZE = 10;
+/* `page` lives in the query string so the list is linkable and the back button
+   works. Nothing sensitive is in it — it is a page number. */
+let page = Math.max(1, parseInt(C.readParam('page', '1'), 10) || 1);
+/* Whether a further page exists, from the response's own meta. The pager is
+   driven by this rather than by comparing list lengths to the page size, so a
+   page that happens to hold exactly PAGE_SIZE orders does not show a dead
+   "Older" button. */
+let hasMore = false;
+
+C.start('#ordersPane', async (root) => {
+  if (await C.needsDatabase()) return C.databaseUnavailable(pane);
+
+  const user = await AV.me();
+  if (!user) {
+    return C.gate(pane, {
+      reason: 'Order history is kept with your account.',
+      actions: [{ href: '/shop.html', label: 'Browse the collection' }],
+    });
+  }
+  AV.setUser(user);
+
+  await load();
+});
+
+async function load() {
+  C.loading(pane, 'Loading your orders');
+  try {
+    const data = await AV.orders.list({ page, limit: PAGE_SIZE });
+    hasMore = Boolean(data.meta?.hasMore);
+    render(data.orders || []);
+  } catch (err) {
+    C.clearBusy(pane);
+    C.error(pane, err, { retry: load, title: 'We could not load your orders' });
+  }
+}
+
+function render(orders) {
+  C.clearBusy(pane);
+
+  if (!orders.length) {
+    /* A filter that found nothing is not the same as having no orders, but the
+       only filter here is the page number, so one empty state covers both. */
+    return C.empty(pane, {
+      level: 'h2',
+      title: 'No orders yet',
+      body: 'When you place an order it will appear here, with its status and a way to track it once it is on its way.',
+      actions: [
+        { label: 'Browse the collection', href: '/shop.html', style: 'btn-light' },
+        { label: 'See your saved pieces', href: '/wishlist.html' },
+      ],
+    });
+  }
+
+  pane.innerHTML = `
+    <div class="order-list">${orders.map(cardHTML).join('\n')}</div>
+    ${hasMore || page > 1 ? '<div id="pager" style="margin-top:28px;display:flex;gap:10px;justify-content:center"></div>' : ''}`;
+  renderPager();
+}
+
+function cardHTML(o) {
+  const itemCount = (o.items || []).reduce((n, i) => n + i.quantity, 0);
+  /* The order number is the reference a customer would quote, so it is the
+     visible identity and the link text. */
+  const href = `/orders/${encodeURIComponent(o.orderNumber)}`;
+
+  return `
+    <article class="order-card">
+      <div class="order-card-head">
+        <div>
+          <a class="num order-row-link" href="${href}">${AV.esc(o.orderNumber)}</a>
+          <div class="meta">
+            <span>${AV.formatDate(o.createdAt)}</span>
+            <span>${AV.esc(C.pieces(itemCount))}</span>
+            <span>${C.money(o.total)}</span>
+          </div>
+        </div>
+        <div style="display:grid;gap:6px;justify-items:end">
+          ${C.statusBadge(o.status)}
+          ${o.paymentStatus && o.paymentStatus !== 'pending'
+            ? `<span class="meta" style="color:var(--text-muted)">${AV.esc(o.paymentMethod)} · ${AV.esc(o.paymentStatus)}</span>`
+            : ''}
+        </div>
+      </div>
+      <div class="order-card-actions">
+        <a class="btn btn-outline btn-sm" href="${href}">View order</a>
+        ${o.hasTracking
+          ? `<a class="btn btn-outline btn-sm" href="/tracking/${encodeURIComponent(o.orderNumber)}">Track parcel</a>`
+          : ''}
+      </div>
+    </article>`;
+}
+
+/* Two controls rather than numbered links: order history is read top to bottom
+   and rarely revisited, so moving between pages is all it ever needs. Each
+   button is only rendered when there is somewhere to go, so neither can be
+   dead. */
+function renderPager() {
+  const el = AV.qs('#pager');
+  if (!el) return;
+
+  el.innerHTML = [
+    page > 1
+      ? `<button class="btn btn-ghost btn-sm" type="button" data-page="${page - 1}">← Newer</button>`
+      : '',
+    hasMore
+      ? `<button class="btn btn-ghost btn-sm" type="button" data-page="${page + 1}">Older →</button>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n    ');
+
+  el.querySelectorAll('[data-page]').forEach((b) =>
+    b.addEventListener('click', () => {
+      page = Number(b.dataset.page);
+      /* In the URL so a refresh keeps its place; replaceState so browsing
+         history does not fill up with one entry per page. */
+      C.setParams({ page: page > 1 ? page : null });
+      load();
+    })
+  );
+}
+</script>
+</body>
+</html>

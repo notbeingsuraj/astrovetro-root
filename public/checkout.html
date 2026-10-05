@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#17221d">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/img/favicon.svg">
-<meta name="robots" content="noindex, follow">
-<meta name="description" content="Complete your order.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Confirm your delivery address and place your order.">
 <title>Checkout</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,12 +18,12 @@
 <meta property="og:site_name" content="Astro Vetro">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Checkout — Astro Vetro">
-<meta property="og:description" content="Complete your order.">
+<meta property="og:description" content="Confirm your delivery address and place your order.">
 <meta property="og:url" content="/checkout.html">
 <meta property="og:image" content="/assets/img/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Checkout — Astro Vetro">
-<meta name="twitter:description" content="Complete your order.">
+<meta name="twitter:description" content="Confirm your delivery address and place your order.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
@@ -32,15 +32,22 @@
 
 <header class="page-hero">
   <div class="wrap">
-    <a class="back" href="/cart.html">← Back to bag</a>
+    <a class="back" href="/cart.html">← Back to your bag</a>
     <div class="eyebrow">Almost yours</div>
-    <h1 id="pageTitle">Checkout.</h1>
+    <h1>Checkout.</h1>
   </div>
 </header>
 
 <main id="main">
   <div class="page">
-    <div class="wrap" id="checkoutRoot"></div>
+    <div class="wrap checkout-grid">
+      <div id="checkoutPane">
+        <div class="av-skeleton" aria-hidden="true">
+          <div class="line-xl"></div><div class="line-lg"></div>
+        </div>
+      </div>
+      <aside class="summary" id="summary"></aside>
+    </div>
   </div>
 </main>
 
@@ -48,141 +55,445 @@
 
 <script src="/assets/api.js"></script>
 <script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
 <script>
-AV.boot();
-const FREE_ABOVE = AV.SHIPPING.freeAbove;
-const SHIP = AV.SHIPPING.flat;
-const root = AV.qs('#checkoutRoot');
+/* ====================================================================
+   CHECKOUT
 
-async function init() {
-  const cart = AV.getCart();
-  if (!cart.length) {
-    root.innerHTML = '<div class="empty">Your bag is empty.<br><a class="btn btn-light" href="/shop.html">Browse the collection</a></div>';
-    AV.qs('#pageTitle').textContent = 'Your bag is empty.';
-    return;
-  }
+   The most consequential page in the customer area, so the rules are narrow:
 
-  const user = await AV.me();
+   1. NOTHING IS PRICED HERE. The order summary is GET /api/cart's `cart`
+      verbatim. The page sends a payment method, an address and an
+      idempotency key — no items, no quantities, no prices, no totals. The
+      server reads the customer's own bag and prices it again at the moment of
+      purchase, so a stale total on screen can never become a wrong charge.
+
+   2. PAYMENT STATE IS THE SERVER'S TO DECIDE. For a card, the browser opens
+      the provider dialog and hands the response to POST /api/checkout/confirm,
+      where the signature is verified. The browser never asserts that a payment
+      succeeded; it reports what the provider said and then follows the server.
+
+   3. ONE ATTEMPT, ONE ORDER. Each attempt carries an idempotency key. A
+      double-click, a retry after a dropped response, or a refresh mid-payment
+      all resolve to the same order rather than several.
+
+   4. THE ORDER IS ONLY REAL ONCE THE SERVER SAYS SO. Every redirect below
+      happens after a successful response.
+   ==================================================================== */
+
+const C = AV.customer;
+const pane = AV.qs('#checkoutPane');
+const summary = AV.qs('#summary');
+
+/* State for this page load. Held in memory rather than in the URL so a
+   refresh cannot half-restore a payment flow. */
+let bag = null;
+let user = null;
+let addresses = [];
+let selectedAddressId = null;
+let paymentMethod = 'cod';
+let paymentsLive = false;
+/* One key per attempt, held across every retry of that same attempt. A new
+   attempt generates a new key. */
+let attemptKey = AV.newIdempotencyKey();
+let placing = false;
+
+C.start('#checkoutPane', async (root) => {
+  if (await C.needsDatabase()) return C.databaseUnavailable(pane);
+
+  user = await AV.me();
   if (!user) {
-    root.innerHTML = `
-      <div class="gate">
-        <div class="eyebrow">Sign in to continue</div>
-        <h2>You're almost<br>there.</h2>
-        <p class="lead" style="margin:16px auto 30px">Log in or create an account to place your order and keep track of it afterwards.</p>
-        <a class="btn btn-light" href="/account.html?view=login&next=/checkout.html">Sign in</a>
-        <div style="margin-top:10px"><a class="btn btn-ghost" href="/account.html?view=register&next=/checkout.html">Create an account</a></div>
-      </div>`;
-    return;
+    /* A guest's bag lives in localStorage and is merged on sign-in, so the
+       sign-in is what makes an order possible at all. `next` brings them back
+       here with the bag intact. */
+    return C.gate(pane, {
+      reason: 'Checkout needs an account so your order, address and confirmation stay together.',
+      actions: [{ href: '/cart.html', label: 'Back to your bag' }],
+    });
   }
+  AV.setUser(user);
 
-  const subtotal = AV.cartSubtotal();
-  const shipping = subtotal >= FREE_ABOVE ? 0 : SHIP;
-  const total = subtotal + shipping;
+  await load();
+});
 
-  const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+async function load() {
+  C.loading(pane, 'Loading checkout');
+  summary.innerHTML = '';
+  try {
+    /* Both in parallel: neither depends on the other, and the page cannot be
+       drawn without both. */
+    const [cart, addrList, caps] = await Promise.all([
+      AV.bag.load(),
+      AV.addresses.list().catch(() => ({ addresses: [], count: 0 })),
+      AV.capabilities().catch(() => null),
+    ]);
 
-  root.innerHTML = `
-  <div class="checkout-grid">
-    <form id="payForm" novalidate>
-      <div class="eyebrow">Contact</div>
-      <div class="form-grid">
-        <label>Full name<input name="name" required value="${AV.esc(name)}"></label>
-        <label>Email<input type="email" name="email" required value="${AV.esc(user.email || '')}"></label>
-        <label class="full">Phone<input name="phone" value="${AV.esc(user.phone || '')}" placeholder="+91 …"></label>
-      </div>
-
-      <div class="eyebrow" style="margin-top:42px">Shipping address</div>
-      <div class="form-grid">
-        <label class="full">Address line 1<input name="line1" required></label>
-        <label class="full">Address line 2<input name="line2"></label>
-        <label>City<input name="city" required></label>
-        <label>State<input name="state" required></label>
-        <label>Pincode<input name="pincode" required minlength="4" maxlength="10"></label>
-        <label>Country<input name="country" value="India"></label>
-      </div>
-
-      <div class="eyebrow" style="margin-top:42px">Payment</div>
-      <div class="pay-opts">
-        <label class="pay-opt"><input type="radio" name="pay" value="upi" checked><span><b>UPI</b><small>Pay instantly via UPI</small></span></label>
-        <label class="pay-opt"><input type="radio" name="pay" value="card"><span><b>Card</b><small>Credit/debit card</small></span></label>
-        <label class="pay-opt"><input type="radio" name="pay" value="cod"><span><b>Cash on delivery</b><small>Pay when it arrives</small></span></label>
-      </div>
-
-      <p class="form-msg" id="payMsg"></p>
-      <button class="btn btn-light btn-block" type="submit">Place order · ${AV.formatPrice(total)}</button>
-    </form>
-
-    <aside class="summary">
-      <h3>Order summary</h3>
-      ${cart.map((i) => `<div class="row"><span>${AV.esc(i.name)} × ${i.quantity}</span><span>${AV.formatPrice(i.price * i.quantity)}</span></div>`).join('')}
-      <div class="row"><span>Subtotal</span><span>${AV.formatPrice(subtotal)}</span></div>
-      <div class="row"><span>Shipping</span><span>${shipping ? AV.formatPrice(shipping) : 'Free'}</span></div>
-      <div class="row total"><span>Total</span><span>${AV.formatPrice(total)}</span></div>
-    </aside>
-  </div>`;
-
-  AV.qsa('.pay-opt').forEach((o) => o.addEventListener('click', () => {
-    o.querySelector('input').checked = true;
-    AV.qsa('.pay-opt').forEach((x) => x.classList.toggle('selected', x === o));
-  }));
-  AV.qsa('.pay-opt').forEach((o) => o.classList.toggle('selected', o === AV.qs('.pay-opt')));
-
-  const form = AV.qs('#payForm');
-  const msg = AV.qs('#payMsg');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = form.querySelector('button[type="submit"]');
-    const f = form.elements;
-    msg.className = 'form-msg';
-
-    /* The form opts out of native validation so the error can be shown in one
-       place, so the equivalent checks have to run here — otherwise an empty
-       address is posted to the API as a real order. */
-    if (!form.reportValidity()) return;
-
-    const pincode = f.pincode.value.trim();
-    if (!/^\d{4,10}$/.test(pincode)) {
-      msg.classList.add('show', 'err');
-      msg.textContent = 'Enter a valid pincode (4–10 digits).';
-      f.pincode.focus();
-      return;
+    if (!cart.authoritative) {
+      /* Reached only if the session ended between AV.me() and here. The guest
+         bag is untouched; sending them to sign in keeps it. */
+      return C.gate(pane, { reason: 'Your session ended while we were loading.' });
     }
 
-    const items = cart.map((i) => ({
-      slug: i.slug,
-      name: i.name,
-      image: i.image || null,
-      price: i.price,
-      quantity: i.quantity,
-    }));
-    msg.className = 'form-msg';
-    try {
-      AV.setBusy(btn, true);
-      const env = await AV.api.post('/api/orders', {
-        items,
-        paymentMethod: f.pay.value,
-        customer: { name: f.name.value.trim(), email: f.email.value.trim(), phone: f.phone.value.trim() },
-        shippingAddress: {
-          line1: f.line1.value.trim(),
-          line2: f.line2.value.trim(),
-          city: f.city.value.trim(),
-          state: f.state.value.trim(),
-          pincode,
-          country: f.country.value.trim() || 'India',
-        },
+    bag = cart;
+    addresses = addrList.addresses || [];
+    paymentsLive = Boolean(caps?.paymentsLive);
+
+    if (!bag.lines.length) {
+      return C.empty(pane, {
+        level: 'h2',
+        title: 'There is nothing to check out',
+        body: 'Your bag is empty, so there is no order to place yet.',
+        actions: [{ label: 'Browse the collection', href: '/shop.html', style: 'btn-light' }],
       });
-      AV.clearCart();
-      const number = env.data?.orderNumber || '';
-      location.href = `/order.html?number=${encodeURIComponent(number)}`;
-    } catch (err) {
-      msg.classList.add('show', 'err');
-      msg.textContent = AV.firstErr(err);
-      AV.setBusy(btn, false);
     }
+
+    /* Stock can have moved between browsing and checking out. The server has
+       already flagged anything it had to adjust; shown before the address, so
+       it is read before anything is submitted. */
+    selectedAddressId = defaultAddressId();
+    render();
+  } catch (err) {
+    C.clearBusy(pane);
+    C.error(pane, err, { retry: load, title: 'We could not open checkout' });
+  }
+}
+
+/* The account's default address when it has one, otherwise nothing selected so
+   the customer has to choose rather than being sent somewhere by default. */
+function defaultAddressId() {
+  const def = addresses.find((a) => a.isDefault);
+  return def ? def.id : null;
+}
+
+function render() {
+  C.clearBusy(pane);
+  pane.innerHTML = `
+    ${issuesNote()}
+    ${addresses.length ? addressSection() : addressFormSection(true)}
+    ${paymentSection()}
+    ${placeButton()}`;
+  renderSummary();
+  wire();
+}
+
+function issuesNote() {
+  const issues = (bag.issues || []).filter(Boolean);
+  if (!issues.length) return '';
+  return `
+    <div class="notice error" role="status">
+      ${issues.map((i) => `<div>${AV.esc(i.message || String(i))}</div>`).join('\n      ')}
+    </div>`;
+}
+
+/* ── Delivery address ───────────────────────────────────────────────── */
+
+function addressSection() {
+  return `
+    <section aria-labelledby="addrHead">
+      <h2 id="addrHead" style="font:400 var(--text-h2) var(--font-display);margin-bottom:6px">Where should it go?</h2>
+      <p class="note" style="margin-bottom:18px">Choose one of your saved addresses, or add another.</p>
+      <div role="radiogroup" aria-label="Delivery address">
+        ${addresses.map(optionHTML).join('\n')}
+      </div>
+      <button class="btn btn-ghost" type="button" id="showNewAddr" style="margin-top:16px">+ Use a different address</button>
+      <div id="newAddrWrap" hidden>${addressFormSection(false)}</div>
+    </section>`;
+}
+
+function optionHTML(a) {
+  const id = `addr-${a.id}`;
+  return `
+    <label class="addr-option" for="${id}">
+      <input type="radio" name="addressId" id="${id}" value="${AV.esc(a.id)}"
+        ${selectedAddressId === a.id ? 'checked' : ''}>
+      <span>
+        <span class="who">${AV.esc(a.name)}${a.isDefault ? ' <span class="tag">Default</span>' : ''}</span>
+        <address>${C.addressText(a)}</address>
+        <span class="qt" style="color:var(--text-muted);font-size:12px">${AV.esc(a.phone)}</span>
+      </span>
+    </label>`;
+}
+
+/* `asOnlyOption` is true when the account has no saved address at all, in which
+   case the form is not optional — it is the only way forward. */
+function addressFormSection(asOnlyOption) {
+  return `
+    <section aria-labelledby="newAddrHead" style="${asOnlyOption ? '' : 'margin-top:20px;padding-top:20px;border-top:1px solid var(--border-subtle)'}">
+      <h3 id="newAddrHead" style="font:400 24px var(--font-display);margin-bottom:14px">
+        ${asOnlyOption ? 'Where should it go?' : 'A different address'}
+      </h3>
+      <form class="form-narrow" id="addrForm" novalidate>
+        <p class="form-msg"></p>
+        <div class="form-row-2">
+          <label>Full name<input name="name" required autocomplete="name" value="${AV.esc(user.name || '')}"></label>
+          <label>Phone<input name="phone" required autocomplete="tel" inputmode="tel" value="${AV.esc(user.phone || '')}"></label>
+        </div>
+        <label>Address line 1<input name="line1" required autocomplete="address-line1" placeholder="Flat, house number, street"></label>
+        <label>Address line 2 <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
+          <input name="line2" autocomplete="address-line2"></label>
+        <div class="form-row-2">
+          <label>City<input name="city" required autocomplete="address-level2"></label>
+          <label>State<input name="state" required autocomplete="address-level1"></label>
+        </div>
+        <div class="form-row-2">
+          <label>PIN code<input name="pincode" required autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"></label>
+          <label>Country<input name="country" required autocomplete="country-name" value="India"></label>
+        </div>
+        <button class="btn btn-outline" type="submit">Save and use this address</button>
+      </form>
+    </section>`;
+}
+
+/* ── Payment ───────────────────────────────────────────────────────── */
+
+function paymentSection() {
+  return `
+    <section aria-labelledby="payHead" style="margin-top:36px">
+      <h2 id="payHead" style="font:400 var(--text-h2) var(--font-display);margin-bottom:6px">How would you like to pay?</h2>
+      <div class="pay-opts" role="radiogroup" aria-label="Payment method">
+        ${paymentOption('cod', 'Cash on delivery', 'Pay the courier when your parcel arrives.')}
+        ${paymentOption('card', 'Card or UPI', paymentsLive
+          ? 'Pay now by card, or with any UPI app.'
+          : 'Card and UPI payments are not available on this site yet.')}
+      </div>
+      ${paymentsLive ? '' : `<p class="note" style="margin-top:12px">We are not able to take card payments at the moment. Cash on delivery is unaffected.</p>`}
+    </section>`;
+}
+
+function paymentOption(value, label, hint) {
+  const disabled = value !== 'cod' && !paymentsLive;
+  return `
+    <label class="pay-opt${paymentMethod === value ? ' selected' : ''}" for="pay-${value}">
+      <input type="radio" name="paymentMethod" id="pay-${value}" value="${value}"
+        ${paymentMethod === value ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+      <span>
+        <b>${AV.esc(label)}</b>
+        <small>${AV.esc(hint)}</small>
+      </span>
+    </label>`;
+}
+
+function placeButton() {
+  const total = C.money(bag.total);
+  const label = paymentMethod === 'cod' ? `Place order · ${total}` : `Pay ${total}`;
+  return `
+    <div id="placeWrap" style="margin-top:32px">
+      <button class="btn btn-light btn-block" type="button" id="placeBtn" ${selectedAddressId ? '' : 'disabled'}>
+        ${AV.esc(label)}
+      </button>
+      <p class="note" style="margin-top:12px" id="placeNote">
+        ${selectedAddressId
+          ? 'We will check stock and price one last time before your order is placed.'
+          : 'Choose a delivery address to continue.'}
+      </p>
+    </div>`;
+}
+
+function renderSummary() {
+  summary.innerHTML = `
+    <h3>Your order</h3>
+    <div class="order-lines">${bag.lines.map(C.orderLine).join('\n')}</div>
+    ${C.bagTotals(bag)}
+    <p class="note" style="margin-top:14px">
+      Priced by our servers from live stock. If anything changed since you loaded
+      this page, the amount charged is the one shown at the moment you order.
+    </p>`;
+}
+
+/* ── Events ─────────────────────────────────────────────────────────── */
+
+function wire() {
+  /* Address choice. Selecting "a different address" hides the radio group,
+     because leaving a checked option visible above the form implies the order
+     will go there. */
+  pane.querySelectorAll('input[name="addressId"]').forEach((r) =>
+    r.addEventListener('change', () => {
+      selectedAddressId = r.value;
+      AV.qs('#newAddrWrap')?.setAttribute('hidden', '');
+      updatePlace();
+    })
+  );
+
+  AV.qs('#showNewAddr')?.addEventListener('click', () => {
+    const wrap = AV.qs('#newAddrWrap');
+    wrap.removeAttribute('hidden');
+    /* The saved-address group is hidden along with it, so a still-checked radio
+       button above the form cannot imply the order goes there while the form
+       below is what the customer is filling in. */
+    pane.querySelector('[role="radiogroup"]')?.setAttribute('hidden', '');
+    /* Cleared because the order is no longer going to that address. */
+    selectedAddressId = null;
+    updatePlace();
+    AV.qs('#addrForm')?.querySelector('input[name="line1"]')?.focus();
+  });
+
+  pane.querySelectorAll('input[name="paymentMethod"]').forEach((r) =>
+    r.addEventListener('change', () => {
+      paymentMethod = r.value;
+      pane.querySelectorAll('.pay-opt').forEach((l) => l.classList.toggle('selected', l.contains(r)));
+      /* The button label follows the choice, so it never says "Pay" over a
+         method that will not be charged now. */
+      updatePlace();
+    })
+  );
+
+  wireAddressForm();
+
+  AV.qs('#placeBtn')?.addEventListener('click', place);
+}
+
+/* The new-address form saves through POST /api/me/addresses, then selects the
+   address the server created. Selecting the returned id — rather than assuming
+   one was made — keeps the order bound to an address that actually exists. */
+function wireAddressForm() {
+  const form = AV.qs('#addrForm');
+  if (!form) return;
+
+  C.onSubmit(form, async (body) => {
+    const created = await AV.addresses.create({
+      label: 'Home',
+      name: body.name,
+      phone: body.phone,
+      line1: body.line1,
+      line2: body.line2 || '',
+      city: body.city,
+      state: body.state,
+      pincode: body.pincode,
+      country: body.country,
+    });
+    addresses.push(created);
+    selectedAddressId = created.id;
+    AV.toast('Address saved.', 'ok');
+    render();
   });
 }
 
-init();
+function updatePlace() {
+  const btn = AV.qs('#placeBtn');
+  if (!btn) return;
+  btn.disabled = !selectedAddressId;
+  const note = AV.qs('#placeNote');
+  const total = C.money(bag.total);
+  btn.textContent = paymentMethod === 'cod' ? `Place order · ${total}` : `Pay ${total}`;
+  if (note) {
+    note.textContent = selectedAddressId
+      ? 'We will check stock and price one last time before your order is placed.'
+      : 'Choose a delivery address to continue.';
+  }
+}
+
+/* ── Placing the order ─────────────────────────────────────────────────
+   Two paths, one shared guard. `placing` is what stops a double click from
+   becoming two orders if the button is somehow re-entered. */
+
+async function place() {
+  if (placing || !selectedAddressId) return;
+  placing = true;
+
+  const btn = AV.qs('#placeBtn');
+  const wrap = AV.qs('#placeWrap');
+  /* Disabled and replaced by a live status, so a screen-reader user is told
+     the order is being placed rather than only hearing a button stop
+     responding. */
+  AV.setBusy(btn, true);
+  const live = document.createElement('p');
+  live.className = 'note';
+  live.setAttribute('role', 'status');
+  live.style.marginTop = '12px';
+  live.textContent = paymentMethod === 'cod'
+    ? 'Placing your order…'
+    : 'Opening secure payment…';
+  wrap.appendChild(live);
+
+  try {
+    const payload = {
+      paymentMethod,
+      /* The account's own address id. No address fields, no items, no money. */
+      addressId: selectedAddressId,
+      contactPhone: user.phone || undefined,
+    };
+
+    /* Both paths pass `attemptKey`, which was minted once when the page loaded.
+       It is not re-minted per click, so retrying after a dropped response or a
+       refused write reuses the same token and the server replays the original
+       order instead of creating a second one. */
+    if (paymentMethod === 'cod') {
+      const order = await AV.checkout.cod(payload, attemptKey);
+      done(order);
+    } else {
+      await payAndConfirm(payload);
+    }
+  } catch (err) {
+    /* A failure here has not created an order — the server refused, or the
+       provider dialog was dismissed. The page stays put with the reason
+       shown, and the idempotency key is kept so a retry cannot duplicate. */
+    C.say(AV.qs('.form-msg') || statusEl(wrap), AV.firstErr(err), false);
+  } finally {
+    placing = false;
+    live.remove();
+    AV.setBusy(btn, false);
+  }
+}
+
+function statusEl(wrap) {
+  let el = wrap.querySelector('.form-msg');
+  if (!el) {
+    el = document.createElement('p');
+    el.className = 'form-msg';
+    wrap.appendChild(el);
+  }
+  return el;
+}
+
+/* Card and UPI: create the provider order, open the dialog, then hand the
+   provider's own response to the server for verification. The amount and key
+   all come from the session response — this page never computes what to charge
+   and never decides that a payment succeeded. */
+async function payAndConfirm(payload) {
+  const session = await AV.checkout.session({ ...payload, paymentMethod: 'card' }, attemptKey);
+
+  const result = await C.payWithRazorpay({
+    ...session,
+    prefill: { name: user.name, email: user.email, contact: user.phone || '' },
+  });
+
+  /* The dialog was closed without paying. The order exists in PENDING and the
+     bag is untouched; the customer can pay or remove it later. Not an error. */
+  if (result?.dismissed) {
+    C.say(statusEl(AV.qs('#placeWrap')), 'Payment was cancelled. Nothing has been charged and your bag is untouched.', false);
+    AV.toast('Payment cancelled.', 'err');
+    return;
+  }
+
+  const order = await AV.checkout.confirm(
+    {
+      razorpayOrderId: session.razorpayOrderId,
+      razorpayPaymentId: result.razorpay_payment_id,
+      razorpaySignature: result.razorpay_signature,
+    },
+    /* The same key the session was created with, so a retry after a dropped
+       response resolves to this order rather than starting another. */
+    session.idempotencyKey || attemptKey
+  );
+
+  /* The server has verified the signature and marked the order paid. Only now
+     is the confirmation shown. */
+  done(order);
+}
+
+/* Shared ending for both payment paths. Navigates only after a real order
+   exists, and only to this customer's own order. */
+function done(order) {
+  if (!order?.orderNumber) {
+    AV.toast('We could not confirm your order. Please try again.', 'err');
+    return;
+  }
+  AV.toast('Order placed.', 'ok');
+  /* replaceState so the back button does not return to a checkout page whose
+     bag has already been emptied by the server. */
+  history.replaceState(null, '', `/orders/${encodeURIComponent(order.orderNumber)}`);
+  location.href = `/orders/${encodeURIComponent(order.orderNumber)}?placed=1`;
+}
 </script>
 </body>
 </html>

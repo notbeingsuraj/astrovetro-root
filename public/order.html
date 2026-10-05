@@ -6,34 +6,46 @@
 <meta name="theme-color" content="#17221d">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/img/favicon.svg">
-<meta name="robots" content="noindex, follow">
-<meta name="description" content="Your order confirmation and delivery details.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="The detail of one of your orders.">
 <title>Your Order</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/assets/app.css">
-<link rel="canonical" href="/order.html">
+<link rel="canonical" href="/orders.html">
 <meta property="og:site_name" content="Astro Vetro">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Your Order — Astro Vetro">
-<meta property="og:description" content="Your order confirmation and delivery details.">
-<meta property="og:url" content="/order.html">
+<meta property="og:description" content="The detail of one of your orders.">
+<meta property="og:url" content="/orders.html">
 <meta property="og:image" content="/assets/img/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Your Order — Astro Vetro">
-<meta name="twitter:description" content="Your order confirmation and delivery details.">
+<meta name="twitter:description" content="The detail of one of your orders.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <div id="siteHeader"></div>
 
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/orders.html">← All orders</a>
+    <div class="eyebrow">Your order</div>
+    <h1 id="orderTitle">Thank you.</h1>
+    <p class="sub" id="orderSub">We are getting your order ready.</p>
+  </div>
+</header>
+
 <main id="main">
   <div class="page">
-    <h1 class="sr-only">Your order</h1>
-    <div class="wrap" id="orderRoot"></div>
+    <div class="wrap" id="orderPane" style="max-width:900px">
+      <div class="av-skeleton" aria-hidden="true">
+        <div class="line-lg"></div><div class="line-xl"></div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -41,84 +53,184 @@
 
 <script src="/assets/api.js"></script>
 <script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
 <script>
-AV.boot();
-const root = AV.qs('#orderRoot');
-const params = new URLSearchParams(location.search);
-const number = params.get('number');
+/* ====================================================================
+   ORDER DETAIL — /orders/:orderId
 
-async function init() {
-  if (!number) {
-    root.innerHTML = '<div class="empty"><a class="btn btn-light" href="/shop.html">Browse the collection</a></div>';
-    return;
-  }
+   One order, from GET /api/orders/:orderId. The identifier comes from the
+   path, so a refresh, a bookmark or a pasted link behaves like a click.
+
+   Ownership is the server's decision. It answers 404 for an order that is not
+   this customer's — the same answer as for one that does not exist, so the URL
+   cannot be used to discover other people's order numbers. The page shows that
+   one message and does not try to distinguish the two cases.
+
+   Money shown is the order's own snapshot, not today's catalogue prices: an
+   order is a record of what was agreed, and re-reading the catalogue would let
+   a later price change rewrite history. That is why `unitPrice` and `lineTotal`
+   come from the order document rather than being recomputed from the products.
+   ==================================================================== */
+
+const C = AV.customer;
+const pane = AV.qs('#orderPane');
+
+/* From the path, not the query string: this page has one canonical URL. The
+   `?number=` spelling still works server-side and is redirected, so old links
+   and bookmarks land here. */
+const ref = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+/* `placed=1` is set by checkout on the redirect after an order is placed. It
+   changes the wording of the confirmation, nothing else. */
+const justPlaced = C.readParam('placed') === '1';
+
+C.start('#orderPane', async (root) => {
+  if (await C.needsDatabase()) return C.databaseUnavailable(pane);
+
   const user = await AV.me();
   if (!user) {
-    root.innerHTML = `
-      <div class="gate">
-        <div class="eyebrow">Order secure</div>
-        <h2>Order<br>${AV.esc(number)}</h2>
-        <p class="lead" style="margin:16px auto 30px">Sign in to view your order details.</p>
-        <a class="btn btn-light" href="/account.html?view=login&next=${encodeURIComponent('/order.html?number=' + number)}">Sign in</a>
-      </div>`;
-    return;
-  }
-
-  root.innerHTML = '<div class="empty">Loading your order…</div>';
-  try {
-    const env = await AV.api.get(`/api/orders/${encodeURIComponent(number)}`);
-    const o = env.data;
-    AV.seo({
-      title: `Order ${o.orderNumber}`,
-      description: 'Your order confirmation and delivery details.',
-      noindex: true,
+    return C.gate(pane, {
+      reason: 'An order belongs to the account that placed it.',
+      actions: [{ href: '/orders.html', label: 'Your orders' }],
     });
+  }
+  AV.setUser(user);
 
-    const rows = (o.items || []).map((i) => `
-      <tr>
-        <td><a href="/product.html?slug=${encodeURIComponent(i.slug)}">${AV.esc(i.name)}</a></td>
-        <td>${i.quantity}</td>
-        <td>${AV.formatPrice(i.price)}</td>
-        <td>${AV.formatPrice(i.price * i.quantity)}</td>
-      </tr>`).join('');
+  await load();
+});
 
-    root.innerHTML = `
-      <div class="notice" style="margin-bottom:40px">
-        <div class="eyebrow" style="margin:0 0 6px">Thank you</div>
-        <h2 style="font-size:44px">Order ${AV.esc(o.orderNumber)}</h2>
-        <p>Placed ${AV.formatDate(o.createdAt)} · <span class="status-badge status-${AV.esc(o.status)}">${AV.esc(o.status)}</span></p>
-        <p style="margin-top:12px">Payment ${AV.esc((o.paymentMethod || '').toUpperCase())} · ${AV.esc((o.paymentStatus || '').replace('_', ' '))}</p>
-      </div>
-      <div class="checkout-grid">
-        <div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-          <p class="note" style="margin-top:22px">A confirmation has been recorded on your account. Track it anytime under <a href="/account.html">Account → Orders</a>.</p>
-        </div>
-        <aside class="summary">
-          <h3>Summary</h3>
-          <div class="row"><span>Subtotal</span><span>${AV.formatPrice(o.subtotal)}</span></div>
-          <div class="row"><span>Shipping</span><span>${o.shipping ? AV.formatPrice(o.shipping) : 'Free'}</span></div>
-          <div class="row total"><span>Total</span><span>${AV.formatPrice(o.total)}</span></div>
-          <div class="row"><span>Payment</span><span>${AV.esc((o.paymentMethod || '').toUpperCase())}</span></div>
-          <h3 style="margin-top:26px">Ship to</h3>
-          <p class="note">${AV.esc(o.customer?.name)}<br>${AV.esc(o.shippingAddress?.line1)}${o.shippingAddress?.line2 ? '<br>' + AV.esc(o.shippingAddress.line2) : ''}<br>${AV.esc(o.shippingAddress?.city)}, ${AV.esc(o.shippingAddress?.state)} ${AV.esc(o.shippingAddress?.pincode)}<br>${AV.esc(o.shippingAddress?.country || '')}</p>
-        </aside>
-      </div>
-      <div style="margin-top:46px; display:flex; gap:12px; flex-wrap:wrap">
-        <a class="btn btn-light" href="/shop.html">Continue shopping</a>
-        <a class="btn btn-ghost" href="/account.html?view=orders">View all orders</a>
-      </div>`;
-  } catch (e) {
-    root.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/shop.html">Back to shop</a></div>`;
+async function load() {
+  C.loading(pane, 'Loading your order');
+  try {
+    const order = await AV.orders.get(ref);
+    render(order);
+  } catch (err) {
+    C.clearBusy(pane);
+    /* 404 here means either "no such order" or "not yours". Both render the
+       same way on purpose: distinguishing them would confirm which order
+       numbers exist. */
+    C.error(pane, err, {
+      level: 'h2',
+      title: 'We could not find that order',
+      retry: null,
+    });
+    const el = AV.qs('.av-state', pane);
+    if (el) {
+      const p = document.createElement('p');
+      p.innerHTML = 'It may belong to another account, or the reference may be wrong. <a href="/orders.html">See all your orders</a>.';
+      el.querySelector('h3')?.after(p);
+    }
+    AV.qs('#orderTitle').textContent = 'Order not found.';
+    AV.qs('#orderSub').textContent = 'We could not match that reference to an order on your account.';
   }
 }
 
-init();
+function render(o) {
+  C.clearBusy(pane);
+
+  const itemCount = (o.items || []).reduce((n, i) => n + i.quantity, 0);
+  const paid = o.paymentStatus === 'paid';
+
+  /* The heading states what actually happened to the order, in the customer's
+     terms. A pending order that was just placed is not the same as one placed
+     three weeks ago, and the copy reflects that difference rather than showing
+     a status label on its own. */
+  AV.qs('#orderTitle').textContent = justPlaced
+    ? paid ? 'Order confirmed and paid.' : 'Order confirmed.'
+    : `Order ${o.orderNumber}.`;
+  AV.qs('#orderSub').textContent = subtitle(o, paid);
+
+  pane.innerHTML = `
+    ${justPlaced ? confirmationNote(paid) : ''}
+    <div class="order-card" style="margin-bottom:24px">
+      <div class="order-card-head">
+        <div>
+          <div class="num">${AV.esc(o.orderNumber)}</div>
+          <div class="meta">
+            <span>Placed ${AV.formatDate(o.createdAt)}</span>
+            <span>${AV.esc(C.pieces(itemCount))}</span>
+            ${paid && o.paidAt ? `<span>Paid ${AV.formatDate(o.paidAt)}</span>` : ''}
+          </div>
+        </div>
+        <div style="display:grid;gap:6px;justify-items:end">
+          ${C.statusBadge(o.status)}
+          <span class="meta" style="color:var(--text-muted)">${AV.esc(o.paymentMethod)}${o.paymentStatus && o.paymentStatus !== 'pending' ? ` · ${AV.esc(o.paymentStatus)}` : ''}</span>
+        </div>
+      </div>
+      <div class="order-card-actions">
+        ${o.hasTracking
+          ? `<a class="btn btn-light btn-sm" href="/tracking/${encodeURIComponent(o.orderNumber)}">Track this parcel</a>`
+          : `<a class="btn btn-outline btn-sm" href="/shop.html">Continue shopping</a>`}
+        <a class="btn btn-outline btn-sm" href="/orders.html">All orders</a>
+      </div>
+    </div>
+
+    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:14px">What you ordered</h2>
+    <div class="order-lines">${(o.items || []).map(C.orderLine).join('\n')}</div>
+
+    ${C.totals([
+      { label: 'Subtotal', value: o.subtotal },
+      { label: 'Shipping', value: o.shipping, free: Number(o.shipping) === 0 },
+      Number(o.discount) ? { label: 'Discount', value: -Math.abs(o.discount) } : null,
+    ].filter(Boolean), { total: o.total, totalLabel: `Total (${AV.esc(o.currency || 'INR')})` })}
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;margin-top:36px">
+      ${addressBlock('Delivering to', o.shippingAddress)}
+      ${contactBlock(o)}
+    </div>
+
+    <p class="note" style="margin-top:32px">
+      Prices on this page are the ones agreed when the order was placed. If you
+      edit your account details later, this order keeps the address it was
+      shipped to.
+    </p>`;
+}
+
+function subtitle(o, paid) {
+  if (justPlaced) {
+    return paid
+      ? 'A receipt is on its way to your inbox, and you will hear from us again when it ships.'
+      : 'Nothing has been charged. We will contact you to arrange payment on delivery.';
+  }
+  if (o.hasTracking) return 'This parcel is on its way and can be tracked.';
+  if (o.status === 'cancelled') return 'This order was cancelled. Nothing further is due.';
+  return 'We will email you as soon as it is on its way.';
+}
+
+/* Shown once, after checkout redirects here. Says what to expect next rather
+   than repeating the totals directly above it. */
+function confirmationNote(paid) {
+  return `
+    <div class="notice" role="status">
+      ${paid
+        ? 'Thank you. Your payment has been received and your order is confirmed.'
+        : 'Thank you. Your order is confirmed — nothing has been charged yet.'}
+      ${paid
+        ? ' We will email a receipt to your account address.'
+        : ' Please keep the amount ready for the courier.'}
+    </div>`;
+}
+
+function addressBlock(title, a) {
+  return `
+    <div>
+      <h3 style="font:400 22px var(--font-display);margin-bottom:8px">${AV.esc(title)}</h3>
+      <address style="font-style:normal;color:var(--text-secondary);font-size:13px;line-height:1.8">
+        <b style="color:var(--text-primary)">${AV.esc(a?.name || '')}</b><br>
+        ${C.addressText(a)}
+        ${a?.phone ? `<br>${AV.esc(a.phone)}` : ''}
+      </address>
+    </div>`;
+}
+
+function contactBlock(o) {
+  return `
+    <div>
+      <h3 style="font:400 22px var(--font-display);margin-bottom:8px">Contact</h3>
+      <div style="color:var(--text-secondary);font-size:13px;line-height:1.8">
+        ${AV.esc(o.customerEmail || '')}
+      </div>
+    </div>`;
+}
 </script>
 </body>
 </html>

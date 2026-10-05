@@ -41,8 +41,12 @@
 <main id="main">
   <div class="page">
     <div class="wrap cart-grid">
-      <div id="cartList"></div>
-      <aside class="summary js-load" id="summary"></aside>
+      <div id="cartPane">
+        <div class="av-skeleton" aria-hidden="true">
+          <div class="line-lg"></div><div class="line-lg"></div><div class="line-lg"></div>
+        </div>
+      </div>
+      <aside class="summary" id="summary"></aside>
     </div>
   </div>
 </main>
@@ -51,81 +55,258 @@
 
 <script src="/assets/api.js"></script>
 <script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
 <script>
-AV.boot();
-const FREE_ABOVE = AV.SHIPPING.freeAbove;
-const SHIP = AV.SHIPPING.flat;
-const listEl = AV.qs('#cartList');
-const sumEl = AV.qs('#summary');
+/* ====================================================================
+   YOUR BAG
 
-function render() {
-  const cart = AV.getCart();
-  if (!cart.length) {
-    listEl.innerHTML = '<div class="empty">Your bag is empty — nothing is waiting.<br><a class="btn btn-light" href="/shop.html">Browse the collection</a></div>';
-    sumEl.innerHTML = '';
-    return;
-  }
-  /* Lines whose stock has dropped since they were added are trimmed here, so
-     the shopper sees a real total rather than a price the API will refuse. */
-  const atCap = (i) => Number.isFinite(i.stock) && i.stock > 0 && i.quantity >= i.stock;
-  listEl.innerHTML = cart
-    .map((i) => `
-      <div class="cart-line">
-        <a href="/product.html?slug=${encodeURIComponent(i.slug)}"><div class="art ${AV.art(cart.indexOf(i))}" role="img" aria-label="${AV.esc(i.name)}"></div></a>
-        <div>
-          <h3><a href="/product.html?slug=${encodeURIComponent(i.slug)}">${AV.esc(i.name)}</a></h3>
-          <div class="price">${AV.formatPrice(i.price)}</div>
-          <div class="stepper line-qty">
-            <button type="button" data-qty-m="${i.slug}" aria-label="Decrease quantity of ${AV.esc(i.name)}">−</button>
-            <span>${i.quantity}</span>
-            <button type="button" data-qty-p="${i.slug}" aria-label="Increase quantity of ${AV.esc(i.name)}"${atCap(i) ? ' disabled title="That is all we have in stock"' : ''}>+</button>
-          </div>
-          ${atCap(i) ? '<p class="line-note">Only ' + i.stock + ' in stock.</p>' : ''}
-          <button class="remove" data-remove="${i.slug}">Remove</button>
-        </div>
-        <span class="line-total">${AV.formatPrice(i.price * i.quantity)}</span>
-      </div>`)
-    .join('');
+   One page, one source of truth. `AV.bag.load()` returns either the
+   server's bag (signed in) or the guest bag, already shaped like the
+   server's, so everything below renders a single structure and never
+   branches on who the visitor is.
 
-  const subtotal = AV.cartSubtotal();
-  const shipping = subtotal >= FREE_ABOVE ? 0 : SHIP;
-  const total = subtotal + shipping;
-  sumEl.innerHTML = `
-    <h3>Order summary</h3>
-    <div class="row"><span>Subtotal</span><span>${AV.formatPrice(subtotal)}</span></div>
-    <div class="row"><span>Shipping</span><span>${shipping ? AV.formatPrice(shipping) : 'Free'}</span></div>
-    ${shipping ? `<div class="free-ship">Add ${AV.formatPrice(FREE_ABOVE - subtotal)} more for free shipping.</div>` : ''}
-    <div class="row total"><span>Total</span><span>${AV.formatPrice(total)}</span></div>
-    <a class="btn btn-light" href="/checkout.html">Checkout · ${AV.formatPrice(total)}</a>
-    <p class="note" style="margin-top:14px">Shipping across India in 2–3 days. Free above ${AV.formatPrice(FREE_ABOVE)}.</p>`;
-}
+   Every figure on screen is the server's: unit prices, line totals,
+   subtotal, shipping and total all come from GET /api/cart. This page
+   adds nothing to a number and nothing to a stock level. A guest's bag is
+   the one exception, and it says so on the page rather than presenting an
+   estimate as a promise.
+   ==================================================================== */
 
-listEl.addEventListener('click', (e) => {
-  const minus = e.target.closest('[data-qty-m]');
-  const plus = e.target.closest('[data-qty-p]');
-  const rm = e.target.closest('[data-remove]');
-  if (minus) AV.setCartQty(minus.dataset.qtyM, (AV.getCart().find((i) => i.slug === minus.dataset.qtyM)?.quantity || 1) - 1);
-  if (plus) AV.setCartQty(plus.dataset.qtyP, (AV.getCart().find((i) => i.slug === plus.dataset.qtyP)?.quantity || 1) + 1);
-  if (rm) { AV.removeFromCart(rm.dataset.remove); AV.toast('Removed from your bag.', 'ok'); }
-  render();
+const C = AV.customer;
+const pane = AV.qs('#cartPane');
+const summary = AV.qs('#summary');
+
+/* Last authoritative bag, kept so the quantity steppers know the current
+   number without re-reading the DOM. */
+let bag = null;
+
+/* Which line is mid-update. Only that line dims, and its buttons are
+   disabled, so a shopper cannot queue two writes against the same line. */
+const busyLines = new Set();
+
+C.start('#cartPane', async (root) => {
+  await refresh();
 });
 
-render();
+/* Loads and redraws. Used on first paint and after every change. */
+async function refresh() {
+  C.loading(pane, 'Loading your bag');
+  summary.innerHTML = '';
+  try {
+    bag = await AV.bag.load();
+    render();
+  } catch (err) {
+    C.clearBusy(pane);
+    /* A failed load is not an empty bag. Saying so matters: an error that
+       renders as "your bag is empty" would send someone to the shop to
+       re-buy what they already chose. */
+    C.error(pane, err, { retry: refresh, title: 'We could not load your bag' });
+  }
+}
 
-/* Confirm the bag still matches live stock. A product that sold out since it
-   was added is dropped with an explanation instead of failing at checkout. */
-AV.api.get('/api/products?limit=100')
-  .then((env) => {
-    /* Only treat the bag as authoritative when the response really covered the
-       catalogue; a truncated page must not delete lines it simply didn't list. */
-    const all = !(env.meta && env.meta.hasMore);
-    const dropped = AV.pruneCart(env.data || [], { all });
-    if (dropped.length) {
-      AV.toast(`No longer available: ${dropped.join(', ')}.`);
-      render();
+function render() {
+  C.clearBusy(pane);
+
+  if (!bag.lines.length) {
+    C.empty(pane, {
+      level: 'h2',
+      title: 'Your bag is empty',
+      body: 'Nothing is waiting here yet. When you find a piece you love, it will be kept for you.',
+      actions: [
+        { label: 'Browse the collection', href: '/shop.html', style: 'btn-light' },
+        { label: 'See what you saved', href: '/wishlist.html' },
+      ],
+    });
+    summary.innerHTML = '';
+    return;
+  }
+
+  pane.innerHTML = `
+    ${bag.authoritative ? '' : provisionalNote()}
+    ${issuesNote()}
+    <div class="cart-lines">${bag.lines.map(lineHTML).join('\n')}</div>
+    <div class="line-actions" style="margin-top:24px">
+      <button class="remove" type="button" data-clear>Empty the bag</button>
+      <a class="remove" href="/shop.html" style="margin-left:auto">Continue shopping</a>
+    </div>`;
+  renderSummary();
+}
+
+/* A guest bag has no account behind it, so nothing here has been checked
+   against live stock or today's prices. Stated plainly, with what does
+   happen when they sign in. */
+function provisionalNote() {
+  return `
+    <div class="bag-provisional">
+      <b>This is a preview of your bag.</b> You are not signed in, so these prices and
+      stock levels are the ones we saw when you added each piece. Sign in or create an
+      account and we will re-check everything against live stock before you check out —
+      nothing is reserved until you do.
+    </div>`;
+}
+
+/* The server can report a line it had to adjust, e.g. a piece that sold
+   out after it was added. Shown above the bag so it is read before the
+   total, not discovered at checkout. */
+function issuesNote() {
+  const issues = (bag.issues || []).filter(Boolean);
+  if (!issues.length) return '';
+  return `
+    <div class="notice error" role="status">
+      ${issues.map((i) => `<div>${AV.esc(typeof i === 'string' ? i : i.message || String(i))}</div>`).join('\n      ')}
+    </div>`;
+}
+
+function lineHTML(item, i) {
+  const atCap = item.maxQuantity !== null && item.quantity >= item.maxQuantity;
+  const outOfStock = item.inStock === false;
+  /* Flagged means the server changed this line. Kept visible rather than
+     removed, so the customer can see what happened and correct it. */
+  const flagged = outOfStock;
+  const img = item.image
+    ? `<div class="art has-photo" style="background-image:url('${AV.esc(item.image)}')" role="img" aria-label="${AV.esc(item.name)}"></div>`
+    : `<div class="art ${AV.art(i)}" role="img" aria-label="${AV.esc(item.name)}"></div>`;
+  const href = item.slug ? `/product.html?slug=${encodeURIComponent(item.slug)}` : null;
+
+  return `
+    <div class="cart-line${flagged ? ' is-flagged' : ''}${busyLines.has(key(item)) ? ' is-busy' : ''}" data-line="${AV.esc(key(item))}">
+      <a href="${href || '#'}"${href ? '' : ' aria-hidden="true" tabindex="-1"'}>${img}</a>
+      <div class="cart-line-body">
+        <h3>${href ? `<a href="${href}">${AV.esc(item.name)}</a>` : AV.esc(item.name)}</h3>
+        <div class="price">${C.money(item.unitPrice)}</div>
+        ${flagged ? '<p class="flag">This piece is no longer available. Remove it to continue.</p>' : ''}
+        <div class="line-actions">
+          <div class="stepper line-qty">
+            <button type="button" data-dec aria-label="Decrease quantity of ${AV.esc(item.name)}"${outOfStock ? ' disabled' : ''}>−</button>
+            <span aria-live="off">${item.quantity}</span>
+            <button type="button" data-inc aria-label="Increase quantity of ${AV.esc(item.name)}"
+              ${outOfStock || atCap ? 'disabled' : ''}>+</button>
+          </div>
+          <button class="remove" type="button" data-remove>Remove</button>
+        </div>
+        ${atCap && !outOfStock ? `<p class="line-note">That is all we have in stock.</p>` : ''}
+      </div>
+      <div class="line-total">${C.money(item.lineTotal)}</div>
+    </div>`;
+}
+
+/* A stable identity for a line across re-renders. The product id when there
+   is one, otherwise the slug — the two things the cart is keyed by on the
+   server, in that order. */
+function key(item) {
+  return item.productId || item.slug || item.name;
+}
+
+function renderSummary() {
+  const free = Number(bag.shipping) === 0;
+  summary.innerHTML = `
+    <h3>Order summary</h3>
+    ${C.bagTotals(bag)}
+    ${freeShipNote()}
+    <a class="btn btn-light btn-block" href="/checkout.html" id="checkoutBtn">Checkout · ${C.money(bag.total)}</a>
+    ${guestCheckoutNote()}
+    <p class="note" style="margin-top:14px">
+      ${bag.authoritative
+        ? 'This is your bag on your account. We will check stock again when you order.'
+        : 'Shipping is estimated until you sign in. Free above ' + AV.formatPrice(AV.SHIPPING.freeAbove) + '.'}
+    </p>`;
+}
+
+function freeShipNote() {
+  const gap = Number(bag.amountToFreeShipping);
+  if (!Number.isFinite(gap) || gap <= 0) return '';
+  return `<div class="free-ship">Add ${AV.formatPrice(gap)} more for free shipping.</div>`;
+}
+
+/* A guest cannot order: the bag has to belong to an account so the order,
+   the address and the confirmation email can all be tied to one person.
+   Checkout is therefore offered as a sign-in, with the bag preserved. */
+function guestCheckoutNote() {
+  if (bag.authoritative) return '';
+  return '<p class="note" style="margin-top:12px">Sign in at checkout and we will bring your bag with you.</p>';
+}
+
+pane.addEventListener('click', async (e) => {
+  const lineEl = e.target.closest('.cart-line');
+  const clearBtn = e.target.closest('[data-clear]');
+
+  if (clearBtn) {
+    if (!window.confirm('Remove everything from your bag?')) return;
+    await mutate(null, () => AV.bag.clear(), 'Your bag is empty.');
+    return;
+  }
+
+  if (!lineEl) return;
+  const k = lineEl.dataset.line;
+  const item = bag.lines.find((l) => key(l) === k);
+  if (!item) return;
+
+  if (e.target.closest('[data-remove]')) {
+    await mutate(k, () => AV.bag.remove(item), `${item.name} removed from your bag.`);
+    return;
+  }
+
+  if (e.target.closest('[data-inc]')) {
+    await mutate(k, () => AV.bag.setQuantity(item, item.quantity + 1));
+    return;
+  }
+
+  if (e.target.closest('[data-dec]')) {
+    /* Removing at 1 rather than sending a zero: the server refuses a
+       non-positive quantity, and dropping the line is what − at 1 means. */
+    if (item.quantity <= 1) {
+      await mutate(k, () => AV.bag.remove(item), `${item.name} removed from your bag.`);
+      return;
     }
-  })
-  .catch(() => { /* offline: keep showing the bag as it stands */ });
+    await mutate(k, () => AV.bag.setQuantity(item, item.quantity - 1));
+  }
+});
+
+/* Every change goes through here, so the page has one path for "a write is in
+   flight": mark the lines busy, ignore further clicks, and redraw only once the
+   server has answered. Nothing is marked as changed optimistically — a line
+   never shows a quantity the backend did not accept. */
+async function mutate(lineKey, fn, message) {
+  busyLines.clear();
+  if (lineKey) busyLines.add(lineKey);
+  applyBusy();
+
+  try {
+    /* AV.bag reports failure as `false` and has already toasted the reason,
+       rather than throwing. Treating a resolved call as success produced an
+       error toast and a success toast for one refused write, so the result is
+       checked and only a real success is announced. */
+    const ok = await fn();
+    if (ok === false) {
+      busyLines.clear();
+      applyBusy();
+      await refresh();
+      return;
+    }
+    if (message) AV.toast(message, 'ok');
+    /* Redrawn from the authoritative response the mutation returned, rather
+       than from the value we asked for. */
+    await refresh();
+  } catch (err) {
+    AV.toast(AV.firstErr(err), 'err');
+    busyLines.clear();
+    applyBusy();
+    /* The bag on screen is now known to be out of date, so it is re-read
+       rather than left showing a change that was refused. */
+    await refresh();
+  }
+}
+
+/* Applies the busy state to the current markup. Uses pointer-events and the
+   disabled attribute together: pointer-events stops a click reaching the
+   handler, and disabled keeps the control out of the tab order and announces
+   itself as unavailable. */
+function applyBusy() {
+  pane.querySelectorAll('.cart-line').forEach((el) => {
+    const on = busyLines.has(el.dataset.line);
+    el.classList.toggle('is-busy', on);
+  });
+}
 </script>
 </body>
 </html>

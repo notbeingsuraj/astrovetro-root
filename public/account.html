@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#17221d">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/img/favicon.svg">
-<meta name="robots" content="noindex, follow">
-<meta name="description" content="Your orders, readings and account details.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Your orders, saved pieces, addresses and details.">
 <title>Your Account</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,12 +18,12 @@
 <meta property="og:site_name" content="Astro Vetro">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Your Account — Astro Vetro">
-<meta property="og:description" content="Your orders, readings and account details.">
+<meta property="og:description" content="Your orders, saved pieces, addresses and details.">
 <meta property="og:url" content="/account.html">
 <meta property="og:image" content="/assets/img/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Your Account — Astro Vetro">
-<meta name="twitter:description" content="Your orders, readings and account details.">
+<meta name="twitter:description" content="Your orders, saved pieces, addresses and details.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
 </head>
 <body>
@@ -34,14 +34,18 @@
   <div class="wrap">
     <a class="back" href="/home.html">← Home</a>
     <div class="eyebrow">Your space</div>
-    <h1 id="pageTitle">Account.</h1>
-    <p class="sub" id="pageSub">Your orders, readings and details in one place.</p>
+    <h1 id="pageTitle">Your account.</h1>
+    <p class="sub" id="pageSub">Your orders, saved pieces and details in one place.</p>
   </div>
 </header>
 
 <main id="main">
   <div class="page">
-    <div class="wrap" id="accountRoot"></div>
+    <div class="wrap" id="accountRoot">
+      <div class="av-skeleton" aria-hidden="true">
+        <div class="line-lg"></div><div class="line-xl"></div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -49,313 +53,668 @@
 
 <script src="/assets/api.js"></script>
 <script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
 <script>
-AV.boot();
+/* ====================================================================
+   ACCOUNT
+
+   One page with several panels, and one page in the URL. The panel is in
+   `?view=`, so a panel is linkable, survives a refresh, and the back button
+   behaves. Nothing sensitive goes in the query string.
+
+   Signed out, this is the sign-in and registration page. Signed in, it is the
+   dashboard: GET /api/me supplies the whole overview in one request — identity,
+   counts, default address, latest order — rather than the page firing one call
+   per tile and rendering half of itself when one of them is slow.
+
+   Panels are shown and hidden, not navigated to, so switching between them
+   never loses a half-typed address form.
+   ==================================================================== */
+
+const C = AV.customer;
 const root = AV.qs('#accountRoot');
-const params = new URLSearchParams(location.search);
-let view = params.get('view') || 'overview';
-const next = params.get('next') || '/account.html';
 
-async function init() {
-  /* Accounts live in the database. When this deployment has none, say so
-     plainly instead of showing a sign-in form that cannot possibly succeed -
-     a control that looks live but is not is worse than an honest gap. */
-  const caps = await AV.capabilities().catch(() => null);
-  if (caps && caps.database === false) return renderUnavailable();
+/* `next` is where to go after signing in, and `safeNext` has already vetted it
+   as a path on this site. */
+const next = C.safeNext(C.readParam('next'), '/account.html');
 
-  const user = await AV.me();
+const PANELS = [
+  ['overview', 'Overview'],
+  ['orders', 'Orders'],
+  ['addresses', 'Addresses'],
+  ['wishlist', 'Saved'],
+  ['profile', 'Profile'],
+  ['password', 'Password'],
+];
+
+let user = null;
+let summaryData = null;
+
+/* Two namespaces share this one `?view=`: the auth modes (login, register) and
+   the signed-in panels. They are kept apart explicitly because they were not —
+   `view` was validated against the panel list only, so /account.html?view=register
+   silently fell through to 'overview' and rendered the sign-in form. Now an
+   auth mode survives validation, and so does an unknown value (which falls back
+   to overview rather than matching nothing). */
+const AUTH_VIEWS = ['login', 'register'];
+const requested = C.readParam('view');
+let view = PANELS.some(([k]) => k === requested) ? requested : 'overview';
+let authMode = AUTH_VIEWS.includes(requested) ? requested : 'login';
+
+C.start('#accountRoot', async (el) => {
+  if (await C.needsDatabase()) return C.databaseUnavailable(root);
+
+  user = await AV.me();
   if (!user) return renderAuth();
+
   AV.setUser(user);
-  AV.seo({ title: `${user.firstName}'s account`, description: 'Your orders, readings and account details.', noindex: true });
-  AV.qs('#pageTitle').textContent = `${user.firstName}'s space.`;
-  renderTabs(user);
-}
-
-function renderTabs(user) {
-  const tabs = [
-    ['overview', 'Overview'],
-    ['orders', 'Orders'],
-    ['bookings', 'Readings'],
-    ['profile', 'Profile'],
-    ['password', 'Password'],
-  ];
-  if (user.role === 'admin') tabs.push(['admin', 'Admin']);
-  view = tabs.some(([k]) => k === view) ? view : 'overview';
-  root.innerHTML = `<div class="tabs" id="acctTabs">${tabs
-    .map(([k, l]) => `<button class="tab${k === view ? ' active' : ''}" data-view="${k}">${l}</button>`)
-    .join('')}</div>
-    <div id="acctPane"></div>`;
-  const pane = AV.qs('#acctPane');
-  AV.qs('#acctTabs').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-view]');
-    if (!b) return;
-    view = b.dataset.view;
-    history.replaceState(null, '', `/account.html?view=${view}`);
-    AV.qsa('.tab').forEach((x) => x.classList.toggle('active', x === b));
-    route(user, pane);
+  AV.seo({
+    title: 'Your account',
+    description: 'Your orders, saved pieces, addresses and account details.',
+    noindex: true,
   });
-  route(user, pane);
-}
 
-async function route(user, pane) {
-  pane.innerHTML = '<div class="empty">Loading…</div>';
-  if (view === 'overview') await overview(user, pane);
-  else if (view === 'orders') await orders(user, pane);
-  else if (view === 'bookings') await bookings(user, pane);
-  else if (view === 'profile') profile(user, pane);
-  else if (view === 'password') password(user, pane);
-  else if (view === 'admin') {
-    pane.innerHTML = '<div class="empty"><a class="btn btn-light" href="/admin.html">Open the admin desk →</a></div>';
+  await loadSummary();
+});
+
+/* ── Signed in ───────────────────────────────────────────────────────── */
+
+/* The aggregate. One request for the whole overview; a dashboard that fires
+   five calls to draw one screen can disagree with itself. */
+async function loadSummary() {
+  C.loading(root, 'Loading your account');
+  try {
+    summaryData = await AV.account.summary();
+    user = summaryData.user || user;
+    AV.setUser(user);
+    renderShell();
+  } catch (err) {
+    C.clearBusy(root);
+    C.error(root, err, { retry: loadSummary, level: 'h2', title: 'We could not load your account' });
   }
 }
 
-/* ── Overview ─────────────────────────────────────────────────── */
-async function overview(user, pane) {
-  let s = { orderCount: 0, totalSpent: 0, bookingCount: 0 };
-  try {
-    s = (await AV.api.get('/api/users/me/summary')).data;
-  } catch (_e) { /* defaults */ }
-  pane.innerHTML = `
-    <div class="stat-grid" style="max-width:720px">
-      <div class="stat-card"><div class="n">${s.orderCount}</div><div class="l">Orders</div></div>
-      <div class="stat-card"><div class="n">${AV.formatPrice(s.totalSpent)}</div><div class="l">Lifetime c/o</div></div>
-      <div class="stat-card"><div class="n">${s.bookingCount}</div><div class="l">Readings</div></div>
-    </div>
-    <div class="notice" style="max-width:720px">Welcome back, ${AV.esc(user.firstName)}. Your next ritual is only a click away — visit the <a href="/shop.html">shop</a> or <a href="/readings.html">book a reading</a>.</div>`;
-}
+function renderShell() {
+  AV.qs('#pageTitle').textContent = `${AV.givenName(user)}'s space.`;
+  AV.qs('#pageSub').textContent = 'Your orders, saved pieces and details in one place.';
 
-/* ── Orders ───────────────────────────────────────────────────── */
-async function orders(_user, pane) {
-  try {
-    const env = await AV.api.get('/api/orders?limit=50');
-    const list = env.data || [];
-    pane.innerHTML = list.length
-      ? `<div class="table-wrap"><table>
-          <thead><tr><th>Order</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
-          <tbody>${list.map((o) => `
-            <tr>
-              <td><a href="/order.html?number=${encodeURIComponent(o.orderNumber)}">${AV.esc(o.orderNumber)}</a></td>
-              <td class="muted">${AV.formatDate(o.createdAt)}</td>
-              <td>${(o.items || []).reduce((n, i) => n + i.quantity, 0)}</td>
-              <td>${AV.formatPrice(o.total)}</td>
-              <td><span class="status-badge status-${AV.esc(o.status)}">${AV.esc(o.status)}</span></td>
-            </tr>`).join('')}
-          </tbody></table></div>`
-      : '<div class="empty">No orders yet.<br><a class="btn btn-light" href="/shop.html">Start with something small</a></div>';
-  } catch (e) {
-    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
-  }
-}
+  const c = summaryData.counts || {};
 
-/* ── Bookings ─────────────────────────────────────────────────── */
-async function bookings(_user, pane) {
-  try {
-    const env = await AV.api.get('/api/bookings?limit=50');
-    const list = env.data || [];
-    pane.innerHTML = list.length
-      ? `<div class="table-wrap"><table>
-          <thead><tr><th>Reading</th><th>Date</th><th>Time</th><th>For</th><th>Status</th></tr></thead>
-          <tbody>${list.map((b) => `
-            <tr>
-              <td>${AV.esc(b.serviceName)}</td>
-              <td class="muted">${AV.formatDate(b.preferredDate)}</td>
-              <td class="muted">${AV.esc(b.preferredTime || '—')}</td>
-              <td>${AV.esc(b.name)}</td>
-              <td><span class="status-badge status-${AV.esc(b.status)}">${AV.esc(b.status)}</span></td>
-            </tr>`).join('')}
-          </tbody></table></div>`
-      : '<div class="empty">No readings yet — a good moment to book one.<br><a class="btn btn-light" href="/readings.html">Book a reading</a></div>';
-  } catch (e) {
-    pane.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
-  }
-}
-
-/* ── Profile ──────────────────────────────────────────────────── */
-function profile(user, pane) {
-  pane.innerHTML = `
-    <form id="profileForm" style="max-width:560px">
-      <p class="form-msg" id="profMsg"></p>
-      <div class="form-grid">
-        <label>First name<input name="firstName" required value="${AV.esc(user.firstName || '')}"></label>
-        <label>Last name<input name="lastName" required value="${AV.esc(user.lastName || '')}"></label>
-        <label class="full">Email<input type="email" value="${AV.esc(user.email || '')}" disabled></label>
-        <label>Phone<input name="phone" value="${AV.esc(user.phone || '')}"></label>
-        <label>City<input name="city" value="${AV.esc(user.city || '')}"></label>
+  root.innerHTML = `
+    <div class="acct-layout">
+      <nav class="acct-nav" aria-label="Account sections">
+        ${PANELS.map(([key, label]) => navLink(key, label, navCount(key, c))).join('\n        ')}
+        <a href="/orders.html">All orders</a>
+        ${user.role === 'admin' ? '<a href="/admin.html">Admin desk</a>' : ''}
+        <a href="#" data-signout>Sign out</a>
+      </nav>
+      <div>
+        ${pendingEmailNote()}
+        <div id="acctPanel" class="acct-panel">${panelMarkup(view)}</div>
       </div>
+    </div>`;
+
+  wireShell();
+  show(view);
+}
+
+function navLink(key, label, count) {
+  const on = key === view;
+  return `<a href="/account.html?view=${key}" data-panel="${key}"${on ? ' aria-current="page"' : ''}>
+      <span>${AV.esc(label)}</span>${count === null ? '' : `<span class="n">${count}</span>`}
+    </a>`;
+}
+
+/* Counts next to a destination, so a customer can see where their orders and
+   saved pieces are without opening each panel. Zero is shown rather than
+   hidden — a visible 0 is information, a missing number is not. */
+function navCount(key, c) {
+  if (key === 'orders') return c.orders ?? 0;
+  if (key === 'wishlist') return c.wishlist ?? 0;
+  if (key === 'addresses') return summaryData.addressCount ?? 0;
+  return null;
+}
+
+/* An email change is held, not applied — see the note in accountController.
+   Saying so here prevents the common confusion of "I changed my email and can I
+   sign in with the new one yet?". */
+function pendingEmailNote() {
+  if (!summaryData.pendingEmail) return '';
+  return `
+    <div class="notice" role="status">
+      We are confirming a change to <b>${AV.esc(summaryData.pendingEmail)}</b>.
+      Your account still uses ${AV.esc(user.email)} until that is done.
+    </div>`;
+}
+
+/* ── Panels ────────────────────────────────────────────────────────────
+   Each returns its own markup, so the shell is written once and switching
+   panels never rebuilds the navigation around them. */
+
+function panelMarkup(key) {
+  switch (key) {
+    case 'overview': return overviewMarkup();
+    case 'orders': return ordersMarkup();
+    case 'addresses': return addressesMarkup();
+    case 'wishlist': return wishlistMarkup();
+    case 'profile': return profileMarkup();
+    case 'password': return passwordMarkup();
+    default: return '';
+  }
+}
+
+function overviewMarkup() {
+  const c = summaryData.counts || {};
+  const latest = summaryData.latestOrder;
+  const def = summaryData.defaultAddress;
+
+  return `
+    <div class="stat-grid">
+      <a class="stat-card" href="/orders.html"><div class="n">${c.orders ?? 0}</div><div class="l">Orders</div></a>
+      <div class="stat-card"><div class="n">${c.inTransit ?? 0}</div><div class="l">On the way</div></div>
+      <a class="stat-card" href="/wishlist.html"><div class="n">${c.wishlist ?? 0}</div><div class="l">Saved</div></a>
+      <a class="stat-card" href="/cart.html"><div class="n">${c.bag ?? 0}</div><div class="l">In your bag</div></a>
+    </div>
+
+    ${latest
+      ? `<div class="order-card">
+          <div class="order-card-head">
+            <div>
+              <div class="meta" style="margin-bottom:6px">Your most recent order</div>
+              <a class="num order-row-link" href="/orders/${encodeURIComponent(latest.orderNumber)}">${AV.esc(latest.orderNumber)}</a>
+              <div class="meta">
+                <span>${AV.formatDate(latest.createdAt)}</span>
+                <span>${AV.esc(C.pieces(latest.itemCount))}</span>
+                <span>${C.money(latest.total)}</span>
+              </div>
+            </div>
+            ${C.statusBadge(latest.status)}
+          </div>
+          <div class="order-card-actions">
+            <a class="btn btn-outline btn-sm" href="/orders/${encodeURIComponent(latest.orderNumber)}">View order</a>
+            ${latest.trackable
+              ? `<a class="btn btn-light btn-sm" href="/tracking/${encodeURIComponent(latest.orderNumber)}">Track parcel</a>`
+              : ''}
+          </div>
+        </div>`
+      : `<div class="av-state">
+          <h2>No orders yet</h2>
+          <p>When you place an order it will appear here, along with everything you have saved.</p>
+          <a class="btn btn-light" href="/shop.html">Browse the collection</a>
+        </div>`}
+
+    <div class="order-card" style="margin-top:24px">
+      <div class="meta" style="margin-bottom:6px">Delivers to</div>
+      ${def
+        ? `<div class="who" style="font:400 22px var(--font-display)">${AV.esc(def.name)}</div>
+           <address style="font-style:normal;color:var(--text-secondary);font-size:13px;line-height:1.8;margin-top:4px">${C.addressText(def)}</address>`
+        : `<p class="note" style="margin:6px 0 14px">You have not saved a delivery address yet. You can add one at checkout, or here.</p>`}
+      <div class="order-card-actions">
+        <a class="btn btn-outline btn-sm" href="/account.html?view=addresses">Manage addresses</a>
+      </div>
+    </div>
+
+    <div class="notice" style="margin-top:24px">
+      Welcome back, ${AV.esc(AV.givenName(user))}. Next time you are here, we will have
+      your addresses ready and your saved pieces waiting.
+    </div>`;
+}
+
+function ordersMarkup() {
+  return `
+    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:6px">Your orders</h2>
+    <p class="note" style="margin-bottom:18px">
+      Every order you have placed, newest first. Full details are on the order's own page.
+    </p>
+    <div id="ordersHost"></div>
+    <div class="order-card-actions" style="margin-top:20px">
+      <a class="btn btn-outline btn-sm" href="/orders.html">Open order history</a>
+    </div>`;
+}
+
+function addressesMarkup() {
+  return `
+    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:6px">Saved addresses</h2>
+    <p class="note" style="margin-bottom:18px">
+      Used at checkout. Editing one never changes an order that has already been placed.
+    </p>
+    <div id="addrHost"></div>
+    <button class="btn btn-outline" type="button" id="addAddrBtn" style="margin-top:18px">+ Add an address</button>
+    <div id="addrFormWrap" hidden>${addressFormMarkup()}</div>`;
+}
+
+function wishlistMarkup() {
+  const c = summaryData.counts || {};
+  return `
+    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:6px">Saved pieces</h2>
+    <p class="note" style="margin-bottom:18px">
+      ${c.wishlist
+        ? `You have ${AV.esc(C.pieces(c.wishlist))} set aside.`
+        : 'Nothing set aside yet.'}
+    </p>
+    <div class="order-card-actions">
+      <a class="btn btn-outline btn-sm" href="/wishlist.html">Open your wishlist</a>
+      <a class="btn btn-light btn-sm" href="/shop.html">Find something to save</a>
+    </div>`;
+}
+
+function profileMarkup() {
+  return `
+    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:6px">Your details</h2>
+    <p class="note" style="margin-bottom:18px">
+      Your email is the address we send order confirmations to, so changing it
+      takes a confirmation step.
+    </p>
+    <form class="form-narrow" id="profileForm" novalidate>
+      <p class="form-msg"></p>
+      <label>Full name<input name="name" required autocomplete="name" value="${AV.esc(user.name || '')}"></label>
+      <label>Phone<input name="phone" autocomplete="tel" inputmode="tel" value="${AV.esc(user.phone || '')}"
+        placeholder="+91 …"></label>
+      <label>Email<input type="email" name="email" autocomplete="email" value="${AV.esc(user.email || '')}"
+        placeholder="a new address to switch to"></label>
+      <p class="hint" style="margin:0">
+        We keep your current address working until you confirm a change, so nobody
+        can take over your account by changing the email on a live session.
+      </p>
       <button class="btn btn-light" type="submit">Save changes</button>
-      <button class="btn btn-ghost" type="button" id="logoutBtn" style="margin-left:10px">Sign out</button>
     </form>`;
+}
+
+function passwordMarkup() {
+  return `
+    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:6px">Your password</h2>
+    <p class="note" style="margin-bottom:18px">
+      Changing your password signs you out everywhere, including this browser.
+    </p>
+    <form class="form-narrow" id="pwForm" novalidate>
+      <p class="form-msg"></p>
+      <label>Current password<input type="password" name="currentPassword" required autocomplete="current-password"></label>
+      <label>New password<input type="password" name="newPassword" required minlength="8" autocomplete="new-password">
+        <small class="hint">At least 8 characters.</small></label>
+      <button class="btn btn-light" type="submit">Change password</button>
+    </form>`;
+}
+
+/* ── Shell events ───────────────────────────────────────────────────── */
+
+function wireShell() {
+  root.querySelectorAll('[data-panel]').forEach((a) =>
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      go(a.dataset.panel);
+    })
+  );
+
+  root.querySelector('[data-signout]')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await AV.auth.logout();
+    } catch (_err) {
+      /* Even if the server call fails, the local session is being dropped —
+         the next request will fail too and the pages handle that. */
+    }
+    AV.clearCommerceCache();
+    AV.toast('You are signed out.', 'ok');
+    location.href = '/account.html';
+  });
+
+}
+
+/* Opening a blank address form. Reuses the same form and the same submit path
+   as editing, with no id — so an accidental save cannot overwrite an existing
+   address. */
+function wireAddressAdd() {
+  AV.qs('#addAddrBtn')?.addEventListener('click', () => {
+    const wrap = AV.qs('#addrFormWrap');
+    if (!wrap) return;
+    wrap.innerHTML = addressFormMarkup();
+    wrap.removeAttribute('hidden');
+    wireAddressForm(AV.qs('#addrForm'), async (payload) => {
+      await AV.addresses.create(payload);
+      AV.toast('Address saved.', 'ok');
+      wrap.setAttribute('hidden', '');
+      await loadAddresses();
+    });
+    wrap.querySelector('input')?.focus();
+  });
+}
+
+/* The single owner of the panel's contents. Panel-specific loading and wiring
+   live here only; a second copy in wireShell() made the first render fetch
+   addresses and orders twice and bind two listeners per control. The outgoing
+   element is swapped out after its replacement is built, because removing it
+   first and then searching for it by id finds nothing. */
+function show(key) {
+  const outgoing = root.querySelector('.acct-panel');
+
+  const host = document.createElement('div');
+  host.className = 'acct-panel';
+  host.id = 'acctPanel';
+  host.innerHTML = panelMarkup(key);
+  outgoing?.replaceWith(host);
+  if (!outgoing) AV.qs('#acctPanel')?.after(host);
+
+  root.querySelectorAll('[data-panel]').forEach((a) => {
+    const on = a.dataset.panel === key;
+    if (on) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+
+  view = key;
+  wireAddressAdd();
+  if (key === 'profile') wireProfile();
+  if (key === 'password') wirePassword();
+  if (key === 'addresses') loadAddresses();
+  if (key === 'orders') loadOrders();
+}
+
+function go(key) {
+  C.setParams({ view: key });
+  show(key);
+  /* Focus the panel heading so keyboard and screen-reader users land inside the
+     new content rather than back at the navigation. */
+  const h = root.querySelector('.acct-panel h2');
+  if (h) {
+    h.setAttribute('tabindex', '-1');
+    h.focus({ preventScroll: true });
+  }
+}
+
+/* ── Profile ────────────────────────────────────────────────────────── */
+
+function wireProfile() {
   const form = AV.qs('#profileForm');
-  const msg = AV.qs('#profMsg');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = form.querySelector('button[type="submit"]');
-    msg.className = 'form-msg';
-    try {
-      AV.setBusy(btn, true);
-      const env = await AV.api.patch('/api/users/me', {
-        firstName: form.elements.firstName.value.trim(),
-        lastName: form.elements.lastName.value.trim(),
-        phone: form.elements.phone.value.trim() || null,
-        city: form.elements.city.value.trim() || null,
-      });
-      AV.setUser(env.data);
-      msg.classList.add('show', 'ok');
-      msg.textContent = 'Profile updated.';
-    } catch (err) {
-      msg.classList.add('show', 'err');
-      msg.textContent = AV.firstErr(err);
+  if (!form) return;
+
+  C.onSubmit(form, async (body) => {
+    const patch = { name: body.name, phone: body.phone || '' };
+    /* Only sent when it actually differs. Sending the same address back would
+       make the server treat an unchanged field as a change request. */
+    if (body.email && body.email.trim().toLowerCase() !== user.email.toLowerCase()) {
+      patch.email = body.email.trim();
     }
-    AV.setBusy(btn, false);
-  });
-  AV.qs('#logoutBtn').addEventListener('click', async () => {
-    try { await AV.api.post('/api/auth/logout'); } catch (_e) { /* ignore */ }
-    AV.setUser(null);
-    location.href = '/';
+
+    const updated = await AV.account.updateProfile(patch);
+    AV.setUser(updated);
+    /* Re-read rather than assuming: the response says whether the email change
+       was applied or held for confirmation, and the panel has to reflect that
+       distinction. */
+    await loadSummary();
+    C.say(AV.qs('#profileForm .form-msg'), 'Saved.', true);
   });
 }
 
-/* ── Password ─────────────────────────────────────────────────── */
-function password(_user, pane) {
-  pane.innerHTML = `
-    <form id="pwForm" style="max-width:520px">
-      <p class="form-msg" id="pwMsg"></p>
-      <div class="form-grid">
-        <label class="full">Current password<input type="password" name="currentPassword" required></label>
-        <label class="full">New password<input type="password" name="newPassword" required minlength="8">
-          <small class="hint">At least 8 characters.</small></label>
-      </div>
-      <button class="btn btn-light" type="submit">Update password</button>
-    </form>`;
+/* ── Password ───────────────────────────────────────────────────────── */
+
+function wirePassword() {
   const form = AV.qs('#pwForm');
-  const msg = AV.qs('#pwMsg');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = form.querySelector('button[type="submit"]');
-    msg.className = 'form-msg';
-    try {
-      AV.setBusy(btn, true);
-      await AV.api.post('/api/users/me/password', {
-        currentPassword: form.elements.currentPassword.value,
-        newPassword: form.elements.newPassword.value,
-      });
-      form.reset();
-      msg.classList.add('show', 'ok');
-      msg.textContent = 'Password changed.';
-    } catch (err) {
-      msg.classList.add('show', 'err');
-      msg.textContent = AV.firstErr(err);
-    }
-    AV.setBusy(btn, false);
+  if (!form) return;
+
+  C.onSubmit(form, async (body) => {
+    await AV.account.changePassword(body.currentPassword, body.newPassword);
+    /* The server invalidates every existing token on a password change, so this
+       session is already dead. Clearing it locally and returning to sign-in is
+       the honest state, not a failure to handle. */
+    AV.setUser(null);
+    AV.clearCommerceCache();
+    C.say(AV.qs('#pwForm .form-msg'), 'Your password has been changed. Please sign in again.', true);
+    setTimeout(() => {
+      location.href = '/account.html?view=login';
+    }, 1800);
   });
 }
 
-/* ── Accounts unavailable (no database attached) ───────────────────── */
-function renderUnavailable() {
-  AV.seo({
-    title: 'Accounts',
-    description: 'Accounts and order history are not available yet.',
-    noindex: true,
-  });
-  AV.qs('#pageTitle').textContent = 'Accounts.';
-  AV.qs('#pageSub').textContent =
-    'Order history and saved details arrive with accounts.';
+/* ── Addresses ──────────────────────────────────────────────────────── */
 
-  root.innerHTML = `
-    <div class="empty" style="max-width:560px">
-      <p style="margin:0 0 1rem">
-        This site is running without a database, so accounts, order history and
-        saved details are switched off for now. Everything you can browse -
-        crystals, the shop, rituals and the journal - works as it is.
-      </p>
-      <p style="margin:0">
-        <a class="btn btn-light" href="/shop.html">Browse the collection</a>
-        <a class="btn btn-outline" href="/readings.html">Book a reading</a>
-      </p>
-    </div>`;
+async function loadAddresses() {
+  const host = AV.qs('#addrHost');
+  if (!host) return;
+  C.loading(host, 'Loading your addresses');
+  try {
+    const data = await AV.addresses.list();
+    renderAddresses(host, data.addresses || []);
+    /* The nav badge counts addresses too, so it is refreshed from the same
+       response rather than left showing a number that has changed. */
+    summaryData.addressCount = data.count;
+    const nav = root.querySelector('[data-panel="addresses"] .n');
+    if (nav) nav.textContent = data.count;
+  } catch (err) {
+    C.clearBusy(host);
+    C.error(host, err, { retry: loadAddresses, title: 'We could not load your addresses' });
+  }
 }
 
-/* ── Auth (login / register) ──────────────────────────────────── */
-function renderAuth() {
-  const mode = view === 'register' ? 'register' : 'login';
-  AV.seo({
-    title: mode === 'register' ? 'Join us' : 'Sign in',
-    description: mode === 'register'
-      ? 'Create an account for faster checkout.'
-      : 'Sign in to see your orders and readings.',
-    noindex: true,
-  });
-  AV.qs('#pageTitle').textContent = mode === 'register' ? 'Join us.' : 'Welcome back.';
-  AV.qs('#pageSub').textContent = mode === 'register' ? 'Create an account for faster checkout.' : 'Sign in to see your orders and readings.';
+function renderAddresses(host, list) {
+  C.clearBusy(host);
 
-  root.innerHTML = `
-    <div style="max-width:520px">
-      <div class="tabs">
-        <button class="tab${mode === 'login' ? ' active' : ''}" data-mode="login">Sign in</button>
-        <button class="tab${mode === 'register' ? ' active' : ''}" data-mode="register">Create account</button>
+  if (!list.length) {
+    host.innerHTML = '<div class="av-state"><h2>No addresses yet</h2><p>Add one now and checkout will be quicker next time.</p></div>';
+    return;
+  }
+
+  host.innerHTML = `<div class="addr-grid">${list.map(addrCardHTML).join('\n')}</div>`;
+  host.querySelectorAll('[data-edit]').forEach((b) =>
+    b.addEventListener('click', () => editAddress(b.dataset.edit, list))
+  );
+  host.querySelectorAll('[data-default]').forEach((b) =>
+    b.addEventListener('click', () => makeDefault(b.dataset.default))
+  );
+  host.querySelectorAll('[data-del]').forEach((b) =>
+    b.addEventListener('click', () => deleteAddress(b.dataset.del))
+  );
+}
+
+function addrCardHTML(a) {
+  return `
+    <div class="addr-card${a.isDefault ? ' is-default' : ''}" data-addr="${AV.esc(a.id)}">
+      <div class="label">
+        <span>${AV.esc(a.label || 'Address')}</span>
+        ${a.isDefault ? '<span class="tag">Default</span>' : ''}
       </div>
-      ${mode === 'login' ? loginForm() : registerForm()}
+      <div class="who">${AV.esc(a.name)}</div>
+      <address>${C.addressText(a)}</address>
+      <div class="qt" style="color:var(--text-muted);font-size:12px">${AV.esc(a.phone)}</div>
+      <div class="addr-actions">
+        <button class="btn btn-outline btn-sm" type="button" data-edit="${AV.esc(a.id)}">Edit</button>
+        ${a.isDefault ? '' : `<button class="btn btn-ghost btn-sm" type="button" data-default="${AV.esc(a.id)}">Make default</button>`}
+        <button class="btn btn-ghost btn-sm" type="button" data-del="${AV.esc(a.id)}">Remove</button>
+      </div>
     </div>`;
+}
 
-  AV.qsa('[data-mode]').forEach((b) => b.addEventListener('click', () => {
-    const m = b.dataset.mode;
-    history.replaceState(null, '', `/account.html?view=${m}&next=${encodeURIComponent(next)}`);
-    renderAuth();
-  }));
+function addressFormMarkup(a = {}) {
+  return `
+    <form class="form-narrow" id="addrForm" novalidate style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border-subtle)">
+      <p class="form-msg"></p>
+      <div class="form-row-2">
+        <label>Label<input name="label" placeholder="Home, Work…" value="${AV.esc(a.label || '')}"></label>
+        <label>Full name<input name="name" required autocomplete="name" value="${AV.esc(a.name || user.name || '')}"></label>
+      </div>
+      <label>Phone<input name="phone" required autocomplete="tel" inputmode="tel" value="${AV.esc(a.phone || user.phone || '')}"></label>
+      <label>Address line 1<input name="line1" required autocomplete="address-line1" value="${AV.esc(a.line1 || '')}"></label>
+      <label>Address line 2 <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
+        <input name="line2" autocomplete="address-line2" value="${AV.esc(a.line2 || '')}"></label>
+      <div class="form-row-2">
+        <label>City<input name="city" required autocomplete="address-level2" value="${AV.esc(a.city || '')}"></label>
+        <label>State<input name="state" required autocomplete="address-level1" value="${AV.esc(a.state || '')}"></label>
+      </div>
+      <div class="form-row-2">
+        <label>PIN code<input name="pincode" required autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" value="${AV.esc(a.pincode || '')}"></label>
+        <label>Country<input name="country" required autocomplete="country-name" value="${AV.esc(a.country || 'India')}"></label>
+      </div>
+      <div class="line-actions">
+        <button class="btn btn-light" type="submit" id="addrSave">Save address</button>
+        <button class="btn btn-ghost" type="button" id="addrCancel">Cancel</button>
+      </div>
+    </form>`;
+}
 
-  const form = AV.qs('form');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const msg = AV.qs('.form-msg');
-    const btn = form.querySelector('button[type="submit"]');
-    msg.className = 'form-msg';
-    /* novalidate is set so errors render in the one place; the equivalent
-       native checks must run here or an empty password reaches the API. */
-    if (!form.reportValidity()) return;
-    try {
-      AV.setBusy(btn, true);
-      const body = {};
-      Array.from(form.elements).forEach((el) => {
-        if (el.name) body[el.name] = el.value;
-      });
-      const env = await AV.api.post(mode === 'login' ? '/api/auth/login' : '/api/auth/register', body);
-      AV.setUser(env.data);
-      AV.toast(mode === 'login' ? 'Welcome back.' : 'Account created — welcome.', 'ok');
-      location.href = mode === 'login' ? next : '/account.html';
-    } catch (err) {
-      msg.classList.add('show', 'err');
-      msg.textContent = AV.firstErr(err);
-    }
-    AV.setBusy(btn, false);
+function wireAddressForm(form, onDone) {
+  C.onSubmit(form, async (body) => {
+    const payload = {
+      label: body.label || 'Home',
+      name: body.name,
+      phone: body.phone,
+      line1: body.line1,
+      line2: body.line2 || '',
+      city: body.city,
+      state: body.state,
+      pincode: body.pincode,
+      country: body.country,
+    };
+    await onDone(payload);
+  });
+  form.querySelector('#addrCancel')?.addEventListener('click', () => {
+    form.closest('#addrFormWrap')?.setAttribute('hidden', '');
   });
 }
 
-function loginForm() {
-  return `
-  <form id="authForm" novalidate>
-    <p class="form-msg"></p>
-    <label>Email<input type="email" name="email" required></label>
-    <label>Password<input type="password" name="password" required></label>
-    <button class="btn btn-light" type="submit">Sign in</button>
-  </form>`;
-}
-function registerForm() {
-  return `
-  <form id="authForm" novalidate>
-    <p class="form-msg"></p>
-    <div class="form-grid">
-      <label>First name<input name="firstName" required></label>
-      <label>Last name<input name="lastName" required></label>
-    </div>
-    <label>Email<input type="email" name="email" required></label>
-    <label>Phone<input name="phone" placeholder="+91 …"></label>
-    <label>Password<input type="password" name="password" required minlength="8">
-      <small class="hint">At least 8 characters.</small></label>
-    <button class="btn btn-light" type="submit">Create account</button>
-  </form>`;
+function editAddress(id, list) {
+  const a = list.find((x) => x.id === id);
+  if (!a) return;
+  const wrap = AV.qs('#addrFormWrap');
+  wrap.innerHTML = addressFormMarkup(a);
+  wrap.removeAttribute('hidden');
+  wireAddressForm(AV.qs('#addrForm'), async (payload) => {
+    await AV.addresses.update(id, payload);
+    AV.toast('Address updated.', 'ok');
+    wrap.setAttribute('hidden', '');
+    await loadAddresses();
+  });
+  wrap.querySelector('input')?.focus();
 }
 
-init();
+/* Setting a default re-renders from the response. The server clears the old
+   default in the same operation, so the page never has to flip two cards
+   locally and risk showing a default the database did not accept. */
+async function makeDefault(id) {
+  try {
+    await AV.addresses.setDefault(id);
+    AV.toast('Default address updated.', 'ok');
+    await loadAddresses();
+  } catch (err) {
+    AV.toast(AV.firstErr(err), 'err');
+  }
+}
+
+async function deleteAddress(id) {
+  if (!window.confirm('Remove this address? Orders already placed keep it.')) return;
+  try {
+    await AV.addresses.remove(id);
+    AV.toast('Address removed.', 'ok');
+    await loadAddresses();
+  } catch (err) {
+    AV.toast(AV.firstErr(err), 'err');
+  }
+}
+
+/* ── Orders panel ───────────────────────────────────────────────────── */
+
+async function loadOrders() {
+  const host = AV.qs('#ordersHost');
+  if (!host) return;
+  C.loading(host, 'Loading your orders');
+  try {
+    const data = await AV.orders.list({ page: 1, limit: 5 });
+    const orders = data.orders || [];
+    C.clearBusy(host);
+    host.innerHTML = orders.length
+      ? `<div class="order-list">${orders.map(orderRowHTML).join('\n')}</div>`
+      : '<div class="av-state"><h3>No orders yet</h3><p>Your orders will appear here once you place one.</p></div>';
+  } catch (err) {
+    C.clearBusy(host);
+    C.error(host, err, { retry: loadOrders, title: 'We could not load your orders' });
+  }
+}
+
+/* A compact row, not the full history page: the panel is a summary, and the
+   link to /orders.html is the way to see everything. */
+function orderRowHTML(o) {
+  const itemCount = (o.items || []).reduce((n, i) => n + i.quantity, 0);
+  return `
+    <div class="order-card">
+      <div class="order-card-head">
+        <div>
+          <a class="num order-row-link" href="/orders/${encodeURIComponent(o.orderNumber)}">${AV.esc(o.orderNumber)}</a>
+          <div class="meta">
+            <span>${AV.formatDate(o.createdAt)}</span>
+            <span>${AV.esc(C.pieces(itemCount))}</span>
+            <span>${C.money(o.total)}</span>
+          </div>
+        </div>
+        ${C.statusBadge(o.status)}
+      </div>
+    </div>`;
+}
+
+/* ── Signed out: sign in or create an account ───────────────────────── */
+
+function renderAuth() {
+  const mode = authMode;
+  AV.seo({
+    title: mode === 'register' ? 'Create an account' : 'Sign in',
+    description: mode === 'register'
+      ? 'Create an account for saved pieces, addresses and order history.'
+      : 'Sign in to see your orders, saved pieces and addresses.',
+    noindex: true,
+  });
+
+  AV.qs('#pageTitle').textContent = mode === 'register' ? 'Join us.' : 'Welcome back.';
+  AV.qs('#pageSub').textContent = mode === 'register'
+    ? 'An account keeps your saved pieces, addresses and orders together.'
+    : 'Sign in to see your orders, saved pieces and addresses.';
+
+  root.innerHTML = `
+    <div style="max-width:480px;margin:0 auto">
+      <div class="tabs" role="tablist">
+        <button class="tab${mode === 'login' ? ' active' : ''}" role="tab" aria-selected="${mode === 'login'}" data-mode="login">Sign in</button>
+        <button class="tab${mode === 'register' ? ' active' : ''}" role="tab" aria-selected="${mode === 'register'}" data-mode="register">Create account</button>
+      </div>
+      <form id="authForm" novalidate>
+        <p class="form-msg"></p>
+        ${mode === 'register' ? '<label>Full name<input name="name" required autocomplete="name" autofocus></label>' : ''}
+        <label>Email<input type="email" name="email" required autocomplete="email"${mode === 'login' ? ' autofocus' : ''}></label>
+        ${mode === 'register' ? '<label>Phone <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span><input name="phone" autocomplete="tel" inputmode="tel" placeholder="+91 …"></label>' : ''}
+        <label>Password<input type="password" name="password" required autocomplete="${mode === 'register' ? 'new-password' : 'current-password'}"${mode === 'register' ? ' minlength="8"' : ''}></label>
+        ${mode === 'register' ? '<small class="hint" style="margin:0 0 18px">At least 8 characters.</small>' : ''}
+        <button class="btn btn-light btn-block" type="submit">${mode === 'register' ? 'Create account' : 'Sign in'}</button>
+      </form>
+      <p class="note" style="margin-top:22px">
+        ${mode === 'register'
+          ? 'Already have an account? <a href="/account.html?view=login">Sign in instead</a>.'
+          : 'New here? <a href="/account.html?view=register">Create an account</a>.'}
+        &middot; <a href="/shop.html">Keep browsing</a>
+      </p>
+    </div>`;
+
+  root.querySelectorAll('[data-mode]').forEach((b) =>
+    b.addEventListener('click', () => {
+      C.setParams({ view: b.dataset.mode });
+      /* The mode is the navigation state here, so it is read back from the URL
+         rather than mutated in place — that keeps renderAuth() a pure function
+         of the URL and stops the two copies of the mode drifting apart. */
+      const url = new URL(location.href);
+      authMode = AUTH_VIEWS.includes(url.searchParams.get('view')) ? url.searchParams.get('view') : 'login';
+      renderAuth();
+    })
+  );
+
+  C.onSubmit(AV.qs('#authForm'), async (body) => {
+    if (mode === 'register') {
+      await AV.auth.register(body.name, body.email, body.password, body.phone);
+    } else {
+      await AV.auth.login(body.email, body.password);
+    }
+    /* The guest bag is folded into the new account's bag before leaving, so
+       anything chosen before signing up is not silently dropped. */
+    await C.afterSignIn();
+    AV.toast(mode === 'register' ? 'Welcome to Astro Vetro.' : 'Welcome back.', 'ok');
+    /* replaceState first so the back button does not return to a form that has
+       already succeeded. */
+    history.replaceState(null, '', next);
+    location.href = next;
+  });
+}
 </script>
 </body>
 </html>

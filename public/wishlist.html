@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<meta name="robots" content="noindex, follow">
+<meta name="description" content="The pieces you have set aside for later.">
+<title>Saved Pieces</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/wishlist.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Saved Pieces — Astro Vetro">
+<meta property="og:description" content="The pieces you have set aside for later.">
+<meta property="og:url" content="/wishlist.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Saved Pieces — Astro Vetro">
+<meta name="twitter:description" content="The pieces you have set aside for later.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/home.html">← Home</a>
+    <div class="eyebrow">Kept aside</div>
+    <h1>Saved pieces.</h1>
+    <p class="sub">The ones you wanted to think about. We will keep them here until you are ready.</p>
+  </div>
+</header>
+
+<main id="main">
+  <div class="page">
+    <div class="wrap" id="wishPane">
+      <div class="av-skeleton" aria-hidden="true">
+        <div class="line-lg"></div><div class="line-lg"></div><div class="line-lg"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
+<script>
+/* ====================================================================
+   SAVED PIECES
+
+   The wishlist belongs to an account, so this page is behind the sign-in
+   gate for everyone: there is no guest copy to read, and inventing one would
+   mean showing prices that were never checked.
+
+   "Move to bag" is a single server operation, POST
+   /api/wishlist/:productId/move-to-cart. That is deliberate. Doing it as two
+   client calls — add to the bag, then unsave — can lose a piece: if the
+   second call fails, the shopper has it in their bag and no longer saved, and
+   if the order of the two is reversed it disappears entirely. The server
+   decides the outcome and both lists come back from it.
+
+   Prices and availability shown are the server's, read at load time.
+   ==================================================================== */
+
+const C = AV.customer;
+const pane = AV.qs('#wishPane');
+
+/* Set while a move is in flight, so the same piece cannot be moved twice. */
+let moving = null;
+
+C.start('#wishPane', async (root) => {
+  if (await C.needsDatabase()) return C.databaseUnavailable(pane);
+
+  const user = await AV.me();
+  if (!user) {
+    return C.gate(pane, {
+      reason: 'A wishlist is saved to your account, so it is there when you come back.',
+      actions: [{ href: '/shop.html', label: 'Browse the collection' }],
+    });
+  }
+
+  AV.setUser(user);
+  await load();
+});
+
+async function load() {
+  C.loading(pane, 'Loading your saved pieces');
+  try {
+    const list = await AV.wishlist.get();
+    render(list);
+  } catch (err) {
+    C.clearBusy(pane);
+    C.error(pane, err, { retry: load, title: 'We could not load your wishlist' });
+  }
+}
+
+function render(list) {
+  C.clearBusy(pane);
+
+  if (!list.items.length) {
+    return C.empty(pane, {
+      level: 'h2',
+      title: 'Nothing saved yet',
+      body: 'Tap the heart on any piece and it will wait for you here.',
+      actions: [
+        { label: 'Browse the collection', href: '/shop.html', style: 'btn-light' },
+        { label: 'See your bag', href: '/cart.html' },
+      ],
+    });
+  }
+
+  pane.innerHTML = `
+    <div class="wishlist-grid" id="wishGrid">${list.items.map(cardHTML).join('\n')}</div>
+    <p class="note" style="margin-top:28px">
+      Prices and availability are checked when this page loads and again when
+      something moves to your bag.
+    </p>`;
+}
+
+function cardHTML(item, i) {
+  const art = item.image
+    ? `<div class="art has-photo" style="background-image:url('${AV.esc(item.image)}')" role="img" aria-label="${AV.esc(item.name)}"></div>`
+    : `<div class="art ${AV.art(i)}" role="img" aria-label="${AV.esc(item.name)}"></div>`;
+  const href = `/product.html?slug=${encodeURIComponent(item.slug)}`;
+  const out = item.inStock === false;
+  /* Availability is stated per piece rather than as one banner, because a
+     saved list ages and a single sold-out item should not imply the rest are
+     gone — nor that all of them are fine. */
+  const availability = out
+    ? '<span class="stock sold">Currently unavailable</span>'
+    : '<span class="stock">In stock</span>';
+
+  return `
+    <article class="product-card" data-wish="${AV.esc(item.productId)}">
+      <a class="art-link" href="${href}">${art}</a>
+      <h3><a href="${href}">${AV.esc(item.name)}</a></h3>
+      <p>${AV.esc(item.shortDescription || '')}</p>
+      <span class="price">${C.money(item.price)}</span>
+      ${availability}
+      <div class="card-actions">
+        <button class="btn btn-outline btn-sm wishlist-move" type="button" data-move
+          ${out ? 'disabled title="Not available right now"' : ''}>Move to bag</button>
+        <button class="icon icon-save" type="button" data-unsave aria-pressed="true"
+          aria-label="Remove ${AV.esc(item.name)} from your wishlist" title="Remove from wishlist">&#9825;</button>
+      </div>
+      ${out ? '<p class="line-note" style="margin-top:8px">We will let you know if this returns.</p>' : ''}
+    </article>`;
+}
+
+pane.addEventListener('click', async (e) => {
+  const card = e.target.closest('[data-wish]');
+  if (!card) return;
+  const productId = card.dataset.wish;
+  const btn = e.target.closest('[data-move],[data-unsave]');
+  if (!btn) return;
+
+  if (btn.dataset.unsave !== undefined) {
+    await unsave(productId, btn);
+    return;
+  }
+  await move(productId, btn);
+});
+
+/* One server call does both halves. The response carries the new bag and the
+   new wishlist, so both are re-rendered from the server rather than having the
+   card optimistically removed — if the move was refused, the piece stays saved
+   and the reason is shown. */
+async function move(productId, btn) {
+  if (moving) return;
+  moving = productId;
+  const card = btn.closest('[data-wish]');
+  card.classList.add('is-busy');
+  btn.disabled = true;
+  const original = btn.textContent;
+  AV.setBusy(btn, true);
+
+  try {
+    const result = await AV.wishlist.moveToCart(productId, 1);
+    if (result?.wishlist) {
+      AV.toast('Moved to your bag.', 'ok');
+      render(result.wishlist);
+    } else {
+      await load();
+      AV.toast('That piece could not be moved.', 'err');
+    }
+  } catch (err) {
+    AV.toast(AV.firstErr(err), 'err');
+    /* Re-read rather than guess: the wishlist is authoritative and the failure
+       may have been about stock rather than the save. */
+    await load();
+  } finally {
+    moving = null;
+    card.classList.remove('is-busy');
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+}
+
+async function unsave(productId, btn) {
+  if (moving) return;
+  moving = productId;
+  btn.disabled = true;
+
+  try {
+    const list = await AV.wishlist.remove(productId);
+    AV.toast('Removed from your wishlist.', 'ok');
+    render(list);
+  } catch (err) {
+    AV.toast(AV.firstErr(err), 'err');
+    btn.disabled = false;
+  } finally {
+    moving = null;
+  }
+}
+</script>
+</body>
+</html>

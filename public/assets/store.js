@@ -46,7 +46,10 @@ window.AV = window.AV || {};
         return `<a href="${href}"${on ? ' class="on"' : ''}>${label}</a>`;
       })
       .join('');
-    const initial = AV.user ? AV.user.firstName?.[0] || AV.user.email?.[0] : null;
+    /* The backend returns `name`, so the initial is taken from whichever field
+       is present. A stale cached user must not decide the header's appearance —
+       this re-renders on the auth channel once the real session is known. */
+    const initial = AV.user?.name?.[0] ?? AV.user?.email?.[0] ?? null;
     /* .header-inner carries the same max-width and padding as the page body,
        so the logo starts on the same vertical line as every page heading. */
     return `
@@ -56,6 +59,7 @@ window.AV = window.AV || {};
 <nav id="siteNav">${links}</nav>
 <div class="header-actions">
   <a class="icon" href="/shop.html?focus=1" aria-label="Search">\u2315</a>
+  <a class="icon" href="/wishlist.html" aria-label="Saved pieces">\u2661<span class="cart-badge" data-wishlist-badge></span></a>
   <a class="icon" href="/cart.html" aria-label="Bag">\u2667<span class="cart-badge" data-cart-badge></span></a>
   <a class="icon" href="${AV.user ? '/account.html' : '/account.html?view=login'}" aria-label="Account">
     ${initial ? `<span class="avatar">${AV.esc(initial.toUpperCase())}</span>` : '\u25ef'}
@@ -66,6 +70,9 @@ window.AV = window.AV || {};
 
   function footerHTML() {
     const y = new Date().getFullYear();
+    /* Every link here is a real route. "Your bookings" pointed at an account
+       view that no longer exists and led nowhere, so it is gone rather than
+       left as a dead promise. */
     return `
 <div class="footer-grid">
   <div>
@@ -90,11 +97,12 @@ window.AV = window.AV || {};
     <a href="/legal.html#terms">Terms</a>
   </div>
   <div>
-    <div class="footer-title">Orders</div>
+    <div class="footer-title">Customer</div>
     <a href="/cart.html">Your bag</a>
+    <a href="/wishlist.html">Saved pieces</a>
     <a href="/account.html">Your account</a>
-    <a href="/account.html?view=orders">Order history</a>
-    <a href="/account.html?view=bookings">Your bookings</a>
+    <a href="/orders.html">Order history</a>
+    <a href="/account.html?view=addresses">Saved addresses</a>
   </div>
 </div>
 <div class="footer-bottom">
@@ -120,27 +128,118 @@ window.AV = window.AV || {};
     menuBtn?.addEventListener('click', () => nv.classList.toggle('mobile-open'));
     nv?.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => nv.classList.remove('mobile-open')));
     renderBadge();
-    // delegated add-to-cart
-    document.addEventListener('click', (e) => {
+
+    /* Delegated so every add-to-cart button on any page works without each
+       page wiring its own listener. `await` matters: the button is disabled for
+       the duration, because a signed-in customer's bag is a server document
+       and two rapid clicks must not race into two adds. */
+    document.addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-add]');
       if (!btn || btn.disabled) return;
-      addToCart({
-        slug: btn.dataset.slug,
-        name: btn.dataset.name,
-        price: Number(btn.dataset.price || 0),
-        image: btn.dataset.image || null,
-        availability: btn.dataset.availability !== 'false',
-      }, Number(btn.dataset.qty || 1));
-      AV.toast(`Added \u201c${btn.dataset.name}\u201d to your bag.`, 'ok');
-      /* Any other card for the same piece is now also "in the bag", e.g. the
-         featured rail and the grid can show the same product. */
-      document.querySelectorAll(`.btn-product[data-slug="${CSS.escape(btn.dataset.slug)}"]`)
-        .forEach(markBtnInBag);
+      if (btn.dataset.avBusy === '1') return;
+      btn.dataset.avBusy = '1';
+      const wasDisabled = btn.disabled;
+      btn.disabled = true;
+      try {
+        /* Every field a guest bag line needs is read here. Passing only id and
+           slug left a guest's saved line with no name, a price of 0 and no
+           stock, because productIdFor is not the only thing AV.bag.add does. */
+        const ok = await AV.bag.add(
+          {
+            id: btn.dataset.productId || null,
+            slug: btn.dataset.slug,
+            name: btn.dataset.name,
+            price: btn.dataset.price,
+            image: btn.dataset.image || null,
+            stock: btn.dataset.stock,
+          },
+          Number(btn.dataset.qty || 1)
+        );
+        if (ok) {
+          AV.toast(`Added \u201c${btn.dataset.name}\u201d to your bag.`, 'ok');
+          /* Any other card for the same piece is now also "in the bag", e.g. the
+             featured rail and the grid can show the same product. */
+          document.querySelectorAll(`.btn-product[data-slug="${CSS.escape(btn.dataset.slug)}"]`)
+            .forEach(markBtnInBag);
+          AV.markInCart();
+        }
+      } finally {
+        delete btn.dataset.avBusy;
+        /* Restored only if the button was usable to begin with; a sold-out
+           button must stay disabled after a failed add. */
+        if (!wasDisabled) btn.disabled = false;
+      }
+    });
+
+    /* ── Shared commerce state ────────────────────────────────────────────
+       The header badge and every page on the site read from one subscription
+       rather than each calling GET /api/cart on load. The API layer broadcasts
+       whenever an authoritative cart arrives. */
+    AV.on('cart', (cart) => {
+      AV.setCartCache(cart);
+      renderBadge();
+    });
+    AV.on('wishlist', (list) => {
+      AV.setWishlistCache(list);
+      renderBadge();
+    });
+    /* Identity can change after the header was rendered (session restored, or a
+       sign-out from a customer page). Re-render so the avatar and the account
+       link cannot be left showing the previous state. */
+    /* Any page that renders product cards shows saved state from one cache read
+       rather than a request per card. */
+    AV.markSaved = function markSaved() {
+      const saved = new Set((wishCache?.items || []).map((i) => String(i.productId)));
+      document.querySelectorAll('[data-save]').forEach((b) => {
+        const on = saved.has(String(b.dataset.save));
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        b.classList.toggle('saved', on);
+      });
+    };
+    /* Save-to-wishlist, delegated like add-to-cart so every card works without
+       per-page wiring. aria-pressed carries the state, so the change is announced
+       rather than being signalled by colour alone. */
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-save]');
+      if (!btn || btn.dataset.avBusy === '1') return;
+      btn.dataset.avBusy = '1';
+      btn.disabled = true;
+      try {
+        await AV.toggleSaved(btn);
+      } finally {
+        delete btn.dataset.avBusy;
+        btn.disabled = false;
+      }
+    });
+
+    AV.on('auth', () => {
+      const h = AV.qs('#siteHeader');
+      if (h && !h.dataset.avLocked) {
+        h.innerHTML = headerHTML();
+        AV.qs('#menuBtn')?.addEventListener('click', () => AV.qs('#siteNav')?.classList.toggle('mobile-open'));
+      }
       AV.markInCart();
+      AV.markSaved();
     });
   }
 
-  /* ── Cart ─────────────────────────────────────────────────────────── */
+  /* ── Cart ─────────────────────────────────────────────────────────────
+     Two carts, one interface.
+
+     A signed-in customer's bag is a server document. Prices, stock and totals
+     on it are computed by the backend, and nothing in this file may override
+     them. Before signing in there is no account to attach a bag to, so a guest
+     bag is kept locally and merged into the server bag on sign-in.
+
+     AV.bag is the only interface a page uses. It dispatches to whichever cart
+     applies, so no page has to know whether the visitor is signed in, and the
+     server/guest split is decided in exactly one place.
+
+     The local bag is a staging area, not an authority: the merge re-prices
+     everything server-side, so a price that changed while signed out is corrected
+     at sign-in rather than carried through. */
+  const WISH_KEY = 'av_wishlist';
+
   function readCart() {
     try {
       return JSON.parse(localStorage.getItem(CART_KEY) || '[]');
@@ -152,112 +251,333 @@ window.AV = window.AV || {};
     localStorage.setItem(CART_KEY, JSON.stringify(c));
     renderBadge();
   }
-  AV.getCart = readCart;
-  AV.cartCount = () => readCart().reduce((n, i) => n + i.quantity, 0);
-  AV.cartSubtotal = () => readCart().reduce((n, i) => n + i.price * i.quantity, 0);
-  AV.addToCart = addToCart;
 
-  /* Marks a single add-to-cart button as already containing its product. */
-  function markBtnInBag(btn) {
-    if (!btn) return;
-    const has = readCart().some((i) => i.slug === btn.dataset.slug);
-    btn.classList.toggle('in-bag', has);
-    const label = btn.dataset.label || (btn.dataset.label = btn.textContent.trim());
-    btn.textContent = has ? 'Add another' : label;
+  /* Mirror of the last authoritative cart the API layer saw. The header badge
+     reads this so it never triggers a request of its own. */
+  let cartCache = null;
+  let wishCache = null;
+  AV.setCartCache = (cart) => {
+    cartCache = cart;
+  };
+  AV.setWishlistCache = (list) => {
+    wishCache = list;
+  };
+  AV.cachedCart = () => cartCache;
+  AV.cachedWishlist = () => wishCache;
+  /* A cached count from a previous session must not outlive a sign-out. */
+  AV.clearCommerceCache = () => {
+    cartCache = null;
+    wishCache = null;
+  };
+
+  const signedIn = () => Boolean(AV.user);
+
+  /* Total quantity, from whichever bag applies. */
+  AV.cartCount = () => {
+    if (signedIn()) {
+      const n = Number(cartCache?.itemCount);
+      if (Number.isFinite(n)) return n;
+    }
+    return readCart().reduce((n, i) => n + i.quantity, 0);
+  };
+  AV.wishlistCount = () => {
+    const n = Number(wishCache?.count);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  /* Resolves a product to the id the server cart is keyed by.
+     Cards carry data-product-id from the catalogue, so no lookup is needed; the
+     slug is a fallback for a button rendered before the catalogue loaded. */
+  async function productIdFor({ id, slug }) {
+    if (id) return id;
+    if (!slug) return null;
+    const env = await AV.api.get(`/api/products/${encodeURIComponent(slug)}`);
+    return env?.data?.id || null;
   }
-  /* Re-applies the in-bag label across every product card on the page. */
-  AV.markInCart = function markInCart() {
-    document.querySelectorAll('.btn-product[data-slug]').forEach(markBtnInBag);
+
+  /* The one entry point for "put this in my bag". Returns true when the item is
+     in the bag afterwards — for a guest that means locally, for a customer it
+     means the server confirmed it. */
+  AV.bag = {
+    async add(product, qty = 1) {
+      const quantity = Math.max(1, Number(qty) || 1);
+
+      if (signedIn()) {
+        const productId = await productIdFor(product);
+        if (!productId) {
+          AV.toast('We could not identify that piece.', 'err');
+          return false;
+        }
+        try {
+          await AV.cart.add(productId, quantity);
+          return true;
+        } catch (err) {
+          /* Stock and availability are the server's call. Its message is shown
+             verbatim rather than replaced with something friendlier but wrong. */
+          AV.toast(AV.firstErr(err), 'err');
+          return false;
+        }
+      }
+
+      return addToCartLocal(product, quantity);
+    },
+
+    async setQuantity(product, qty) {
+      const quantity = Number(qty);
+      /* Guarded here as well as on the buttons: a stepper that reaches 0 removes
+         the line rather than storing a zero-quantity one, which the backend would
+         reject anyway. */
+      if (!Number.isFinite(quantity) || quantity < 1) return this.remove(product);
+
+      if (signedIn()) {
+        const productId = await productIdFor(product);
+        if (!productId) return false;
+        try {
+          await AV.cart.setQuantity(productId, quantity);
+          return true;
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+          return false;
+        }
+      }
+      return setLocalQty(product.slug, quantity);
+    },
+
+    async remove(product) {
+      if (signedIn()) {
+        const productId = await productIdFor(product);
+        if (!productId) return false;
+        try {
+          await AV.cart.remove(productId);
+          return true;
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+          return false;
+        }
+      }
+      writeCart(readCart().filter((i) => i.slug !== product.slug));
+      return true;
+    },
+
+    async clear() {
+      if (signedIn()) {
+        try {
+          await AV.cart.clear();
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+          return false;
+        }
+      }
+      writeCart([]);
+      return true;
+    },
+
+    /* The bag to render. A customer always gets the server's, so every figure on
+       screen is authoritative. A guest gets the local bag plus the shipping
+       figures this site has always shown, clearly derived locally because there
+       is no account yet to price them against. */
+    async load() {
+      if (signedIn()) {
+        const { cart } = await AV.cart.get();
+        return { ...cart, authoritative: true };
+      }
+      return { ...localCartView(), authoritative: false };
+    },
   };
-  /* Stock is optional in the API. When present it caps the quantity, so a
-     shopper cannot build a bag the backend will refuse at checkout. */
+
+  /* ── Guest bag ─────────────────────────────────────────────────────────
+     Local only, and only while signed out. Prices are display values copied
+     from the catalogue; the server re-prices everything at checkout, so these
+     are never treated as an order total. */
+  /* A guest's cap on one line. Only a piece known to be sold out gets 0; an
+     unknown stock count gets a generous ceiling so a static catalogue page
+     that never received a stock figure can still be shopped. Collapsing 0 into
+     the fallback made a genuinely sold-out piece look buyable to a guest. */
+  const UNKNOWN_STOCK_CAP = 99;
+
   const stockOf = (p) => {
-    const s = Number(p && p.stock);
-    return Number.isFinite(s) && s > 0 ? s : 99;
+    const raw = p && p.stock;
+    if (raw === undefined || raw === null || raw === '') return UNKNOWN_STOCK_CAP;
+    const s = Number(raw);
+    if (!Number.isFinite(s)) return UNKNOWN_STOCK_CAP;
+    return Math.max(0, Math.floor(s));
   };
-  function addToCart(p, qty) {
+
+  function addToCartLocal(p, qty) {
+    const product = typeof p === 'string' ? { slug: p } : p;
     const c = readCart();
-    const found = c.find((i) => i.slug === p.slug);
+    const found = c.find((i) => i.slug === product.slug);
     const want = (found ? found.quantity : 0) + (qty || 1);
-    const cap = stockOf(p);
+    const cap = stockOf(product);
     if (want > cap) {
-      AV.toast(
-        cap === 0
-          ? `${p.name} has sold out.`
-          : `Only ${cap} of ${p.name} left — that is all we have.`
-      );
+      AV.toast(cap === 0 ? `${product.name} has sold out.` : `Only ${cap} of ${product.name} left \u2014 that is all we have.`);
       return false;
     }
     if (found) {
       found.quantity = Math.min(cap, want);
-      found.price = p.price;
+      /* Never trust a stored price over the catalogue's current one. */
+      if (Number.isFinite(Number(product.price))) found.price = Number(product.price);
     } else {
       c.push({
-        slug: p.slug,
-        name: p.name,
-        price: p.price,
-        image: p.image || null,
-        stock: stockOf(p),
+        slug: product.slug,
+        name: product.name || product.slug,
+        price: Number(product.price) || 0,
+        image: product.image || null,
+        stock: stockOf(product),
         quantity: qty || 1,
       });
     }
     writeCart(c);
     return true;
   }
-  AV.setCartQty = (slug, qty) => {
+
+  function setLocalQty(slug, qty) {
     const c = readCart();
     const i = c.find((x) => x.slug === slug);
-    if (i) {
-      /* The bag remembers the stock cap from when the item was added, so the
-         + button stops at the same limit even after a reload. */
-      const cap = Number.isFinite(i.stock) && i.stock > 0 ? i.stock : 99;
-      i.quantity = Math.max(1, Math.min(cap, qty));
-    }
+    if (!i) return false;
+    const cap = Number.isFinite(i.stock) && i.stock > 0 ? i.stock : 99;
+    i.quantity = Math.max(1, Math.min(cap, qty));
     writeCart(c);
-  };
-  /* Re-checks every line against current stock and drops anything gone.
-     `covered` is every slug the API returned, so a paginated response cannot
-     be mistaken for a full catalogue and wipe the bag. */
-  AV.pruneCart = (products, opts = {}) => {
-    const covered = opts.all === true;
-    const byslug = new Map((products || []).map((p) => [p.slug, p]));
-    const c = readCart();
-    const kept = [];
-    const dropped = [];
-    c.forEach((i) => {
-      const p = byslug.get(i.slug);
-      /* Unknown only counts as removed when the response was the whole list. */
-      if (!p) {
-        if (covered) dropped.push(i.name);
-        else kept.push(i);
-        return;
-      }
-      i.price = p.price;
-      /* Only tighten a cap the API actually reports. A catalogue with no stock
-         field must not wipe a limit learned when the item was added. */
-      const live = Number(p.stock);
-      if (Number.isFinite(live) && live >= 0) i.stock = live > 0 ? live : 0;
-      const cap = Number.isFinite(i.stock) && i.stock > 0 ? i.stock : 99;
-      if (i.stock === 0) { dropped.push(i.name); return; }
-      if (i.quantity > cap) i.quantity = cap;
-      kept.push(i);
-    });
-    if (dropped.length) writeCart(kept);
-    else writeCart(c);
-    return dropped;
-  };
-  AV.removeFromCart = (slug) => {
-    writeCart(readCart().filter((i) => i.slug !== slug));
-  };
-  AV.clearCart = () => writeCart([]);
+    return true;
+  }
 
+  /* A guest bag shaped like the server's, so cart.html renders one structure
+     whichever bag it is showing. `authoritative: false` is what lets the page
+     label the difference instead of implying these are final figures. */
+  function localCartView() {
+    const items = readCart();
+    const subtotal = items.reduce((n, i) => n + i.price * i.quantity, 0);
+    const shipping = AV.shippingFor(subtotal);
+    return {
+      lines: items.map((i) => ({
+        productId: null,
+        slug: i.slug,
+        name: i.name,
+        image: i.image,
+        unitPrice: i.price,
+        quantity: i.quantity,
+        lineTotal: i.price * i.quantity,
+        inStock: i.stock === undefined || i.stock > 0,
+        maxQuantity: Number.isFinite(i.stock) && i.stock > 0 ? i.stock : 99,
+      })),
+      subtotal,
+      discount: 0,
+      shipping,
+      tax: 0,
+      total: subtotal + shipping,
+      itemCount: items.reduce((n, i) => n + i.quantity, 0),
+      issues: [],
+      freeShippingThreshold: AV.SHIPPING.freeAbove,
+      amountToFreeShipping: Math.max(0, AV.SHIPPING.freeAbove - subtotal),
+      currency: 'INR',
+      authoritative: false,
+    };
+  }
+  AV.localCart = readCart;
+
+  /* Saves or unsaves one product, whichever the button currently says.
+     Shared by the card hearts (via delegation) and the product page button, so
+     the account requirement, the busy guard and the error toast behave the same
+     everywhere. The authoritative list comes back from the API and drives the
+     button state — the button is never assumed to have succeeded.
+
+     The wishlist belongs to an account, so a signed-out visitor is sent to sign
+     in rather than shown a save that would not persist. `next` returns them to
+     the page they were on. */
+  AV.toggleSaved = async function toggleSaved(btn, productId) {
+    if (!btn) return false;
+    const id = productId || btn.dataset.save;
+    if (!id) return false;
+
+    if (!AV.user) {
+      AV.toast('Sign in to save pieces to your wishlist.', 'err');
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      setTimeout(() => {
+        window.location.href = `/account.html?view=login&next=${next}`;
+      }, 900);
+      return false;
+    }
+
+    const wasSaved = btn.getAttribute('aria-pressed') === 'true';
+    try {
+      const list = wasSaved
+        ? await AV.wishlist.remove(id)
+        : await AV.wishlist.add(id);
+      AV.markSaved();
+      AV.toast(wasSaved ? 'Removed from your wishlist.' : 'Saved to your wishlist.', 'ok');
+      return list.items?.some?.((i) => String(i.productId) === String(id)) ?? !wasSaved;
+    } catch (err) {
+      AV.toast(AV.firstErr(err), 'err');
+      return false;
+    }
+  };
+
+  /* Header badges. Reads the shared caches — never requests anything — so a badge
+     is correct from the first cart response and costs nothing on other pages. */
   function renderBadge() {
     const n = AV.cartCount();
     AV.qsa('[data-cart-badge]').forEach((b) => {
-      b.textContent = n;
+      b.textContent = n || '';
+      /* Hidden rather than showing "0": an empty-bag badge reads as an error. */
       b.style.display = n ? 'grid' : 'none';
     });
+    const w = AV.wishlistCount();
+    AV.qsa('[data-wishlist-badge]').forEach((b) => {
+      b.textContent = w || '';
+      b.style.display = w ? 'grid' : 'none';
+    });
   }
+
+  /* Folds the guest bag into the account's server bag. Called once, immediately
+     after a successful sign-in, so a visitor who shopped before creating an
+     account does not silently lose their bag.
+
+     Sequential rather than parallel: each add re-prices the cart server-side, and
+     firing them together would race those writes and drop lines. Failures are
+     reported but do not block the sign-in — an account that could not be merged
+     is recoverable, a sign-in that hangs because of it is not. */
+  AV.mergeGuestCart = async () => {
+    const items = readCart();
+    if (!items.length) return { merged: 0, failed: 0 };
+
+    let merged = 0;
+    let failed = 0;
+    for (const item of items) {
+      try {
+        const productId = await productIdFor({ slug: item.slug });
+        if (!productId) {
+          failed += 1;
+          continue;
+        }
+        await AV.cart.add(productId, item.quantity);
+        merged += 1;
+      } catch (_err) {
+        failed += 1;
+      }
+    }
+    /* Cleared either way: a line that could not be merged has already been
+       refused by the server, and keeping it would re-attempt it on every
+       future sign-in. */
+    writeCart([]);
+    if (merged) AV.toast(`${merged} saved ${merged === 1 ? 'piece' : 'pieces'} moved into your bag.`);
+    if (failed) AV.toast(`${failed} could not be moved and ${failed === 1 ? 'is' : 'are'} no longer available.`, 'err');
+    return { merged, failed };
+  };
+
+  /* Marks a single add-to-cart button as already containing its product. */
+  function markBtnInBag(btn) {
+    if (!btn) return;
+    const inBag = signedIn()
+      ? (cartCache?.lines || []).some((l) => l.slug === btn.dataset.slug)
+      : readCart().some((i) => i.slug === btn.dataset.slug);
+    btn.classList.toggle('in-bag', inBag);
+    const label = btn.dataset.label || (btn.dataset.label = btn.textContent.trim());
+    btn.textContent = inBag ? 'Add another' : label;
+  }
+  /* Re-applies the in-bag label across every product card on the page. */
+  AV.markInCart = function markInCart() {
+    document.querySelectorAll('.btn-product[data-slug]').forEach(markBtnInBag);
+  };
 
   /* ── Auth ─────────────────────────────────────────────────────────── */
   AV.user = null;
@@ -272,7 +592,17 @@ window.AV = window.AV || {};
     if (u) localStorage.setItem(USER_KEY, JSON.stringify(u));
     else localStorage.removeItem(USER_KEY);
   };
-  AV.me = async () => {
+  /* Who am I, from the session cookie alone — no token is stored in JS, so a
+     stale localStorage copy can never authorise anything.
+
+     Memoised for the page's lifetime: the header, every product card state and
+     every customer panel need the same answer, and asking the server N times
+     would be N chances to disagree. `AV.refreshMe()` forces a fresh read after
+     sign-in or sign-out. */
+  let mePromise = null;
+  AV.me = async function me() {
+    if (mePromise) return mePromise;
+
     /* Ask what this deployment supports before asking who we are. On a
        deployment with no database /api/auth/me is guaranteed to 503, so the
        probe turns a guaranteed failure on every page load into a single
@@ -280,19 +610,42 @@ window.AV = window.AV || {};
     const caps = await AV.capabilities().catch(() => null);
     if (caps && caps.database === false) {
       AV.setUser(null);
+      mePromise = Promise.resolve(null);
       return null;
     }
-    try {
-      const env = await AV.api.get('/api/auth/me');
-      AV.setUser(env.data);
-      return env.data;
-    } catch {
-      AV.setUser(null);
-      return null;
-    }
+
+    mePromise = AV.api
+      .get('/api/auth/me')
+      .then((env) => {
+        /* The envelope is { data: { user } }, so the public object is one level
+           down. Taking data directly would store a wrapper and every consumer
+           would read `.user.user`. */
+        const user = env.data?.user ?? null;
+        AV.setUser(user);
+        return user;
+      })
+      .catch(() => {
+        /* Signed out is the normal answer for most visitors, not an error worth
+           surfacing, so it resolves to null rather than throwing. */
+        AV.setUser(null);
+        return null;
+      });
+    return mePromise;
+  };
+
+  /* Invalidates the memoised identity. Used after login, register and logout,
+     where the cookie changed and the previous answer is by definition wrong. */
+  AV.refreshMe = function refreshMe() {
+    mePromise = null;
+    return AV.me();
   };
   AV.requireAuth = async () => (await AV.me()) !== null;
   AV.isAdmin = () => !!AV.user && AV.user.role === 'admin';
+
+  /* Given name, for greetings and address defaults.
+     The account has one `name` field, not separate first/last names, so this is a
+     display helper only — nothing may write it back as a name. */
+  AV.givenName = (u) => String(u?.name || '').trim().split(/\s+/)[0] || '';
 
   /* ── Card renderers ───────────────────────────────────────────────── */
   AV.art = (i) => `a${((i % 8) + 1)}`;
@@ -305,8 +658,16 @@ window.AV = window.AV || {};
   };
 
   AV.productCard = (p, i = 0) => {
-    const inStock = p.availability !== false;
+    /* Sold out if the catalogue says so, or if it reports a stock count of
+       zero. Checking availability alone let a piece with stock 0 render an
+       enabled "Add to cart" button. */
+    const stock = Number(p.stock);
+    const inStock = p.availability !== false && !(Number.isFinite(stock) && stock <= 0);
     const img = p.images?.[0];
+    /* data-product-id carries the catalogue id so a signed-in customer's bag is
+       keyed by id, exactly as the server keys it. The slug is retained for a
+       guest and for the URL, and the click handler resolves one to the other. */
+    const pid = p.id ?? p._id ?? '';
     /* Real photography when the catalogue has it, otherwise the design's own
        gradient art block so the grid is never broken by a missing file. */
     const art = img
@@ -322,11 +683,15 @@ window.AV = window.AV || {};
   ${p.rating ? `<span class="rating" aria-label="Rated ${p.rating} out of 5">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5 - Math.round(p.rating))}</span>` : ''}
   <span class="price">${AV.formatPrice(p.price)}</span>
   <span class="stock${inStock ? '' : ' sold'}">${inStock ? 'In stock' : 'Unavailable'}</span>
-  <button class="btn btn-outline btn-sm btn-product"
-    ${inStock ? '' : 'disabled'}
-    data-add data-slug="${AV.esc(p.slug)}" data-name="${AV.esc(p.name)}"
-    data-price="${p.price}" data-image="${AV.esc(img || '')}"
-    data-availability="${inStock}">Add to cart</button>
+  <div class="card-actions">
+    <button class="btn btn-outline btn-sm btn-product"
+      ${inStock ? '' : 'disabled'}
+      data-add data-product-id="${AV.esc(pid)}" data-slug="${AV.esc(p.slug)}"
+      data-name="${AV.esc(p.name)}" data-price="${p.price}" data-image="${AV.esc(img || '')}"
+      data-stock="${p.stock ?? ''}" data-availability="${inStock}">Add to cart</button>
+    <button class="icon icon-save" data-save="${AV.esc(pid)}" data-slug="${AV.esc(p.slug)}"
+      aria-pressed="false" aria-label="Save ${AV.esc(p.name)}" title="Save to wishlist">\u2661</button>
+  </div>
 </article>`;
   };
 
@@ -394,7 +759,37 @@ window.AV = window.AV || {};
   AV.boot = (opts = {}) => {
     mount(opts.chrome);
     revealAll();
+    /* One pair of requests per page load, shared by every consumer via the
+       caches: the header badges, the product-card "in bag" and "saved" states,
+       and any customer page that opens on this document. Deliberately not
+       awaited — the page above the header must never wait on commerce data, and
+       a failure here is non-fatal because each customer page re-requests what it
+       needs and handles its own error state. */
+    hydrate();
   };
+
+  /* Fills the cart and wishlist caches once per page load, so the header badges
+     and the card states are right on a signed-in visitor's first paint.
+
+     Identity is resolved first because AV.user starts as a localStorage hint
+     that may be stale: a signed-out visitor must end up with empty caches, and a
+     visitor whose session exists but was never cached locally must still get
+     their badges. AV.me() short-circuits on a no-database deployment, so this
+     costs nothing there.
+
+     Silent by design. An anonymous visitor ends with no caches, and their guest
+     bag is already in localStorage. */
+  async function hydrate() {
+    const user = await AV.me().catch(() => null);
+    if (!user) {
+      /* Confirmed signed out: drop anything a previous session left cached so a
+         stale count cannot be shown to someone who is not signed in. */
+      AV.clearCommerceCache();
+      renderBadge();
+      return;
+    }
+    await Promise.allSettled([AV.cart.get(), AV.wishlist.get()]);
+  }
 
   /* `.js-load` and `[data-reveal]` start at opacity:0 so that server-rendered
      markup never flashes before its data arrives. Both selectors must be

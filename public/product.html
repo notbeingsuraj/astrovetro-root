@@ -90,7 +90,11 @@ async function load() {
         </div>
         <span class="stock${p.availability ? '' : ' sold'}" id="avail">${p.availability ? 'In stock — ships in 2–3 days' : 'Currently unavailable'}</span>
       </div>
-      <button class="btn btn-light btn-block" id="addBtn" ${p.availability ? '' : 'disabled'}>Add to bag</button>
+      <div class="pd-buy">
+        <button class="btn btn-light" id="addBtn" ${p.availability ? '' : 'disabled'}>Add to bag</button>
+        <button class="icon icon-save" id="saveBtn" data-save="${AV.esc(p.id ?? p._id ?? '')}"
+          aria-pressed="false" aria-label="Save ${AV.esc(p.name)} to wishlist" title="Save to wishlist">\u2661</button>
+      </div>
       <p class="note" style="margin-top:22px">Hand-selected pieces, packed by hand and shipped in small batches from Astro Vetro.</p>`;
 
     const chips = (p.intentions || []).map((x) => `<span class="tag">${AV.esc(x)}</span>`).join('');
@@ -102,10 +106,36 @@ async function load() {
     let qty = 1;
     plus.addEventListener('click', () => { qty = Math.min(99, qty + 1); qtyEl.textContent = qty; });
     minus.addEventListener('click', () => { qty = Math.max(1, qty - 1); qtyEl.textContent = qty; });
-    AV.qs('#addBtn').addEventListener('click', () => {
-      AV.addToCart({ slug: p.slug, name: p.name, price: p.price, image: p.images?.[0] || null }, qty);
-      AV.toast(`Added ${qty} × “${p.name}” to your bag.`, 'ok');
+    /* Saved state is read from the shared cache the header already filled, so the
+       heart shows the truth on load without a request of its own. */
+    AV.markSaved();
+
+    /* No listener of its own on #saveBtn. It carries data-save, so the shared
+       delegated handler in store.js already owns it — adding a second handler
+       here made one click toggle the piece twice and land back where it
+       started. */
+
+    /* AV.bag decides between the guest bag and the server bag, so this button
+       behaves correctly whether or not the visitor has an account. `await` and
+       the busy guard matter here: a double click must not add twice, and the
+       toast only appears once the server has confirmed the add. */
+    const addBtn = AV.qs('#addBtn');
+    addBtn.addEventListener('click', async () => {
+      if (addBtn.dataset.avBusy === '1') return;
+      addBtn.dataset.avBusy = '1';
+      AV.setBusy(addBtn, true);
+      try {
+        const ok = await AV.bag.add(
+          { id: p.id ?? p._id ?? null, slug: p.slug, name: p.name, price: p.price, image: p.images?.[0] || null, stock: p.stock },
+          qty
+        );
+        if (ok) AV.toast(`Added ${qty} × \u201c${p.name}\u201d to your bag.`, 'ok');
+      } finally {
+        delete addBtn.dataset.avBusy;
+        AV.setBusy(addBtn, false);
+      }
     });
+
 
     try {
       const rel = await AV.api.get('/api/products?limit=12&sort=rating&order=desc');

@@ -1505,3 +1505,378 @@ select { min-width:0; }
 /* The stepper and the stock note together are wider than a 320px screen, so
    the note drops below the stepper instead of running off the edge. */
 .qty-row { flex-wrap:wrap; row-gap:var(--space-xs); }
+
+/* ====================================================================
+   CUSTOMER AREA
+   Layout and states for account, bag, wishlist, checkout, orders and
+   tracking. Everything here uses the tokens at the top of this file, so
+   the customer area moves with the rest of the site when a token changes.
+
+   Two rules run through all of it:
+
+     - A state is always visible. Loading, empty, error and "you are not
+       signed in" each get real markup, never a blank region or a silent
+       failure, because on a slow connection a blank panel and an empty
+       panel look identical.
+     - Money, stock and order state are always rendered from what the
+       server returned. Nothing in this section computes a total.
+   ==================================================================== */
+
+/* ── Shared states ────────────────────────────────────────────── */
+.av-state {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--text-secondary);
+  background: rgba(16, 38, 31, 0.4);
+}
+/* Both levels: an <h3> inside a panel that has an <h2> section heading, and an
+   <h2> when the state is the whole page body under the <h1>. */
+.av-state h2,
+.av-state h3 {
+  font: 400 var(--text-h3) var(--font-display);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-xs);
+}
+.av-state p { margin: 0 0 var(--space-md); font-size: var(--text-small); line-height: var(--leading-body); }
+.av-state .btn + .btn { margin-left: 10px; }
+.av-state--error { border-left: 3px solid #e0a9a0; text-align: left; }
+.av-state--error h2,
+.av-state--error h3 { color: #e0a9a0; }
+
+/* A skeleton block is not decorative here: it holds the layout while a
+   request is in flight so nothing jumps when the content arrives. */
+.av-skeleton { display: grid; gap: 14px; }
+.av-skeleton > * {
+  background: linear-gradient(90deg, rgba(217, 203, 181, 0.06), rgba(217, 203, 181, 0.14), rgba(217, 203, 181, 0.06));
+  background-size: 200% 100%;
+  animation: av-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+  min-height: 18px;
+}
+.av-skeleton .line-lg { min-height: 62px; }
+.av-skeleton .line-xl { min-height: 150px; }
+@keyframes av-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ── Product card: buy + save side by side ────────────────────── */
+.card-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.card-actions .btn-product { flex: 1; }
+
+/* A 44px target, because a heart is the one control on the card a
+   customer reaches for with a thumb on a phone. */
+.icon-save {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 1px solid var(--border-input);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+.icon-save:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.icon-save[aria-pressed='true'] { color: var(--maroon); border-color: var(--maroon); background: rgba(75, 39, 39, 0.14); }
+.icon-save[disabled] { opacity: 0.5; cursor: progress; }
+
+/* Product detail: add to bag and save share one row so the two actions
+   that begin an order are found together. */
+.pd-buy { display: flex; align-items: stretch; gap: 12px; margin-top: var(--space-md); }
+.pd-buy .btn { flex: 1; }
+
+/* ── Bag ──────────────────────────────────────────────────────── */
+.cart-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 56px; align-items: start; }
+.cart-lines { display: grid; gap: 2px; }
+
+.cart-line {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: var(--space-md);
+  align-items: start;
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.cart-line:last-child { border-bottom: 0; }
+.cart-line .art { height: 132px; border-radius: var(--radius-sm); display: block; }
+.cart-line h3 { font: 400 var(--text-h3) var(--font-display); margin: 0 0 4px; }
+.cart-line .price { color: var(--text-accent); font-size: var(--text-small); }
+.cart-line-body { display: grid; gap: 10px; justify-items: start; }
+.line-actions { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
+.line-total { font: 400 22px var(--font-display); color: var(--text-primary); white-space: nowrap; }
+.line-note { margin: 0; font-size: var(--text-small); color: var(--text-accent); }
+
+/* A line the server has flagged is shown, not hidden: the customer needs to
+   see why their bag changed and be able to correct it themselves. */
+.cart-line.is-flagged { opacity: 0.72; }
+.cart-line .flag {
+  border-left: 2px solid #e0a9a0;
+  padding-left: 10px;
+  margin: 0;
+  font-size: var(--text-small);
+  color: #e0a9a0;
+}
+
+/* Busy state for a line being updated. Only the line in flight dims, so the
+   rest of the bag stays readable and no double-click can queue two writes. */
+.cart-line.is-busy { opacity: 0.55; pointer-events: none; }
+
+/* A guest bag's figures are estimates until the server prices them. Saying so
+   is the difference between a reassuring total and a wrong promise. */
+.bag-provisional {
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--text-accent);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+  line-height: var(--leading-body);
+}
+.bag-provisional b { color: var(--text-primary); font-weight: 500; }
+
+/* ── Summary ──────────────────────────────────────────────────── */
+.summary { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-lg); background: rgba(16, 38, 31, 0.45); }
+.summary .row { display: flex; justify-content: space-between; gap: 12px; color: var(--text-secondary); font-size: var(--text-small); padding: 9px 0; }
+.summary .row.total { color: var(--text-primary); font: 400 26px var(--font-display); border-top: 1px solid var(--border-subtle); margin-top: 10px; padding-top: 16px; }
+.summary .row .free { color: #b7d7c3; }
+
+/* ── Wishlist ─────────────────────────────────────────────────── */
+.wishlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-lg); }
+.wishlist-move { width: 100%; margin-top: 10px; }
+
+/* ── Account ──────────────────────────────────────────────────── */
+.acct-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; align-items: start; }
+.acct-nav { display: grid; gap: 4px; position: sticky; top: calc(var(--header-h) + 20px); }
+.acct-nav a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.acct-nav a:hover { color: var(--text-primary); background: rgba(241, 234, 220, 0.05); }
+.acct-nav a[aria-current='page'] { color: var(--text-primary); background: var(--moss); border-color: var(--border-subtle); }
+.acct-nav .n { font: 400 15px var(--font-display); color: var(--text-accent); letter-spacing: 0; }
+.acct-panel { min-height: 220px; }
+.acct-panel[hidden] { display: none; }
+
+/* The sign-in gate shares the bag's card language, so the requirement to sign
+   in reads as a normal part of the site rather than an error. */
+.av-gate {
+  max-width: 460px;
+  margin: 0 auto;
+  text-align: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl) var(--space-lg);
+  background: rgba(16, 38, 31, 0.45);
+}
+.av-gate h2 { font: 400 var(--text-h2) var(--font-display); margin: 0 0 var(--space-xs); }
+.av-gate p { color: var(--text-secondary); font-size: var(--text-small); line-height: var(--leading-body); margin: 0 0 var(--space-lg); }
+
+.form-narrow { max-width: 560px; display: grid; gap: 18px; }
+.form-narrow label { display: grid; gap: 8px; font-size: var(--text-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+.form-narrow input,
+.form-narrow select { width: 100%; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
+
+/* ── Address cards ────────────────────────────────────────────── */
+.addr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-md); }
+.addr-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  background: rgba(16, 38, 31, 0.4);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.addr-card.is-default { border-color: var(--border-strong); }
+.addr-card .label { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: var(--text-label); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-accent); }
+.addr-card .who { font: 400 20px var(--font-display); color: var(--text-primary); }
+.addr-card address { font-style: normal; font-size: var(--text-small); color: var(--text-secondary); line-height: 1.75; }
+.addr-card .addr-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+/* A radio group of saved addresses. Labelled by the card, so the choice is
+   announced with the address rather than as a bare position number. */
+.addr-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.addr-option + .addr-option { margin-top: 10px; }
+.addr-option:hover { border-color: var(--border-strong); }
+.addr-option:has(input:checked) { border-color: var(--border-strong); background: rgba(241, 234, 220, 0.06); }
+.addr-option:has(input:focus-visible) { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+.addr-option input { margin-top: 4px; accent-color: var(--olive); }
+.addr-option .who { font: 400 19px var(--font-display); color: var(--text-primary); display: block; }
+.addr-option address { font-style: normal; font-size: var(--text-small); color: var(--text-secondary); line-height: 1.7; }
+
+/* ── Order status ─────────────────────────────────────────────── */
+.status-badge {
+  display: inline-block;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-size: 10px;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.status-pending { color: var(--text-accent); border-color: var(--text-accent); }
+/* Confirmed, paid and shipped all mean "we have it". */
+.status-confirmed,
+.status-paid,
+.status-completed,
+.status-shipped,
+.status-delivered { color: #b7d7c3; border-color: #b7d7c3; }
+.status-processing,
+.status-packed { color: var(--text-secondary); }
+.status-cancelled,
+.status-failed,
+.status-payment_failed,
+.status-refunded { color: #e0a9a0; border-color: #e0a9a0; }
+
+.order-row-link { display: inline-block; color: var(--sand); border-bottom: 1px dotted var(--border-input); }
+.order-lines { display: grid; gap: 10px; margin: var(--space-md) 0; }
+.order-line { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.order-line .art { height: 64px; border-radius: 8px; display: block; }
+.order-line .nm { font-size: var(--text-small); color: var(--text-primary); }
+.order-line .qt { color: var(--text-muted); font-size: var(--text-small); }
+
+/* Money rows on an order are a definition list so the labels and values are
+   associated for a screen reader rather than two unconnected tables. */
+.order-totals { margin: var(--space-lg) 0; max-width: 360px; margin-inline-start: auto; }
+.order-totals .row { display: flex; justify-content: space-between; gap: 12px; font-size: var(--text-small); color: var(--text-secondary); padding: 8px 0; }
+.order-totals .row.total { color: var(--text-primary); font: 400 24px var(--font-display); border-top: 1px solid var(--border-subtle); margin-top: 8px; padding-top: 14px; }
+
+/* ── Tracking timeline ────────────────────────────────────────── */
+.track-steps { list-style: none; margin: var(--space-lg) 0 0; padding: 0; display: grid; gap: 0; }
+.track-step { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 16px; position: relative; padding-bottom: var(--space-lg); }
+.track-step:last-child { padding-bottom: 0; }
+.track-step::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 18px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--border-subtle);
+}
+.track-step:last-child::before { display: none; }
+.track-step .dot {
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  border: 1px solid var(--border-input);
+  background: var(--deep);
+  position: relative;
+  z-index: 1;
+}
+.track-step.is-done .dot { border-color: #b7d7c3; background: #b7d7c3; }
+.track-step.is-current .dot { border-color: var(--olive); background: var(--olive); box-shadow: 0 0 0 4px rgba(154, 155, 105, 0.16); }
+.track-step h4 { margin: 0; font: 400 20px var(--font-display); color: var(--text-primary); }
+.track-step .when { color: var(--text-muted); font-size: var(--text-small); }
+.track-step .desc { color: var(--text-secondary); font-size: var(--text-small); line-height: var(--leading-body); margin: 4px 0 0; }
+
+/* ── Order list ───────────────────────────────────────────────── */
+.order-list { display: grid; gap: var(--space-md); }
+.order-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(16, 38, 31, 0.4);
+  display: grid;
+  gap: 14px;
+}
+.order-card-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
+.order-card-head .num { font: 400 22px var(--font-display); color: var(--text-primary); }
+.order-card .meta { display: flex; gap: var(--space-md); flex-wrap: wrap; color: var(--text-muted); font-size: var(--text-small); }
+.order-card-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ── Responsive ─────────────────────────────────────────────────
+   Restated after the earlier ≤980px block above, so the customer area
+   collapses in the same place the rest of the site does. minmax(0,1fr)
+   rather than 1fr so the bag, address and order grids can still narrow
+   on a 320px screen without forcing a horizontal scroll. */
+@media (max-width: 980px) {
+  .acct-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); }
+  /* The nav stops being a sidebar and becomes a horizontal strip, which keeps
+     every destination one tap away instead of scrolling to reach it. */
+  .acct-nav { position: static; grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; padding-bottom: 6px; gap: 8px; }
+  .acct-nav a { border: 1px solid var(--border-subtle); white-space: nowrap; }
+  .cart-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 620px) {
+  .cart-line { grid-template-columns: 92px minmax(0, 1fr); }
+  .cart-line .art { height: 92px; }
+  /* The line total moves under the stepper rather than into a third column
+     that cannot fit beside the name on a narrow phone. */
+  .cart-line .line-total { grid-column: 2; }
+  .form-row-2 { grid-template-columns: minmax(0, 1fr); }
+  .order-line { grid-template-columns: 48px minmax(0, 1fr); }
+  .order-line .art { height: 48px; }
+  .order-card { padding: var(--space-md); }
+  .summary { padding: var(--space-md); }
+  .av-gate { padding: var(--space-lg) var(--space-md); }
+  /* Order totals are no longer offset to the right when there is no room. */
+  .order-totals { margin-inline-start: 0; }
+}
+
+/* ── Admin desk ─────────────────────────────────────────────────────────
+   The order dialog and its tracking timeline. A native <dialog> is used so
+   focus trapping, Escape-to-close and the backdrop come from the platform
+   rather than from hand-written key handling. */
+.adm-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  padding: var(--space-lg);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  /* Matches the translucent panels the rest of the desk uses, so the dialog
+     reads as part of this page rather than a browser default. */
+  background: rgba(16, 38, 31, 0.97);
+  color: var(--white);
+  overflow-y: auto;
+}
+.adm-dialog::backdrop { background: rgba(10, 14, 12, 0.72); }
+.adm-dialog h2 { margin-bottom: 4px; }
+.adm-dialog .form-narrow { max-width: none; }
+
+.track-list { margin: 12px 0 0; padding: 0; list-style: none; border-left: 1px solid var(--border-subtle); }
+.track-list li { position: relative; padding: 0 0 16px 18px; }
+.track-list li::before {
+  content: '';
+  position: absolute;
+  left: -4.5px; top: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sage);
+}
+.track-list .muted { font-size: 12px; }
+
+@media (max-width: 620px) {
+  .adm-dialog { padding: var(--space-md); }
+}

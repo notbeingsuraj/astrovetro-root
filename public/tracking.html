@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Where your parcel is and what happens next.">
+<title>Track Your Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/orders.html">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Track Your Order — Astro Vetro">
+<meta property="og:description" content="Where your parcel is and what happens next.">
+<meta property="og:url" content="/orders.html">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Track Your Order — Astro Vetro">
+<meta name="twitter:description" content="Where your parcel is and what happens next.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/orders.html">← All orders</a>
+    <div class="eyebrow">On its way</div>
+    <h1 id="trackTitle">Tracking.</h1>
+    <p class="sub" id="trackSub">Here is where your parcel has got to.</p>
+  </div>
+</header>
+
+<main id="main">
+  <div class="page">
+    <div class="wrap" id="trackPane" style="max-width:820px">
+      <div class="av-skeleton" aria-hidden="true">
+        <div class="line-lg"></div><div class="line-xl"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
+<script>
+/* ====================================================================
+   TRACKING — /tracking/:orderId
+
+   Reads GET /api/orders/:orderId/tracking, which returns three things that
+   matter and are deliberately distinct:
+
+     - `tracking`: the carrier's record. Null until a shipment exists.
+     - `trackable`: whether the order has left at all.
+     - `message`: the server's own explanation of the gap.
+
+   All three are rendered. "Not shipped yet", "shipped with nothing scanned"
+   and "delivered" are three different states and are given three different
+   treatments, because collapsing them into one "we have no tracking for this
+   order" message is what makes a tracking page useless.
+
+   This page never estimates a delivery date. Only `estimatedDelivery` from the
+   carrier is shown, and only when the carrier supplied one — an invented date
+   is worse than no date.
+   ==================================================================== */
+
+const C = AV.customer;
+const pane = AV.qs('#trackPane');
+
+const ref = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+
+C.start('#trackPane', async (root) => {
+  if (await C.needsDatabase()) return C.databaseUnavailable(pane);
+
+  const user = await AV.me();
+  if (!user) {
+    return C.gate(pane, {
+      reason: 'Tracking is shown against the account that placed the order.',
+      actions: [{ href: '/orders.html', label: 'Your orders' }],
+    });
+  }
+  AV.setUser(user);
+
+  await load();
+});
+
+async function load() {
+  C.loading(pane, 'Loading tracking');
+  try {
+    render(await AV.orders.tracking(ref));
+  } catch (err) {
+    C.clearBusy(pane);
+    C.error(pane, err, { level: 'h2', title: 'We could not load tracking for that order' });
+    const el = AV.qs('.av-state', pane);
+    if (el) {
+      const p = document.createElement('p');
+      p.innerHTML = 'It may belong to another account, or the reference may be wrong. <a href="/orders.html">See all your orders</a>.';
+      el.querySelector('h3')?.after(p);
+    }
+    AV.qs('#trackTitle').textContent = 'Tracking unavailable.';
+    AV.qs('#trackSub').textContent = 'We could not match that reference to an order on your account.';
+  }
+}
+
+function render(data) {
+  C.clearBusy(pane);
+
+  const { order, tracking, trackable, message } = data;
+
+  AV.qs('#trackTitle').textContent = `Order ${order.orderNumber}.`;
+  AV.qs('#trackSub').textContent = subtitle(order, tracking, trackable);
+
+  pane.innerHTML = `
+    <div class="order-card" style="margin-bottom:28px">
+      <div class="order-card-head">
+        <div>
+          <div class="num">${AV.esc(order.orderNumber)}</div>
+          <div class="meta">
+            <span>Placed ${AV.formatDate(order.createdAt)}</span>
+            <span>${AV.esc(C.pieces(order.itemCount))}</span>
+            <span>${C.money(order.total)}</span>
+          </div>
+        </div>
+        ${C.statusBadge(order.status)}
+      </div>
+      <div class="order-card-actions">
+        <a class="btn btn-outline btn-sm" href="/orders/${encodeURIComponent(order.orderNumber)}">View the full order</a>
+      </div>
+    </div>
+
+    ${body({ order, tracking, trackable, message })}`;
+}
+
+function subtitle(order, tracking, trackable) {
+  if (tracking?.deliveredAt) return 'Delivered. Thank you for ordering with us.';
+  if (trackable) return 'Here is where your parcel has got to.';
+  return 'This one has not been handed to a courier yet.';
+}
+
+function body({ tracking, trackable, message }) {
+  /* Shipped, and the carrier has a record: the useful case. */
+  if (tracking && trackable) return carrierSection(tracking);
+
+  /* Shipped per the order status, but the carrier has nothing yet. A real and
+     common gap — the handover takes a scan we may not have seen. */
+  if (trackable && !tracking) {
+    return `
+      <div class="av-state">
+        <h3>Waiting for the first scan</h3>
+        <p>Your parcel has left us but the carrier has not recorded it yet. That usually takes a few hours after dispatch, and the timeline will fill in as soon as it does.</p>
+        <button class="btn btn-light" type="button" id="reload">Check again</button>
+      </div>`;
+  }
+
+  /* Not shipped. The server's own message is used verbatim where present —
+     it knows whether this is "we have not dispatched" or "dispatch is blocked",
+     and this page does not have to guess between them. */
+  return `
+    <div class="av-state">
+      <h3>Not on its way yet</h3>
+      <p>${AV.esc(message || 'Tracking appears here once your parcel is with the carrier.')}</p>
+      <a class="btn btn-light" href="/orders.html">Back to your orders</a>
+    </div>`;
+}
+
+function carrierSection(t) {
+  return `
+    ${summary(t)}
+    ${timeline(t.events || [])}
+    ${t.trackingUrl ? `<p class="note" style="margin-top:28px">You can also follow it on the carrier's own site:
+      <a href="${AV.esc(t.trackingUrl)}" target="_blank" rel="noopener noreferrer">${AV.esc(t.carrier)} tracking ${AV.esc(t.trackingNumber)}</a>.</p>` : ''}`;
+}
+
+function summary(t) {
+  const delivered = Boolean(t.deliveredAt);
+  return `
+    <div class="order-card" style="margin-bottom:28px">
+      <div class="order-card-head">
+        <div>
+          <div class="meta" style="margin-bottom:6px">
+            ${t.carrier ? `<span>${AV.esc(t.carrier)}</span>` : ''}
+            ${t.trackingNumber ? `<span>${AV.esc(t.trackingNumber)}</span>` : ''}
+          </div>
+          ${deliveryLine(t)}
+        </div>
+        ${delivered ? '' : C.statusBadge(t.status)}
+      </div>
+    </div>`;
+}
+
+/* An estimated date is shown only when the carrier gave one. Phrased as the
+   carrier's estimate, because it is not a promise we can make. */
+function deliveryLine(t) {
+  if (t.deliveredAt) {
+    return `<div class="num" style="font-size:26px">Delivered ${AV.formatDate(t.deliveredAt)}</div>`;
+  }
+  if (t.estimatedDelivery) {
+    return `<div class="num" style="font-size:26px">Estimated ${AV.formatDate(t.estimatedDelivery)}</div>
+      <div class="meta"><span>Estimated by ${AV.esc(t.carrier || 'the carrier')}</span></div>`;
+  }
+  return `<div class="num" style="font-size:26px">In transit</div>
+    <div class="meta"><span>No delivery estimate yet</span></div>`;
+}
+
+/* Events arrive oldest-first, so the list reads downwards as a story rather
+   than needing to be reversed by the reader. The newest event is marked
+   current — derived from position in the server's ordering, not from guessing
+   a status. */
+function timeline(events) {
+  if (!events.length) {
+    return `<div class="av-state"><h3>No scans yet</h3>
+      <p>The carrier has not recorded any movement for this parcel yet.</p></div>`;
+  }
+
+  return `
+    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:6px">Journey</h2>
+    <ol class="track-steps">
+      ${events
+        .map((e, i) => {
+          /* The last event in a chronological list is the latest one, so it is
+             the current position; everything before it has happened. */
+          const isCurrent = i === events.length - 1;
+          return `
+        <li class="track-step ${isCurrent ? 'is-current' : 'is-done'}">
+          <span class="dot" aria-hidden="true"></span>
+          <div>
+            <h4>${AV.esc(e.title || e.status || 'Update')}</h4>
+            <div class="when">
+              <time datetime="${AV.esc(e.occurredAt || '')}">${AV.formatDate(e.occurredAt)}</time>
+              ${e.occurredAt ? ` at ${AV.formatTime(e.occurredAt)}` : ''}
+              ${isCurrent ? ' &middot; latest update' : ''}
+            </div>
+            ${e.description ? `<p class="desc">${AV.esc(e.description)}</p>` : ''}
+            ${e.location ? `<p class="desc" style="color:var(--text-muted)">${AV.esc(e.location)}</p>` : ''}
+          </div>
+        </li>`;
+        })
+        .join('')}
+    </ol>`;
+}
+
+pane.addEventListener('click', (e) => {
+  if (e.target.closest('#reload')) load();
+});
+</script>
+</body>
+</html>
