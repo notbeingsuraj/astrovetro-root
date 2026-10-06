@@ -255,7 +255,7 @@ body {
 .hero-cta {
   position: absolute;
   left: 50%;
-  bottom: 18vh;
+  top: calc(50% + clamp(32px, 5vw, 72px));
   transform: translate(-50%, 0);
   display: inline-flex;
   align-items: center;
@@ -291,6 +291,6 @@ body {
 
 @media (max-width: 699px) {
   .hero-cta {
-    bottom: 12vh;
+    top: calc(50% + 36px);
   }
 }
