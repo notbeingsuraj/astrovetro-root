@@ -35,6 +35,37 @@ window.AV = window.AV || {};
     return location.pathname.replace(/^\//, '').split('?')[0].split('#')[0] === file;
   }
 
+  /* ── Header icon set ──────────────────────────────────────────────────
+     One drawn language, not four borrowed glyphs. The search/wishlist/bag
+     controls were unicode characters (U+2315, U+2661, U+2667) chosen for
+     whatever the visitor's font happened to render, so their weight, optical
+     size and centring all shifted with the platform — and the account control
+     fell back to a filled circle with an initial, which read as a heavier,
+     louder control than its three neighbours.
+
+     All four are now inline SVG on one 24px grid, stroked in currentColor at
+     the same weight, so the row holds together and inherits the header's
+     colour. Inlining also means no icon font, no extra request, and no
+     layout shift on load.
+
+     The icons are decorative: the control that wraps each one carries the
+     accessible name, so every glyph is aria-hidden and unfocusable. */
+  const ICON = {
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8 20 20"/>',
+    heart: '<path d="M12 20.4S4.4 15.6 4.4 10.6A4.5 4.5 0 0 1 12 7.6a4.5 4.5 0 0 1 7.6 3c0 5-7.6 9.8-7.6 9.8Z"/>',
+    bag: '<path d="M5.6 8.4h12.8l-.85 11.1a1.6 1.6 0 0 1-1.6 1.5H8.05a1.6 1.6 0 0 1-1.6-1.5Z"/><path d="M9.3 8.4V6.6a2.7 2.7 0 0 1 5.4 0v1.8"/>',
+    /* Account: a large circular outline with a minimal head-and-shoulders
+       silhouette inside it, drawn on the same 24px grid at the same weight as
+       the other three. Thin stroke, no fill, no gradient, no detail that does
+       not survive at 20px. */
+    account: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="9.9" r="2.5"/><path d="M6.6 17.3a5.9 5.9 0 0 1 10.8 0"/>',
+    /* The mobile nav toggle shares the set, so the collapsed header is the
+       same icon language as the expanded one rather than a lone text glyph. */
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  };
+  const icon = (name) =>
+    `<svg class="icon-glyph" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
+
   function headerHTML() {
     const links = nav
       .map(([label, href]) => {
@@ -48,22 +79,24 @@ window.AV = window.AV || {};
       .join('');
     /* The backend returns `name`, so the initial is taken from whichever field
        is present. A stale cached user must not decide the header's appearance —
-       this re-renders on the auth channel once the real session is known. */
+       this re-renders on the auth channel once the real session is known.
+       It now only names the control in its title; the glyph is the same
+       outline account icon either way, so signing in does not change the
+       shape of the header row. */
     const initial = AV.user?.name?.[0] ?? AV.user?.email?.[0] ?? null;
     /* .header-inner carries the same max-width and padding as the page body,
        so the logo starts on the same vertical line as every page heading. */
     return `
 <div class="header-inner">
 <a href="/home.html" class="logo">Astro Vetro</a>
-<button class="icon menu" id="menuBtn" aria-label="Menu">\u2630</button>
+<button class="icon menu" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="siteNav">${icon('menu')}</button>
 <nav id="siteNav">${links}</nav>
 <div class="header-actions">
-  <a class="icon" href="/shop.html?focus=1" aria-label="Search">\u2315</a>
-  <a class="icon" href="/wishlist.html" aria-label="Saved pieces">\u2661<span class="cart-badge" data-wishlist-badge></span></a>
-  <a class="icon" href="/cart.html" aria-label="Bag">\u2667<span class="cart-badge" data-cart-badge></span></a>
-  <a class="icon" href="${AV.user ? '/account.html' : '/account.html?view=login'}" aria-label="Account">
-    ${initial ? `<span class="avatar">${AV.esc(initial.toUpperCase())}</span>` : '\u25ef'}
-  </a>
+  <a class="icon" href="/shop.html?focus=1" aria-label="Search" title="Search">${icon('search')}</a>
+  <a class="icon" href="/wishlist.html" aria-label="Saved pieces" title="Saved pieces">${icon('heart')}<span class="cart-badge" data-wishlist-badge></span></a>
+  <a class="icon" href="/cart.html" aria-label="Bag" title="Your bag">${icon('bag')}<span class="cart-badge" data-cart-badge></span></a>
+  <a class="icon" href="${AV.user ? '/account.html' : '/account.html?view=login'}" aria-label="Account"
+     ${initial ? `title="Account \u2014 ${AV.esc(initial)}"` : 'title="Account"'}>${icon('account')}</a>
 </div>
 </div>`;
   }
@@ -123,10 +156,28 @@ window.AV = window.AV || {};
         f.innerHTML = footerHTML();
       }
     }
-    const menuBtn = AV.qs('#menuBtn');
-    const nv = AV.qs('#siteNav');
-    menuBtn?.addEventListener('click', () => nv.classList.toggle('mobile-open'));
-    nv?.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => nv.classList.remove('mobile-open')));
+    /* The nav toggle. Both the initial paint and the post-auth re-render below
+       wire this, so the aria state is driven from one place rather than left to
+       drift out of sync with the class it describes. */
+    const setNavOpen = (open) => {
+      AV.qs('#siteNav')?.classList.toggle('mobile-open', open);
+      AV.qs('#menuBtn')?.setAttribute('aria-expanded', String(open));
+    };
+    const wireNavToggle = () => {
+      AV.qs('#menuBtn')?.addEventListener('click', () =>
+        setNavOpen(!AV.qs('#siteNav')?.classList.contains('mobile-open')));
+    };
+    wireNavToggle();
+    AV.qs('#siteNav')?.querySelectorAll('a').forEach((a) =>
+      a.addEventListener('click', () => setNavOpen(false)));
+    /* Escape closes the panel and returns focus to the control that opened it,
+       so a keyboard visitor is not stranded inside the collapsed nav. */
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!AV.qs('#siteNav')?.classList.contains('mobile-open')) return;
+      setNavOpen(false);
+      AV.qs('#menuBtn')?.focus();
+    });
     renderBadge();
 
     /* Delegated so every add-to-cart button on any page works without each
@@ -216,7 +267,7 @@ window.AV = window.AV || {};
       const h = AV.qs('#siteHeader');
       if (h && !h.dataset.avLocked) {
         h.innerHTML = headerHTML();
-        AV.qs('#menuBtn')?.addEventListener('click', () => AV.qs('#siteNav')?.classList.toggle('mobile-open'));
+        wireNavToggle();
       }
       AV.markInCart();
       AV.markSaved();

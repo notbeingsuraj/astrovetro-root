@@ -62,14 +62,24 @@
   --leading-tight:.95;
   --tracking-label:.18em;
 
-  /* ── Space ──────────────────────────────────────────────────────── */
+  /* ── Space ────────────────────────────────────────────────────────────
+     One 8px-based scale, and every step is a multiple of 8. The previous
+     values were .875 / 1.25 / 4.5 / 7rem — 14, 20, 72, 112px — none of which
+     sat on the grid, which is why the page accumulated odd gaps that could
+     not be reasoned about and had to be nudged per-section.
+
+     8 · 16 · 24 · 32 · 48 · 64 · 96
+     A section carries --space-3xl (96) above and below, so two adjacent
+     sections put 192px of air between their content. That is the editorial
+     gap, and it is now the same number everywhere rather than 224px here,
+     180px there and whatever a hardcoded padding produced elsewhere. */
   --space-xs:.5rem;
-  --space-sm:.875rem;
-  --space-md:1.25rem;
+  --space-sm:1rem;
+  --space-md:1.5rem;
   --space-lg:2rem;
   --space-xl:3rem;
-  --space-2xl:4.5rem;
-  --space-3xl:7rem;
+  --space-2xl:4rem;
+  --space-3xl:6rem;
 
   /* ── Radius / motion / layout ───────────────────────────────────── */
   --radius-sm:10px;
@@ -227,11 +237,25 @@
   display: block;
   cursor: pointer;
 }
-.product-card .art-link:hover .art {
-  transform: scale(1.012);
+.product-card {
+  display: flex;
+  flex-direction: column;
 }
-.product-card .art {
-  transition: transform 0.35s ease;
+.product-card .art-link {
+  display: block;
+}
+.product-card p + .rating {
+  margin-top: auto;
+}
+.product-card .rating {
+  margin-top: auto;
+}
+.product-card .price,
+.product-card .stock {
+  margin-top: 0;
+}
+.product-card .card-actions {
+  margin-top: var(--space-sm);
 }
 .stock {
   font-size: 10px !important;
@@ -1400,11 +1424,12 @@ footer { padding-top:var(--space-2xl); padding-bottom:var(--space-lg); }
   font-size:var(--text-label)!important;
   color:var(--text-muted)!important;
 }
-.product-card p,
-.service-card p,
-.ritual-row p {
-  font-size:var(--text-body);
-  line-height:1.6;
+.product-card p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.6;
 }
 .journal-card small,
 .journal-card .meta { font-size:var(--text-label); }
