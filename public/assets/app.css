@@ -2178,3 +2178,24 @@ select { min-width:0; }
     gap: var(--space-xl);
   }
 }
+.voice {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(16, 38, 31, 0.32);
+  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.voice blockquote {
+  margin: 0;
+  color: var(--cream);
+  font-size: var(--text-body);
+  line-height: 1.8;
+}
+.voice-meta {
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
