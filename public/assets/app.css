@@ -2098,16 +2098,30 @@ select { min-width:0; }
 }
 .path .btn.btn-outline {
   color: var(--cream);
-  border-color: var(--line);
-  background: transparent;
+  border: 1px solid rgba(241, 234, 220, 0.5);
+  background: rgba(16, 38, 31, 0.4);
   will-change: background-color, color, border-color;
-  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+  transition: background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out;
+  padding: 0 32px;
+  min-height: 48px;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 .path .btn.btn-outline:hover,
 .path .btn.btn-outline:focus-visible {
   color: var(--forest);
   background: var(--cream);
   border-color: var(--cream);
+}
+.path .btn.btn-outline:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: 3px;
 }
 .booking-wrap {
   display: grid;
