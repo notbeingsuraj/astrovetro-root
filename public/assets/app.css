@@ -2007,3 +2007,92 @@ select { min-width:0; }
 @media (max-width: 620px) {
   .adm-dialog { padding: var(--space-md); }
 }
+
+/* ── Paths: Crystals and Rituals ─────────────────────────────────────────
+   A quiet, editorial split that keeps Astro Vetro's restrained palette and
+   typography. No new language introduced: the same `.section`, `.eyebrow`,
+   `.btn.btn-outline` and token rhythm as the rest of the site. */
+.paths-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+  align-items: stretch;
+}
+.path {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(24, 55, 44, 0.42) 0%, rgba(16, 38, 31, 0.28) 100%);
+  overflow: hidden;
+  transition: border-color .25s ease, transform .25s ease;
+  min-height: clamp(320px, 36vw, 420px);
+  display: flex;
+  align-items: stretch;
+}
+.path::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 20% 10%, rgba(250, 248, 241, 0.08), transparent 70%);
+}
+.path:hover {
+  border-color: var(--sand);
+}
+.path:focus-within {
+  outline: 2px solid var(--sand);
+  outline-offset: 3px;
+}
+.path-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: clamp(var(--space-xl), 5vw, var(--space-2xl)) clamp(var(--space-md), 4vw, var(--space-xl));
+  max-width: 58ch;
+}
+.path h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  line-height: var(--leading-tight);
+  letter-spacing: -.01em;
+  text-transform: uppercase;
+  margin: 0;
+}
+.path p {
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  margin: 0;
+}
+.path .eyebrow {
+  color: var(--text-muted);
+  margin-bottom: var(--space-xs);
+}
+.path .btn {
+  margin-top: var(--space-md);
+}
+.path-crystals {
+  background: linear-gradient(160deg, rgba(24, 55, 44, 0.52) 0%, rgba(16, 38, 31, 0.24) 100%);
+}
+.path-rituals {
+  background: linear-gradient(160deg, rgba(16, 38, 31, 0.24) 0%, rgba(54, 42, 31, 0.32) 100%);
+}
+@media (max-width: 910px) {
+  .paths-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+  }
+  .path {
+    min-height: auto;
+  }
+}
+@media (max-width: 640px) {
+  .path-inner {
+    padding: var(--space-xl) var(--space-md);
+  }
+}
