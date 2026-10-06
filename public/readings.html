@@ -82,24 +82,6 @@
     </div>
   </section>
 
-  <!-- 2 · Top selling products -->
-  <section class="section cream" id="top-selling">
-    <div class="wrap">
-      <div class="section-title">
-        <div class="eyebrow">Top selling pieces</div>
-        <h2>What people keep on the shelf.</h2>
-        <p class="section-note">The crystals that turn up most often alongside a
-          reading — a stone for the practice, not just the collection.</p>
-      </div>
-
-      <div class="products-grid js-load" id="topGrid"></div>
-
-      <div class="actions">
-        <a class="btn btn-outline" href="/shop.html">View more products</a>
-      </div>
-    </div>
-  </section>
-
   <!-- 3 · Ritual experience -->
   <section class="section expect" id="expect">
     <div class="wrap">
@@ -127,22 +109,6 @@
             usually one concrete thing to do next.</p>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- 4 · Tarot — the end of the path -->
-  <section class="section cream" id="tarot">
-    <div class="wrap">
-      <div class="section-title">
-        <div class="eyebrow">Tarot</div>
-        <h2>Where most people begin.</h2>
-        <p class="section-note">Tarot is the most-booked format we hold, so it sits
-          at the end of this page rather than competing with the grid above.</p>
-      </div>
-
-      <div class="ritual-list js-load" id="tarotList"></div>
-
-      <div class="actions" id="tarotMore"></div>
     </div>
   </section>
 
@@ -270,100 +236,6 @@ async function loadTop() {
   }
 }
 
-/* ── Tarot ─────────────────────────────────────────────────────────────
-   The bookable tarot sessions, drawn from the same services the shop above
-   renders (type === 'tarot') so the two can never drift apart, plus the
-   tarot entry from the journal if one has been published. */
-async function loadTarot() {
-  const list = AV.qs('#tarotList');
-  const more = AV.qs('#tarotMore');
-  list.innerHTML = AV.skeletonCards(2, 'service');
-  AV.reveal(list);
-
-  const sessions = all.filter((s) => String(s.type || '').toLowerCase() === 'tarot');
-
-  if (!sessions.length) {
-    list.innerHTML = '<div class="empty">Tarot sessions are fully booked at the moment — '
-      + '<a class="btn btn-ghost btn-sm" href="/contact.html">ask about a slot</a></div>';
-    return;
-  }
-
-  list.innerHTML = sessions.map((s) => `
-    <article class="ritual-row">
-      <div>
-        <h3>${esc(s.name)}</h3>
-        <p>${esc(s.shortDescription || s.description || '')}</p>
-        <span class="ritual-meta">
-          <span class="price">${AV.formatPrice(s.price)}</span>
-          ${s.duration ? `<span class="dur">${s.duration} min</span>` : ''}
-        </span>
-      </div>
-      <a class="btn btn-outline btn-sm" href="/booking.html?slug=${encodeURIComponent(s.slug)}">Book</a>
-    </article>`).join('');
-
-  /* Matched on the title rather than a hard-coded slug, so republishing the
-     article under a different slug cannot leave a dead link behind. */
-  try {
-    const env = await AV.api.get('/api/articles?limit=24');
-    const guide = (env.data || []).find((a) => /tarot/i.test(a.title || ''));
-    if (guide) {
-      more.innerHTML = '<a class="btn btn-outline" href="/article.html?slug='
-        + encodeURIComponent(guide.slug) + '">' + esc(guide.title) + '</a>';
-    }
-  } catch (e) {
-    /* The journal is a bonus here; the sessions above are the section. */
-  }
-}
-
-async function loadVoices() {
-  const g = AV.qs('#voicesGrid');
-  g.innerHTML = AV.skeletonCards(3, 'voice');
-  AV.reveal(g);
-  try {
-    const env = await AV.api.get('/api/testimonials?limit=6&type=reading');
-    const items = (env.data || []).filter((t) => t.type === 'reading').slice(0, 3);
-    if (!items.length) { g.innerHTML = '<div class="empty">Voices from past sessions will appear here.</div>'; return; }
-    g.innerHTML = items.map((t) => `
-      <figure class="voice">
-        <blockquote>${esc(t.content || '')}</blockquote>
-        <figcaption>
-          <span class="voice-name">${esc(t.name || '')}</span>
-          <span class="voice-meta">${esc([t.productOrService, t.location].filter(Boolean).join(' · '))}</span>
-        </figcaption>
-      </figure>`).join('');
-  } catch (e) {
-    g.innerHTML = '<div class="empty">We could not load past voices right now.</div>';
-  }
-}
-
-async function load() {
-  grid.innerHTML = AV.skeletonCards(3, 'service');
-  AV.reveal(grid);
-  try {
-    const env = await AV.api.get('/api/services?limit=50');
-    /* Services use `availability` (products use `availability` too); accept
-       either spelling so a retired field name cannot leak unbookable slots. */
-    all = (env.data || []).filter((s) => s.availability !== false && s.available !== false);
-
-    const types = [...new Set(all.map((s) => s.type).filter(Boolean))];
-    types.forEach((t) => {
-      const o = document.createElement('option');
-      o.value = t;
-      o.textContent = String(t).charAt(0).toUpperCase() + String(t).slice(1);
-      typeSel.appendChild(o);
-    });
-
-    render();
-    loadTarot();
-  } catch (e) {
-    grid.innerHTML = '<div class="empty">We could not reach the booking system just now. '
-      + '<a class="btn btn-ghost btn-sm" href="/contact.html">Write to us instead</a></div>';
-    countEl.textContent = '';
-    AV.qs('#tarotList').innerHTML = '<div class="empty">Tarot sessions could not be loaded right now.</div>';
-  }
-
-  loadTop();
-  loadVoices();
 }
 
 typeSel.addEventListener('change', (e) => { type = e.target.value; render(); });
