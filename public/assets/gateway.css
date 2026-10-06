@@ -251,4 +251,46 @@ body {
   .hero-veil { transition:none; }
   .hero-bg { transform:none; }
   .hero-track { will-change:auto; }
+}/* Gateway CTAs */
+.hero-cta {
+  position: absolute;
+  left: 50%;
+  bottom: 18vh;
+  transform: translate(-50%, 0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 34px;
+  min-height: 48px;
+  border-radius: var(--radius-pill, 30px);
+  border: 1px solid rgba(241, 234, 220, 0.6);
+  background: rgba(16, 38, 31, 0.55);
+  color: var(--cream, #f1eadc);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  z-index: 5;
+  transition: background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out;
+  pointer-events: none;
+}
+
+.hero-panel:hover .hero-cta,
+.hero-panel:focus-visible .hero-cta {
+  background: var(--cream, #f1eadc);
+  color: var(--forest, #18372c);
+  border-color: var(--cream, #f1eadc);
+}
+
+.hero-panel:focus-visible .hero-cta {
+  outline: 2px solid var(--cream);
+  outline-offset: 3px;
+}
+
+@media (max-width: 699px) {
+  .hero-cta {
+    bottom: 12vh;
+  }
 }
