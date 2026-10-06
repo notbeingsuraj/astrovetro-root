@@ -78,20 +78,20 @@ const slug = params.get('slug');
   });
 
   root.innerHTML = `
-    <a class="back" href="/readings.html">← All readings</a>
-    <div class="checkout-grid" style="margin-top:14px">
+    <a class="booking-back" href="/readings.html">← All readings</a>
+    <div class="booking-wrap" style="margin-top:14px">
       <div>
         <div class="eyebrow">Book a reading</div>
-        <h1 style="font-size:clamp(38px,5vw,64px);text-transform:uppercase">${AV.esc(service.name)}</h1>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin:20px 0 28px">
+        <h1 class="booking-title">${AV.esc(service.name)}</h1>
+        <div class="booking-meta">
           <span class="tag">${AV.esc(service.type || 'tarot')}</span>
           <span class="tag">${service.duration || ''} minutes</span>
           <span class="tag">${AV.esc(service.format || 'online')}</span>
           <span class="tag">${AV.formatPrice(service.price)}</span>
         </div>
-        <p class="lead" style="color:var(--cream)">${AV.esc(service.description || '')}</p>
+        <p class="booking-lead">${AV.esc(service.description || '')}</p>
 
-        <form id="bkForm" style="margin-top:36px" novalidate>
+        <form id="bkForm" class="booking-form" novalidate>
           <div class="form-grid">
             <label>Your name<input name="name" required value="${AV.esc(name)}"></label>
             <label>Email<input type="email" name="email" required value="${AV.esc(user?.email || '')}"></label>
