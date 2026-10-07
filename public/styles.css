@@ -54,7 +54,10 @@ button,input,textarea {
   top:0;
   z-index:50;
   height:var(--header-h);
-  padding:0 var(--page-pad,4vw);
+  /* Same gutter as every section, hero and the footer: the header is the one
+     bar whose left edge the logo sits on, so it cannot use its own padding
+     and still land on the page's content line. */
+  padding:0 var(--gutter, var(--page-pad, 4vw));
   display:flex;
   align-items:center;
   gap:30px;
@@ -737,7 +740,9 @@ footer p,footer a {
 }
 @media(max-width:560px) {
   .site-header {
-    padding:0 5vw;
+    /* Inherits the shared gutter — a 5vw bar put the logo 2.5px left of every
+       heading on a 390px phone and 6px right of them at 560px. */
+    padding:0 var(--gutter, 5vw);
     gap:14px;
   }
   .logo {
@@ -818,7 +823,7 @@ footer p,footer a {
   right:0;
   top:78px;
   background:var(--deep);
-  padding:22px 5vw;
+  padding:22px var(--gutter, 5vw);
   flex-direction:column;
   gap:18px;
   border-bottom:1px solid var(--line);

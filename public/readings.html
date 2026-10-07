@@ -208,34 +208,59 @@ function render() {
     </article>`).join('');
 }
 
-/* ── Top selling products ──────────────────────────────────────────────
-   Real catalogue entries, ordered by the two signals the catalogue actually
-   carries: `featured`, then star rating. Nothing is written by hand and no
-   piece is invented — if the API is unreachable the section says so and
-   leaves the link through to the shop as the way onward. */
-async function loadTop() {
-  const g = AV.qs('#topGrid');
-  g.innerHTML = AV.skeletonCards(3, 'product');
+/* ── Voices ─────────────────────────────────────────────────────────────
+   Past sessions, from the same testimonials the rest of the site reads. */
+async function loadVoices() {
+  const g = AV.qs('#voicesGrid');
+  g.innerHTML = AV.skeletonCards(3, 'voice');
   AV.reveal(g);
   try {
-    const env = await AV.api.get('/api/products?limit=24');
-    const items = (env.data || [])
-      .filter((p) => p.availability !== false)
-      .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
-                   || (b.rating || 0) - (a.rating || 0))
-      .slice(0, 3);
+    const env = await AV.api.get('/api/testimonials?limit=6&type=reading');
+    const items = (env.data || []).filter((t) => t.type === 'reading').slice(0, 3);
     if (!items.length) {
-      g.innerHTML = '<div class="empty">The collection is being restocked just now — '
-        + '<a class="btn btn-ghost btn-sm" href="/shop.html">Browse the shop</a></div>';
+      g.innerHTML = '<div class="empty">Voices from past sessions will appear here.</div>';
       return;
     }
-    g.innerHTML = items.map((p, i) => AV.productCard(p, i)).join('');
+    g.innerHTML = items.map((t) => `
+      <figure class="voice">
+        <blockquote>${esc(t.content || '')}</blockquote>
+        <figcaption>
+          <span class="voice-name">${esc(t.name || '')}</span>
+          <span class="voice-meta">${esc([t.productOrService, t.location].filter(Boolean).join(' · '))}</span>
+        </figcaption>
+      </figure>`).join('');
   } catch (e) {
-    g.innerHTML = '<div class="empty">We could not reach the collection just now. '
-      + '<a class="btn btn-ghost btn-sm" href="/shop.html">Browse the shop</a></div>';
+    g.innerHTML = '<div class="empty">We could not load past voices right now.</div>';
   }
 }
 
+/* ── The shop above ─────────────────────────────────────────────────────
+   One request feeds the grid, the type filter and the count, so the three
+   can never disagree about what is bookable right now. */
+async function load() {
+  grid.innerHTML = AV.skeletonCards(3, 'service');
+  AV.reveal(grid);
+  try {
+    const env = await AV.api.get('/api/services?limit=50');
+    /* Services report `availability`; accept the alternate spelling too so a
+       retired field name cannot leak unbookable slots. */
+    all = (env.data || []).filter((s) => s.availability !== false && s.available !== false);
+
+    [...new Set(all.map((s) => s.type).filter(Boolean))].forEach((t) => {
+      const o = document.createElement('option');
+      o.value = t;
+      o.textContent = String(t).charAt(0).toUpperCase() + String(t).slice(1);
+      typeSel.appendChild(o);
+    });
+
+    render();
+  } catch (e) {
+    grid.innerHTML = '<div class="empty">We could not reach the booking system just now. '
+      + '<a class="btn btn-ghost btn-sm" href="/contact.html">Write to us instead</a></div>';
+    countEl.textContent = '';
+  }
+
+  loadVoices();
 }
 
 typeSel.addEventListener('change', (e) => { type = e.target.value; render(); });
