@@ -824,6 +824,10 @@ footer p,footer a {
   top:78px;
   background:var(--deep);
   padding:22px var(--gutter, 5vw);
+  /* `nav` carries a margin-left of one space step for the collapsed header
+     row; inside the open panel that same margin pushed every link 32px right
+     of the logo it hangs off. */
+  margin-left:0;
   flex-direction:column;
   gap:18px;
   border-bottom:1px solid var(--line);

@@ -281,6 +281,14 @@
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+  /* Without this the row's automatic minimum size is the width of its longest
+     option, which on a 320px phone pushed the whole toolbar past the gutter
+     and gave the page a horizontal scrollbar. `max-width` is what actually
+     clamps it: `.toolbar` wraps, so its column line is sized to the item's
+     max-content width and the stretched item never gets to the container's
+     276px — it needs its own ceiling. */
+  min-width: 0;
+  max-width: 100%;
 }
 .search-field {
   display: flex;
@@ -291,6 +299,7 @@
 }
 .search-field input {
   flex: 1;
+  min-width: 0;
   border: 0;
 }
 .pager {
@@ -562,7 +571,7 @@ td a { color: var(--sand); border-bottom: 1px dotted var(--line); }
 .legal ul { padding-left: 20px; }
 
 /* ── Reading / service cards ──────────────────────────────────── */
-.service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+.service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px,100%), 1fr)); gap: 24px; }
 .service-card {
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -1407,6 +1416,12 @@ footer,
 .ritual-copy,
 .newsletter,
 .banner-content { padding-left:var(--gutter); padding-right:var(--gutter); }
+/* A `.section` inside `.page` (about.html) would otherwise add the gutter a
+   second time — `.page` already resolved it against the viewport, and the
+   section resolved it again against the 1240px column, indenting that one
+   section's copy by a whole page padding while every heading beside it sat
+   on the content line. The section keeps its vertical rhythm. */
+.page > .section { padding-left:0; padding-right:0; }
 .section { padding-top:var(--space-3xl); padding-bottom:var(--space-3xl); }
 .page { padding-top:var(--space-2xl); padding-bottom:var(--space-3xl); }
 .page-hero { padding-top:var(--space-2xl); padding-bottom:var(--space-xl); }
@@ -1757,7 +1772,7 @@ select { min-width:0; }
 .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
 
 /* ── Address cards ────────────────────────────────────────────── */
-.addr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-md); }
+.addr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px,100%), 1fr)); gap: var(--space-md); }
 .addr-card {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
