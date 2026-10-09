@@ -33,47 +33,69 @@
      page content and no stored state — the homepage lives at /home.html and
      the two destinations are /shop.html and /readings.html.
 
-     The left panel still reads CRYSTALS, because the gateway's three words are
-     fixed, but it now leads to the shop: there is no separate crystals page, and
-     forwarding it keeps the gateway's promise honest.
-
+     The animation is ported verbatim from Astrovetro-landing-page-animation.html:
+     two full-viewport panels split with clip-path. The pointer side opens to
+     72% (the other closes to 28%), the photo tightens and saturates, and the
+     center wordmark fades away while the active side's heading slides in.
      The scroll lock lives in gateway.css, which only this page loads. -->
 <body>
 
-<div class="gateway">
+<main class="stage" id="stage">
 
-  <h1 class="gateway-brand"><a href="/home.html">Astrovetro</a></h1>
+  <a class="panel crystal" href="/shop.html" data-panel="crystal" aria-label="Shop crystals"></a>
+  <a class="panel ritual" href="/readings.html" data-panel="rituals" aria-label="View rituals"></a>
 
-  <section class="hero-split" id="hero" data-clip="intentional" aria-label="Choose an experience">
-    <div class="hero-track">
+  <div class="content crystal-content">
+    <h2>Crystals</h2>
+    <p>Objects chosen for their texture, presence and quiet ritual of touch.</p>
+  </div>
 
-      <a class="hero-panel hero-panel--crystals" href="/shop.html" data-panel="crystals">
-        <span class="hero-bg" aria-hidden="true"></span>
-        <span class="hero-veil" aria-hidden="true"></span>
-        <span class="hero-name">Crystals</span>
-        <span class="hero-cta">SHOP CRYSTALS</span>
-      </a>
+  <div class="content ritual-content">
+    <h2>Rituals</h2>
+    <p>Small practices and meaningful objects for making space in the everyday.</p>
+  </div>
 
-      <a class="hero-panel hero-panel--rituals" href="/readings.html" data-panel="rituals">
-        <span class="hero-bg" aria-hidden="true"></span>
-        <span class="hero-veil" aria-hidden="true"></span>
-        <span class="hero-name">Rituals</span>
-        <span class="hero-cta">VIEW RITUALS</span>
-      </a>
+  <div class="center-mark">
+    <a class="brand" href="/home.html">AstroVetro</a>
+  </div>
 
-    </div>
-  </section>
+  <div class="credit">Crystals&nbsp;&nbsp;&nbsp;&nbsp; Rituals</div>
 
-</div>
+</main>
 
 <script>
 (function () {
+  var stage = document.getElementById('stage');
+  if (!stage) return;
+
+  function open(side) {
+    stage.classList.add(side + '-active');
+    stage.classList.remove(side === 'crystal' ? 'ritual-active' : 'crystal-active');
+  }
+  function reset() {
+    stage.classList.remove('crystal-active', 'ritual-active');
+  }
+
+  /* Pointer: the side of the cursor opens; leaving rests both sides. */
+  stage.addEventListener('mousemove', function (event) {
+    var x = event.clientX / window.innerWidth;
+    open(x < 0.5 ? 'crystal' : 'ritual');
+  });
+  stage.addEventListener('mouseleave', reset);
+
+  /* Keyboard: focusing a panel opens its side, exactly like hovering it. */
+  stage.addEventListener('focusin', function (e) {
+    var panel = e.target.closest('[data-panel]');
+    if (panel) open(panel.getAttribute('data-panel'));
+  });
+  stage.addEventListener('focusout', function (e) {
+    if (!stage.contains(e.relatedTarget)) reset();
+  });
+
   /* A link fires on Enter but not on Space - Space scrolls. These two panels
      are meant to be operated like buttons, so they get the missing key.
      preventDefault on keydown is what keeps the locked page from budging. */
-  var hero = document.getElementById('hero');
-  if (!hero) return;
-  hero.addEventListener('keydown', function (e) {
+  stage.addEventListener('keydown', function (e) {
     if (e.key !== ' ' && e.key !== 'Spacebar') return;
     var panel = e.target.closest('[data-panel]');
     if (!panel) return;
