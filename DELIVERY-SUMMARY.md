@@ -42,6 +42,12 @@ in this pass; numbers come from the actual test run, not memory.
   `onerror` fallback and the gradient-art fallback preserved.
 - **`AV.api.put` didn't exist**, so no UI could use the images endpoint.
   *Fix:* added to `public/assets/api.js`.
+- **Image deletion left uploaded source files behind.** The delete endpoint
+  built its sibling list with a hardcoded `-original.jpg`, but uploads write
+  `-original.{png|jpg|webp}` — every PNG upload left an orphan on disk
+  (11 had accumulated). Found while running the suite; the sibling list now
+  looks up the original's real extension, and the test asserts on the
+  filesystem that all three physical files are gone.
 
 ## 2) Files changed (this pass)
 
@@ -121,7 +127,8 @@ in this pass; numbers come from the actual test run, not memory.
   adjustments (10 parallel +5 → exactly 60) and racing withdrawals that
   can never go negative; ledger sum === stored stock; untrack → 409;
   PO send/receive idempotent replay, partial and over-receive; dashboard
-  metrics; CSV formula safety; upload magic-bytes; last-admin guard;
+  metrics; CSV formula safety; upload magic-bytes + **filesystem assertion
+  that deletion leaves zero files behind**; last-admin guard;
   audit trail; catalogue asset integrity; no hotlinks; **static wiring of
   the admin desk** (every tab renders, every API path exists on the
   server). Suite boots its own servers (ports 5311/5312) against an
