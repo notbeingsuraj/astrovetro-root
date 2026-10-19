@@ -21,27 +21,72 @@
 
    `price` is the live price. Orders do not read it — they snapshot it — so
    repricing a product cannot rewrite what someone already paid.
+
+   Two newer layers, kept separate on purpose:
+
+   - `status` is the lifecycle: draft (being prepared), active (in the public
+     catalogue), archived (retired). Only `active` products appear in the
+     public catalogue reads (src/providers/dbProvider.js); carts, wishlist and
+     orders resolve products by id and therefore still see archived ones, which
+     is what keeps past orders readable after a piece is retired. Archiving
+     never deletes anything.
+   - Inventory fields (`costPrice`, `reorderThreshold`, `reorderQuantity`) are
+     operational data: shown to administrators, never serialised to the public
+     (see toPublic vs toAdmin).
+
+   `sku` is the stable identifier used across inventory, movements and
+   purchase orders. Unique (sparse, so legacy documents without one can be
+   back-filled safely), and generated from the slug when a product is created
+   through the admin API.
+
+   `category` is no longer an enum on this schema. The authoritative list
+   lives in the Category collection so administrators can manage it without a
+   deploy; products keep referencing their category by slug, exactly as the
+   storefront's `?category=` filter already expects.
+
+   `imageAlts` runs parallel to `images` (same order, same length after any
+   admin image operation; treated as optional everywhere it is read, falling
+   back to a name-based alt) so each photograph can carry its own description.
    ------------------------------------------------------------------------- */
 
 import mongoose from 'mongoose';
+
+/* System default for "low stock" when a product has no explicit
+   reorderThreshold. Exported so the dashboard, the table and the inventory
+   service all derive the same status from the same number. */
+export const LOW_STOCK_DEFAULT = 3;
+
+/* Stable SKU derivation for products created without an explicit one.
+   slug is unique, so this cannot collide: "amethyst-ring" -> "AV-AMETHYST-RING". */
+export const defaultSku = (slug) =>
+  `AV-${String(slug)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')}`;
 
 const productSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
-    category: {
-      type: String,
-      enum: ['ring', 'bracelet', 'pendant', 'tower', 'cluster', 'tumble', 'raw', 'other'],
-      required: true,
-      index: true,
-    },
+    /* Managed via the Category collection; see file header. */
+    category: { type: String, required: true, trim: true, lowercase: true, index: true },
+
+    /* Stable inventory identifier. Sparse: documents created before SKUs
+       existed do not block a new one, but two SKUs can never collide. */
+    sku: { type: String, trim: true, uppercase: true, unique: true, sparse: true, index: true },
 
     price: { type: Number, required: true, min: 0 },
     /* Optional strike-through price. Null means not on sale; 0 would be a
        free product, which is never what a zero here means. */
     salePrice: { type: Number, default: null, min: 0 },
+    /* What the shop paid for the piece, when known. Null means unknown and is
+       never substituted with the selling price in any valuation. */
+    costPrice: { type: Number, default: null, min: 0 },
 
     images: { type: [String], default: [] },
+    /* Parallel to `images`; readers fall back to a generated alt when the
+       entry is missing (legacy documents). */
+    imageAlts: { type: [String], default: [] },
     shortDescription: { type: String, default: '' },
     description: { type: String, default: '' },
     intentions: { type: [String], default: [] },
@@ -55,6 +100,19 @@ const productSchema = new mongoose.Schema(
 
     /* null = inventory not tracked for this piece. See the file header. */
     stock: { type: Number, default: null, min: 0 },
+    /* Reorder guidance. null threshold = fall back to the system default
+       (LOW_STOCK_DEFAULT in the inventory service); null quantity means the
+       administrator has not decided a restock size. */
+    reorderThreshold: { type: Number, default: null, min: 0 },
+    reorderQuantity: { type: Number, default: null, min: 0 },
+
+    status: { type: String, enum: ['draft', 'active', 'archived'], default: 'active', index: true },
+    tags: { type: [String], default: [] },
+
+    /* True while the product's identity/photography needs a human check
+       (e.g. an uncertain image mapping). Surfaces on the admin dashboard. */
+    needsReview: { type: Boolean, default: false, index: true },
+    reviewNote: { type: String, default: '', maxlength: 500 },
   },
   { timestamps: true }
 );
@@ -77,7 +135,10 @@ productSchema.methods.canFulfil = function canFulfil(qty) {
 };
 
 /* Serialised for the storefront. Identical field set to the static provider's
-   output so no consumer has to branch on which provider answered. */
+   output so no consumer has to branch on which provider answered.
+
+   Operational fields (costPrice, sku, status, reorder data, needsReview) are
+   deliberately absent: this object is served to anyone browsing the shop. */
 productSchema.methods.toPublic = function toPublic() {
   return {
     id: this._id.toString(),
@@ -88,6 +149,7 @@ productSchema.methods.toPublic = function toPublic() {
     salePrice: this.salePrice ?? null,
     effectivePrice: this.effectivePrice(),
     images: this.images,
+    imageAlts: this.imageAlts,
     shortDescription: this.shortDescription,
     description: this.description,
     intentions: this.intentions,
@@ -101,6 +163,62 @@ productSchema.methods.toPublic = function toPublic() {
        whether an item is available, not how many are on the shelf. */
     inStock: this.availability && (this.stock == null || this.stock > 0),
   };
+};
+
+/* Serialised for the admin API. Everything the dashboard shows, including
+   operational fields, plus computed inventory status so every screen agrees
+   on what "low stock" means instead of re-deriving it. */
+productSchema.methods.toAdmin = function toAdmin() {
+  const stockState =
+    this.stock == null ? 'untracked' : this.stock === 0 ? 'out' : this.isLowStock() ? 'low' : 'in';
+  return {
+    id: this._id.toString(),
+    slug: this.slug,
+    name: this.name,
+    sku: this.sku || defaultSku(this.slug),
+    category: this.category,
+    status: this.status,
+    price: this.price,
+    salePrice: this.salePrice ?? null,
+    costPrice: this.costPrice ?? null,
+    images: this.images,
+    imageAlts: this.imageAlts,
+    shortDescription: this.shortDescription,
+    description: this.description,
+    intentions: this.intentions,
+    stone: this.stone,
+    metal: this.metal,
+    tags: this.tags,
+    featured: this.featured,
+    availability: this.availability,
+    rating: this.rating,
+    reviewCount: this.reviewCount,
+    stock: this.stock,
+    reorderThreshold: this.reorderThreshold,
+    reorderQuantity: this.reorderQuantity,
+    stockState,
+    needsReview: this.needsReview,
+    reviewNote: this.reviewNote,
+    updatedAt: this.updatedAt,
+    createdAt: this.createdAt,
+  };
+};
+
+/* Low when the balance is at or below the product's threshold, or — when no
+   threshold was decided — at or below the system default. Shared by the
+   dashboard, the table's status column and the toAdmin serialisation so the
+   three can never disagree. */
+productSchema.methods.isLowStock = function isLowStock(defaultThreshold = LOW_STOCK_DEFAULT) {
+  if (this.stock == null || this.stock === 0) return false;
+  const threshold = this.reorderThreshold ?? defaultThreshold;
+  return this.stock <= threshold;
+};
+
+/* The derivation rule for "would this change make stock negative", used by
+   the inventory service before applying a delta. */
+productSchema.statics.canApplyDelta = function canApplyDelta(stock, delta) {
+  if (stock == null) return delta >= 0; /* starting to track: only >= 0 */
+  return stock + delta >= 0;
 };
 
 export const Product = mongoose.model('Product', productSchema);

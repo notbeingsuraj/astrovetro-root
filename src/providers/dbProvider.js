@@ -46,6 +46,11 @@ export const dbProvider = {
   async listProducts(query = {}) {
     const filter = {};
 
+    /* Lifecycle gate: the public catalogue never lists drafts or archived
+       pieces. Carts, wishlist and orders load products by id elsewhere, so an
+       archived product still resolves for the history that references it. */
+    filter.status = 'active';
+
     if (query.category) filter.category = query.category;
     if (query.featured !== undefined) filter.featured = Boolean(query.featured);
     if (query.availability !== undefined) filter.availability = Boolean(query.availability);
@@ -121,7 +126,9 @@ export const dbProvider = {
   },
 
   async getProduct(slug) {
-    const product = await Product.findOne({ slug: String(slug).toLowerCase() });
+    /* Same lifecycle gate as the list — a retired product's page 404s for the
+       public but the document itself is untouched. */
+    const product = await Product.findOne({ slug: String(slug).toLowerCase(), status: 'active' });
     return product ? product.toPublic() : null;
   },
 

@@ -60,7 +60,16 @@ const apiPlan = (() => {
 
   const ready = (async () => {
     try {
-      await connectDB();
+      /* connectDB() RESOLVES to false when the connection fails — it does not
+         throw. Treating resolution as success used to mount commerceApi over a
+         dead connection, which turned every catalogue read into a 500 and took
+         the whole storefront down whenever mongod was not running. The return
+         value is the contract, so it is checked. */
+      const connected = await connectDB();
+      if (!connected) {
+        console.error('[api] MongoDB unreachable - falling back to the static catalogue');
+        return staticApi;
+      }
       await seedIfEmpty({ quiet: true });
       console.log('[api] MongoDB connected - accounts, cart, wishlist, addresses, orders and tracking are live');
       return commerceApi;
