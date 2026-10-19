@@ -247,6 +247,21 @@ authorization (401/403), catalogue asset integrity, inventory concurrency
 and static wiring of the admin desk (every tab has a renderer, every API path
 exists).
 
+### Live smoke
+
+```bash
+npm start &                   # dev server on http://localhost:5173
+npm run smoke:admin           # sign in as the dev admin, exercise the desk
+```
+
+`scripts/smoke-admin.mjs` complements the test suite: instead of an isolated
+database it exercises the RUNNING development server with the developer's own
+data, signing in as the dev admin and calling every endpoint the desk's
+modules use — including the inventory ledger's full cycle (untracked refusal,
+opening balance, delta, CSV export). It creates one fixed-slug throwaway
+product and restores it on re-runs, so repeated smokes never accumulate
+residue.
+
 ### Security
 
 - Keep credentials and API keys out of version control.

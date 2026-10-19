@@ -9,6 +9,7 @@
     "dev": "node server.js",
     "build": "node -e \"console.log('Astro Vetro has no build step. public/ is plain HTML/CSS/JS and is served as-is by server.js; nothing to compile.')\"",
     "test": "node --test tests/",
+    "smoke:admin": "node scripts/smoke-admin.mjs",
     "migrate:catalogue": "node scripts/migrate-catalogue.mjs",
     "migrate:users": "node scripts/migrate-users.mjs"
   },

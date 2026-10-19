@@ -53,6 +53,7 @@ in this pass; numbers come from the actual test run, not memory.
 
 | Area | Files |
 | --- | --- |
+| Resume pass (2026-10-19) | `scripts/migrate-catalogue.mjs` (alt-text backfill guard), `tests/admin-authz.test.mjs` (self-contained: own DB + seeded admin), `scripts/smoke-admin.mjs` (new, `npm run smoke:admin`), `package.json` (smoke script), this file |
 | Tests (new/rewritten) | `tests/admin-authz.test.mjs`, `tests/admin-flows.test.mjs` (24 flows), `tests/admin-ui.test.mjs`, `tests/catalogue-assets.test.mjs`, `tests/csv.test.mjs`, `tests/api-public.test.mjs`, `tests/storefront-pages.test.mjs`, `tests/helpers/server.mjs`; removed broken `tests/infrastructure.test.js` |
 | Admin desk (new) | `public/assets/admin.js` (~1,500 lines, 13 modules), `public/admin.html` (rewritten as shell + scoped `.adm-*` CSS) |
 | Storefront | `public/product.html` (photo gallery + thumbs + fallbacks), `public/assets/api.js` (`AV.api.put`) |
@@ -141,18 +142,49 @@ in this pass; numbers come from the actual test run, not memory.
 
 ## 7) Blockers / open items
 
-1. **Visual photo verification (human required).** This environment has no
-   image-viewing capability and no connected browser, so the 77 photo→product
-   matches were verified *structurally* (files exist, right directories, no
-   duplicates, no hotlinks, scores recorded) but not *visually*. All 4
-   uncertain products carry `needsReview`; the checklist is in
-   `docs/IMAGE-MAPPING.md`.
-2. **Click-through of the admin UI** could not be performed in this
-   environment (no browser). It is covered by syntax check, the static
-   wiring test, and live API smoke of every endpoint it calls — but a
-   human click-through is recommended before hand-off.
+1. **Visual photo verification (human required).** No agent in this chain has
+   image-viewing capability and the desktop browser is not connected, so the
+   77 photo→product matches are verified *structurally* (files exist, right
+   directories, no duplicates, no hotlinks, scores recorded) but not
+   *visually*. All 4 uncertain products carry `needsReview`; the checklist is
+   in `docs/IMAGE-MAPPING.md`.
+2. **Click-through of the admin UI — partially lifted (2026-10-19).** What was
+   missing was a way to drive it without a human: `npm run smoke:admin`
+   (scripts/smoke-admin.mjs) now signs in as the dev admin against the RUNNING
+   server and exercises every endpoint the desk's 13 modules call — authz
+   (401 for anonymous), CRUD, the full ledger cycle (untracked-refusal 409 →
+   opening → delta → stock reflected → CSV), archive/restore, reports, users,
+   audit, settings, and the storefront pages. It is idempotent: it restores
+   its own throwaway product on re-runs instead of accumulating residue.
+   A *visual* browser pass is still recommended before hand-off.
 3. Residual manual review: assign or reject library photo **#262** for
    `labradorite-pendant`.
+
+### Fixed in the 2026-10-19 resume pass
+
+- **Migration silently skipped alt-text backfill.** `migrate:catalogue`
+  compared only `images` before deciding to write, so a database migrated
+  before alt texts existed kept empty `imageAlts` forever — exactly the dev
+  database's state (12 products, 77 images, 0 alts), which failed
+  `tests/api-public.test.mjs` on any machine that booted mongod. The guard now
+  compares `imageAlts` on its own; re-running the migration repaired the dev
+  database in place.
+- **`tests/admin-authz.test.mjs` depended on machine state.** It logged in as
+  the locally seeded dev admin (`admin@astrovetro.com`), so it failed on any
+  machine that had not run `scripts/create-admin.mjs` — contradicting the
+  suite's own promise of being self-booting. It now seeds its own admin into
+  its own disposable database (`astrovetro_test_authz`, distinct from the
+  flows suite's `astrovetro_test` so both can run concurrently) and drops it
+  in teardown.
+- **Smoke-run residue.** The first drafts of the smoke left one archived
+  `smoke-test-item` per run (archive being the product's designed terminal
+  state — there is no hard delete). The smoke now reuses a single fixed slug
+  via restore, and its cleanup runs in a `finally` so no failure mode can
+  leave residue.
+- **Dev database repaired:** `imageAlts` backfilled, 8 missing categories
+  created, 12 opening ledger movements recorded, dev admin recreated.
+- Suite re-verified end-to-end: **47/47 pass, 0 fail**, now on any machine
+  with nothing but mongod running.
 
 ## 8) Run instructions
 
@@ -170,7 +202,11 @@ node scripts/create-admin.mjs you@example.com
 npm run migrate:catalogue      # non-destructive, idempotent
 
 # Tests
-npm test                       # 47/47
+npm test                       # 47/47, self-contained: needs only mongod
+
+# Live smoke of the admin desk, against the RUNNING dev server
+npm start &                    # then, once http://localhost:5173 answers:
+npm run smoke:admin            # every admin endpoint the desk calls
 ```
 
 Open `http://localhost:5173/account.html` to sign in, then
