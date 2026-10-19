@@ -25,6 +25,38 @@
 <meta name="twitter:title" content="Product — Astro Vetro">
 <meta name="twitter:description" content="Stone, setting, dimensions and what this piece is for.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
+<style>
+/* Product photography gallery. Scoped to this page so the storefront-wide
+   styles stay untouched: the stage mirrors the height of the gradient art it
+   replaces (620px, 430px under the same 980px breakpoint), and every photo is
+   a real <img> with alt text rather than a decorative background. */
+.pd-photo { display: grid; gap: 14px; }
+.pd-photo .stage {
+  height: 620px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: rgba(16, 38, 31, 0.45);
+}
+.pd-photo .stage img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pd-thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
+.pd-thumbs button {
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+}
+.pd-thumbs button[aria-current="true"] { border-color: var(--sand); }
+.pd-thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 980px) {
+  .pd-photo .stage { height: 430px; }
+  .pd-thumbs button { width: 64px; height: 64px; }
+}
+</style>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -73,7 +105,50 @@ async function load() {
       type: 'product',
     });
 
-    pdArt.innerHTML = `<div class="art ${AV.art(Math.abs(hash(p.slug)) % 8)}" role="img" aria-label="${AV.esc(p.name)}" style="height:100%"></div>`;
+    /* Real photography when the catalogue has it — the main stage plus a thumb
+       strip for the extra views — and the design's own gradient art when it
+       does not, so a photo-less piece still renders like designed. The alt
+       text comes from imageAlts (parallel to images), falling back to the
+       product name. */
+    const photos = (p.images || []).map((src, i) => ({
+      src,
+      thumb: src.replace(/-large\.webp$/, '-thumb.webp'),
+      alt: (p.imageAlts || [])[i] || p.name,
+    }));
+    if (!photos.length) {
+      pdArt.innerHTML = `<div class="art ${AV.art(Math.abs(hash(p.slug)) % 8)}" role="img" aria-label="${AV.esc(p.name)}" style="height:100%"></div>`;
+    } else {
+      const first = photos[0];
+      pdArt.innerHTML = `
+        <div class="pd-photo">
+          <div class="stage">
+            <img id="pdMain" src="${AV.esc(first.src)}" alt="${AV.esc(first.alt)}" fetchpriority="high">
+          </div>
+          ${photos.length > 1 ? `
+          <div class="pd-thumbs" role="group" aria-label="More views of ${AV.esc(p.name)}">
+            ${photos
+              .map(
+                (ph, i) => `<button type="button" data-idx="${i}" aria-current="${i === 0}"
+              aria-label="Show photo ${i + 1} of ${photos.length}">
+              <img src="${AV.esc(ph.thumb)}" data-full="${AV.esc(ph.src)}" alt="" loading="lazy"
+                onerror="this.onerror=null;this.src=this.dataset.full">
+            </button>`
+              )
+              .join('')}
+          </div>` : ''}
+        </div>`;
+      const main = AV.qs('#pdMain');
+      AV.qsa('[data-idx]', pdArt).forEach((btn) =>
+        btn.addEventListener('click', () => {
+          const ph = photos[Number(btn.dataset.idx)];
+          main.src = ph.src;
+          main.alt = ph.alt;
+          AV.qsa('[data-idx]', pdArt).forEach((b) =>
+            b.setAttribute('aria-current', String(b === btn))
+          );
+        })
+      );
+    }
     pdInfo.innerHTML = `
       <div class="pd-cat">${AV.esc(p.category || '')}${p.stone ? ' · ' + AV.esc(p.stone) : ''}${p.metal ? ' · ' + AV.esc(p.metal) : ''}</div>
       <h1>${AV.esc(p.name)}</h1>
