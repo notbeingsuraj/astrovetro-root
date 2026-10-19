@@ -57,7 +57,7 @@ in this pass; numbers come from the actual test run, not memory.
 | Tests (new/rewritten) | `tests/admin-authz.test.mjs`, `tests/admin-flows.test.mjs` (24 flows), `tests/admin-ui.test.mjs`, `tests/catalogue-assets.test.mjs`, `tests/csv.test.mjs`, `tests/api-public.test.mjs`, `tests/storefront-pages.test.mjs`, `tests/helpers/server.mjs`; removed broken `tests/infrastructure.test.js` |
 | Admin desk (new) | `public/assets/admin.js` (~1,500 lines, 13 modules), `public/admin.html` (rewritten as shell + scoped `.adm-*` CSS) |
 | Storefront | `public/product.html` (photo gallery + thumbs + fallbacks), `public/assets/api.js` (`AV.api.put`) |
-| Assets | `public/assets/img/library/` — 89 unassigned photos (178 files) for curation |
+| Assets | `public/assets/img/library/` — 84 unassigned photos (168 files) for curation |
 | Docs | `docs/IMAGE-MAPPING.md` (new), `README.md` (real setup/admin/test instructions, structure, roadmap), this file |
 | Backend (earlier pass, verified) | `src/models/*` (Product extended + 6 new models), `src/services/inventoryService.js`, `auditService.js`, `src/controllers/admin*.js` (8 controllers) + `orderController.js`, `src/providers/dbProvider.js`, `src/routes/admin.js`, `src/utils/csv.js`, `src/data/catalogue.js`, `scripts/migrate-catalogue.mjs`, `scripts/migrate-users.mjs`, `scripts/create-admin.mjs`, `docs/image-manifest.json`, `package.json` |
 
@@ -68,7 +68,10 @@ in this pass; numbers come from the actual test run, not memory.
   locally under `public/assets/img/products/{slug}/`; enforced by test.
 - **Mapped:** 77 photos across 11 products (77 `-large.webp` + 77 `-thumb.webp`,
   45 MB), each with its own alt text.
-- **Unassigned:** 89 photos in the Image Library for manual curation.
+- **Unassigned:** 84 photos in the Image Library for manual curation.
+  (An earlier revision of this file claimed 89/178 — the true count, on disk
+  and in git, is 84 large + 84 thumb = 168 files. Corrected 2026-10-19 while
+  generating `docs/image-review.html` from the manifest.)
 - **Manifest:** `docs/image-manifest.json` (per-photo score, margin, runner-up,
   album index, dimensions, bytes). Human-readable version: `docs/IMAGE-MAPPING.md`.
 - **Unresolved — flagged `needsReview`, visible on the admin dashboard:**
@@ -161,6 +164,19 @@ in this pass; numbers come from the actual test run, not memory.
    `labradorite-pendant`.
 
 ### Fixed in the 2026-10-19 resume pass
+
+- **Human photo review is now a one-page job.**
+  `npm run review:images` (`scripts/generate-image-review.mjs`) renders
+  `docs/image-review.html` — every mapped photo beside its score, margin and
+  runner-up, the 4 uncertain products flagged at the top, and the full
+  unassigned Image Library appended (so labradorite candidate #262 and the
+  thin-coverage products can be judged without opening the admin desk). The
+  page deliberately lives in `docs/`, not `public/`: it embeds unassigned
+  album photos and per-photo model scores that must not ship.
+- **Library count was overstated.** This file and `docs/IMAGE-MAPPING.md`
+  claimed 89 unassigned photos (178 files); the tree — on disk and in git —
+  holds 84 large + 84 thumb = 168. Corrected everywhere; the mapped count
+  (77) and the 45 MB figure were verified true.
 
 - **Migration silently skipped alt-text backfill.** `migrate:catalogue`
   compared only `images` before deciding to write, so a database migrated

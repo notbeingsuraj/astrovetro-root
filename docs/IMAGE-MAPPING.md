@@ -8,7 +8,7 @@ what still needs a human eye.
 - **Album:** [Astrovetro product photos (Google Photos)](https://photos.google.com/share/AF1QipNOMsTGErVlmHGFmI_xH6jXHuyQ76zmIeIP9tGZ_2BOAm0udUWpNUBctaOKIx2TsA?key=Tmw4aE9IU0U5dmNhTHdWSVRickdXN2l6LXJzRHhR) — 300 photos.
 - All photos used by the site were **downloaded once and stored locally** under
   `public/assets/img/products/{slug}/` (77 `{n}-large.webp` + 77 `{n}-thumb.webp`,
-  45 MB) and `public/assets/img/library/` (89 unassigned photos, 178 files).
+  45 MB) and `public/assets/img/library/` (84 unassigned photos, 168 files).
   **Nothing is ever hotlinked**; the album URL above is provenance only. This is
   enforced by `tests/storefront-pages.test.mjs` ("no page hotlinks Google
   Photos or other temporary image hosts").
@@ -45,7 +45,7 @@ alarming (it just means "a crystal, unidentifiable"), while a runner-up naming a
 
 1. **Too few photos** — a product with fewer than 3 confident matches is
    flagged even when every kept photo scores well (more candidates may exist
-   among the 89 unassigned library photos).
+   among the 84 unassigned library photos).
 2. **Weak primary** — the primary photo scores low *and* narrowly beats a
    runner-up (see pyrite-cluster below).
 3. **No match at all** — the product gets an empty `images[]` on purpose so the
@@ -69,7 +69,7 @@ alarming (it just means "a crystal, unidentifiable"), while a runner-up naming a
 | Black Obsidian Tumble (`black-obsidian-tumble`) | 18 | #123 | 0.894 | 0.876 | lepidolite-tumble(0.02) | ok |
 | Labradorite Pendant (`labradorite-pendant`) | 0 | — | — | — | — | **needsReview** |
 
-Totals: **12 products · 77 photos mapped · 89 photos unassigned · 4 products flagged for review.**
+Totals: **12 products · 77 photos mapped · 84 photos unassigned · 4 products flagged for review.**
 A photo's store file is `/assets/img/products/{slug}/{n}-large.webp` (with an
 automatic `-thumb.webp` sibling for the strip), where `n` is its position in
 the tables below.
@@ -224,6 +224,14 @@ No photo was matched. The product renders its placeholder gradient.
 
 These are the honest gaps. None of them was papered over.
 
+> **Easiest way to review them all:** run `node scripts/generate-image-review.mjs`,
+> then open `docs/image-review.html`. It renders every mapped photo next to its
+> score and runner-up, flags the four uncertain products, and appends the whole
+> unassigned Image Library (starting with labradorite candidate **#262**) — so
+> the whole checklist above can be completed in one page, without opening the
+> admin desk. The page lives in `docs/`, never in `public/`: it embeds
+> unassigned album photos and model scores that must not ship with the storefront.
+
 1. **labradorite-pendant — no photo (blocking).**
    The album has no photo the model trusts. The product ships with an empty
    `images[]` and renders the gradient art. One borderline candidate exists:
@@ -236,7 +244,7 @@ These are the honest gaps. None of them was papered over.
    `other-packaging(0.36)`. It is shown but flagged. If it is not the pyrite
    cluster, remove or replace it from the product's Images dialog.
 3. **amethyst-ring & carnelian-pendant — thin coverage (review).**
-   Only 2 confident photos each; both kept photos score well, but ~89 unassigned
+   Only 2 confident photos each; both kept photos score well, but ~84 unassigned
    library photos may hold better angles. Check the Image Library for extras.
 4. **Visual verification of all 77 matches.**
    Matching was done by model scoring, not by human eyes. Open each product page
