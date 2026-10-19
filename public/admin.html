@@ -7,7 +7,7 @@
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/img/favicon.svg">
 <meta name="robots" content="noindex, nofollow">
-<meta name="description" content="Internal order and inventory desk.">
+<meta name="description" content="Internal operations desk: orders, catalogue, inventory ledger, purchase orders, image library and reports.">
 <title>Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,13 +18,245 @@
 <meta property="og:site_name" content="Astro Vetro">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Admin — Astro Vetro">
-<meta property="og:description" content="Internal order and inventory desk.">
+<meta property="og:description" content="Internal operations desk.">
 <meta property="og:url" content="/admin.html">
 <meta property="og:image" content="/assets/img/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Admin — Astro Vetro">
-<meta name="twitter:description" content="Internal order and inventory desk.">
+<meta name="twitter:description" content="Internal operations desk.">
 <meta name="twitter:image" content="/assets/img/og-card.svg">
+<style>
+/* Admin-only layout. Scoped here, not in app.css, so the storefront styles a
+   customer downloads are untouched by anything this internal page needs. All
+   colours reuse the site's own variables; nothing invents a palette.
+   The application logic lives in /assets/admin.js. */
+
+/* ── Toolbar ──────────────────────────────────────────────────── */
+.adm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.adm-toolbar input,
+.adm-toolbar select { width: auto; min-width: 150px; }
+.adm-toolbar .spacer { flex: 1 1 40px; }
+.adm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--sage);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.adm-check input { width: auto; }
+/* A <label> that looks like a button and holds a hidden file input. */
+.adm-filebtn { cursor: pointer; }
+
+/* ── Tables ───────────────────────────────────────────────────── */
+.adm-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  white-space: nowrap;
+}
+.adm-cell { display: flex; gap: 10px; align-items: center; }
+.adm-thumb {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  display: block;
+  background: rgba(16, 38, 31, 0.5);
+}
+.adm-thumb-blank { background: linear-gradient(135deg, #1e362b, #12241c); }
+.adm-pager {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.adm-pager .muted { font-size: 12px; }
+
+/* ── Pills ────────────────────────────────────────────────────── */
+.pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  color: var(--sage);
+}
+.pill-ok { color: #9ec49a; border-color: rgba(158, 196, 154, 0.45); }
+.pill-warn { color: #e0b46a; border-color: rgba(224, 180, 106, 0.45); }
+.pill-bad { color: #e08f8f; border-color: rgba(224, 143, 143, 0.45); }
+.pill-muted { opacity: 0.75; }
+
+/* ── Two-column sections (dashboard, settings) ────────────────── */
+.adm-two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px 34px;
+  margin-bottom: 30px;
+}
+.adm-two h3 { margin-bottom: 10px; }
+
+/* ── Dialog forms ─────────────────────────────────────────────── */
+.adm-dlg-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.adm-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px 16px;
+}
+.adm-form label {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sage);
+}
+.adm-form .wide { grid-column: 1 / -1; }
+.adm-form input,
+.adm-form select,
+.adm-form textarea { width: 100%; }
+.adm-form .btn,
+.adm-form .form-msg { grid-column: 1 / -1; }
+.adm-hint { color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+.adm-preview { font-size: 13px; color: var(--sage); margin: 0; }
+.adm-preview.is-bad { color: #e08f8f; }
+.adm-note { font-size: 12px; color: var(--sage); }
+
+/* ── Product images dialog ────────────────────────────────────── */
+.adm-imglist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.adm-imglist li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(16, 38, 31, 0.35);
+}
+.adm-imglist img {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+.adm-imgmeta { flex: 1; display: grid; gap: 8px; }
+.adm-imgmeta input { width: 100%; }
+
+/* ── Purchase-order line editor ───────────────────────────────── */
+.adm-linelabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sage);
+  margin-bottom: 8px;
+}
+.adm-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 120px auto;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+/* ── Image library grid ───────────────────────────────────────── */
+.adm-lib-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+.adm-lib-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(16, 38, 31, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+.adm-lib-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+}
+.adm-lib-card .meta {
+  padding: 8px 10px;
+  font-size: 10px;
+  color: var(--sage);
+  word-break: break-all;
+  flex: 1;
+}
+.adm-lib-card .acts {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 10px;
+  flex-wrap: wrap;
+}
+.adm-assigned { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+
+/* ── Reports ──────────────────────────────────────────────────── */
+.adm-reports {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+.adm-report {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  background: rgba(16, 38, 31, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+.adm-report h3 { margin: 0; }
+.adm-report .note { margin: 0; }
+.adm-reportrow { display: flex; gap: 10px; flex-wrap: wrap; }
+.adm-reportfield {
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sage);
+}
+.adm-reportfield input,
+.adm-reportfield select { min-width: 130px; }
+
+@media (max-width: 720px) {
+  .adm-toolbar input,
+  .adm-toolbar select { width: 100%; }
+  .adm-line { grid-template-columns: minmax(0, 1fr); }
+  .adm-thumb { width: 36px; height: 36px; }
+}
+</style>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -35,7 +267,7 @@
     <a class="back" href="/account.html">← Account</a>
     <div class="eyebrow">Astro Vetro desk</div>
     <h1>Admin</h1>
-    <p class="sub">Order fulfilment and inventory.</p>
+    <p class="sub">Orders, catalogue, inventory ledger, purchase orders and reports.</p>
   </div>
 </header>
 
@@ -50,381 +282,6 @@
 <script src="/assets/api.js"></script>
 <script src="/assets/store.js"></script>
 <script src="/assets/customer.js"></script>
-<script>
-AV.boot();
-const C = AV.customer;
-const root = AV.qs('#admRoot');
-let view = new URLSearchParams(location.search).get('view') || 'dashboard';
-
-/* The order state machine, mirrored from the backend so the menu can offer only
-   the moves the server will accept. The server still refuses anything invalid —
-   this is a courtesy to the person clicking, not the authority. An illegal edge
-   here would produce a rejected request and an error toast, so it is left out
-   entirely and a terminal status simply offers no moves. */
-const ORDER_STATUSES = [
-  'pending', 'paid', 'processing', 'shipped', 'in_transit',
-  'delivered', 'payment_failed', 'cancelled', 'refunded',
-];
-
-const TRANSITIONS = {
-  pending: ['paid', 'processing', 'shipped', 'payment_failed', 'cancelled'],
-  paid: ['processing', 'shipped', 'cancelled', 'refunded'],
-  processing: ['shipped', 'cancelled', 'refunded'],
-  shipped: ['in_transit', 'delivered'],
-  in_transit: ['delivered'],
-  delivered: [],
-  payment_failed: ['pending', 'cancelled'],
-  cancelled: [],
-  refunded: [],
-};
-
-const SHIPMENT_STATUSES = [
-  'label_created', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'exception', 'returned',
-];
-
-/* Labels for the internal enum values, so the desk reads as English rather than
-   as snake_case column names. */
-const STATUS_LABELS = {
-  pending: 'Pending',
-  paid: 'Paid',
-  processing: 'Processing',
-  shipped: 'Shipped',
-  in_transit: 'In transit',
-  delivered: 'Delivered',
-  payment_failed: 'Payment failed',
-  cancelled: 'Cancelled',
-  refunded: 'Refunded',
-  label_created: 'Label created',
-  picked_up: 'Picked up',
-  out_for_delivery: 'Out for delivery',
-  exception: 'Exception',
-  returned: 'Returned',
-  cod: 'Cash on delivery',
-  card: 'Card',
-  upi: 'UPI',
-};
-
-const label = (v) => STATUS_LABELS[v] || String(v || '').replace(/_/g, ' ');
-const nextStatuses = (from) => [from, ...(TRANSITIONS[from] || [])];
-
-/* C.error fills an element rather than returning markup, so it is pointed at a
-   detached node whose HTML is then adopted into the pane. */
-const fail = (pane, err) => {
-  const holder = document.createElement('div');
-  C.error(holder, err, { retry: () => route(pane), level: 'h2' });
-  pane.innerHTML = holder.innerHTML;
-  pane.querySelector('[data-retry]')?.addEventListener('click', () => route(pane));
-};
-
-async function init() {
-  const user = await AV.me();
-  if (!user || user.role !== 'admin') {
-    AV.seo({ title: 'Restricted', description: 'Internal dashboard.', noindex: true });
-    root.innerHTML = `<div class="gate">
-      <div class="eyebrow">Restricted</div>
-      <h2>This desk is<br>for staff only.</h2>
-      <p class="lead" style="margin:16px auto 30px">You need an administrator account to open the admin desk.</p>
-      <a class="btn btn-light" href="/account.html">Back to account</a>
-      <div style="margin-top:10px"><a class="btn btn-ghost" href="/home.html">Home</a></div>
-    </div>`;
-    return;
-  }
-  /* Only the sections the API actually serves. Readings, subscribers and
-     messages had no backend at all — the old page called /api/bookings,
-     /api/newsletter and /api/contact, none of which exist, so each of those tabs
-     could only ever have shown an error. */
-  const tabs = [
-    ['dashboard', 'Overview'],
-    ['orders', 'Orders'],
-    ['products', 'Inventory'],
-  ];
-  view = tabs.some(([k]) => k === view) ? view : 'dashboard';
-  root.innerHTML = `<div class="tabs" id="admTabs">${tabs.map(([k, l]) => `<button class="tab${k === view ? ' active' : ''}" data-view="${k}">${l}</button>`).join('')}</div><div id="admPane"></div>`;
-  const pane = AV.qs('#admPane');
-  AV.qs('#admTabs').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-view]');
-    if (!b) return;
-    view = b.dataset.view;
-    history.replaceState(null, '', `/admin.html?view=${view}`);
-    AV.qsa('.tab').forEach((x) => x.classList.toggle('active', x === b));
-    route(pane);
-  });
-  route(pane);
-}
-
-async function route(pane) {
-  pane.innerHTML = '<div class="empty">Loading…</div>';
-  if (view === 'dashboard') await dashboard(pane);
-  else if (view === 'orders') await orders(pane);
-  else if (view === 'products') await inventory(pane);
-}
-
-/* ── Dashboard ─────────────────────────────────────────────────── */
-/* GET /api/admin/dashboard. Counts only — no revenue figure, because the
-   endpoint does not report one and inventing one client-side from a page of
-   orders would be a number this page cannot stand behind. */
-async function dashboard(pane) {
-  C.skeleton(pane, 3);
-  try {
-    const s = (await AV.api.get('/api/admin/dashboard')).data;
-    const byStatus = s.byStatus || {};
-    const rows = ORDER_STATUSES.filter((k) => byStatus[k]).map(
-      (k) => `<div class="row"><span>${AV.esc(label(k))}</span><span>${byStatus[k]}</span></div>`
-    );
-    pane.innerHTML = `
-      <div class="stat-grid">
-        <div class="stat-card"><div class="n">${s.total}</div><div class="l">Orders</div></div>
-        <div class="stat-card"><div class="n">${s.unpaid}</div><div class="l">Awaiting payment</div></div>
-        <div class="stat-card"><div class="n">${s.lowStock}</div><div class="l">Low stock</div></div>
-      </div>
-      ${rows.length ? `<h2 style="font:400 var(--text-h2) var(--font-display);margin:34px 0 10px">By status</h2>
-      <div class="order-totals">${rows.join('\n        ')}</div>` : ''}
-      <div class="notice" style="margin-top:26px">Fulfilment happens on the Orders tab: move an order through its states and attach a tracking number so the customer can follow it.</div>`;
-  } catch (e) {
-    fail(pane, e);
-  }
-}
-
-/* ── Orders ───────────────────────────────────────────────────── */
-/* Every row is keyed by the order's own id, never its order number: the status
-   and shipment endpoints both take an id, and the number is display text. */
-function orderRow(o) {
-  return `
-    <tr>
-      <td><a href="/orders/${encodeURIComponent(o.orderNumber)}">${AV.esc(o.orderNumber)}</a>
-        <div class="muted">${AV.formatDate(o.createdAt)}</div></td>
-      <td>${AV.esc(o.customerEmail || '—')}</td>
-      <td>${AV.formatPrice(o.total)}<div class="muted">${AV.esc(label(o.paymentMethod))}</div></td>
-      <td>${C.statusBadge(o.status)}</td>
-      <td>${C.statusBadge(o.paymentStatus)}</td>
-      <td><button class="btn btn-ghost btn-sm" data-manage="${AV.esc(o.id)}">Manage</button></td>
-    </tr>`;
-}
-
-async function orders(pane) {
-  C.skeleton(pane, 4);
-  try {
-    const qs = new URLSearchParams({ page: '1', limit: '50' });
-    const env = await AV.api.get(`/api/admin/orders?${qs}`);
-    const list = env.data?.orders || [];
-    pane.innerHTML = list.length
-      ? `<div class="table-wrap"><table>
-        <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Payment</th><th></th></tr></thead>
-        <tbody>${list.map(orderRow).join('')}</tbody></table></div>`
-      : '<div class="empty">No orders yet.</div>';
-
-    pane.querySelector('tbody')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-manage]');
-      if (!btn) return;
-      manageOrder(btn.dataset.manage);
-    });
-  } catch (e) {
-    fail(pane, e);
-  }
-}
-
-/* One order at a time: its legal next states, and — once it is on its way — the
-   tracking details the customer will see. */
-async function manageOrder(orderId) {
-  const body = document.createElement('div');
-  C.loading(body, 'Loading this order…');
-  const dlg = AV.qs('#admDialog') || (() => {
-    const d = document.createElement('dialog');
-    d.id = 'admDialog';
-    d.className = 'adm-dialog';
-    document.body.appendChild(d);
-    return d;
-  })();
-  dlg.innerHTML = '';
-  dlg.appendChild(body);
-  if (!dlg.open) dlg.showModal();
-  C.loading(body, 'Loading this order…');
-
-  let data;
-  try {
-    data = (await AV.api.get(`/api/admin/orders/${encodeURIComponent(orderId)}`)).data;
-  } catch (err) {
-    C.error(body, err, { retry: () => manageOrder(orderId), level: 'h2' });
-    return;
-  }
-
-  const o = data.order;
-  const moves = (TRANSITIONS[o.status] || []).map(
-    (s) => `<option value="${s}"${s === o.status ? ' selected' : ''}>${AV.esc(label(s))}</option>`
-  );
-
-  body.innerHTML = `
-    <h2 style="font:400 var(--text-h2) var(--font-display);margin-bottom:4px">${AV.esc(o.orderNumber)}</h2>
-    <p class="note">${AV.esc(o.customerEmail)} · ${C.statusBadge(o.status)} · ${C.statusBadge(o.paymentStatus)}</p>
-
-    <h3 style="margin:24px 0 8px">Move this order on</h3>
-    ${moves.length
-      ? `<form id="statusForm" class="form-narrow">
-          <label>New status<select name="status">${moves.join('')}</select></label>
-          <label>Note <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional, shown on delivery)</span>
-            <input name="note" maxlength="300"></label>
-          <button class="btn btn-light btn-sm" type="submit">Update status</button>
-          <p class="form-msg"></p>
-        </form>`
-      : `<p class="note">This order is ${AV.esc(label(o.status))}, which is a final state. There is nothing further to change.</p>`}
-
-    <h3 style="margin:28px 0 8px">Tracking</h3>
-    ${data.tracking ? shipmentBlock(data.tracking) : `
-      <form id="shipForm" class="form-narrow">
-        <label>Carrier<input name="carrier" required placeholder="Delhivery"></label>
-        <label>Tracking number<input name="trackingNumber" required></label>
-        <label>Tracking link <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
-          <input name="trackingUrl" type="url"></label>
-        <label>Estimated delivery <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
-          <input name="estimatedDelivery" type="date"></label>
-        <button class="btn btn-light btn-sm" type="submit">Attach tracking</button>
-        <p class="form-msg"></p>
-      </form>
-      <p class="note">Attaching a tracking number is what makes the customer's tracking page show a timeline.</p>`}
-
-    ${data.tracking ? eventForm(data.tracking) : ''}
-    <div style="margin-top:24px"><button class="btn btn-ghost btn-sm" type="button" id="admClose">Close</button></div>`;
-
-  AV.qs('#admClose').addEventListener('click', () => dlg.close());
-
-  AV.qs('#statusForm', body)?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = e.target.elements;
-    const msg = e.target.querySelector('.form-msg');
-    try {
-      await AV.api.patch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
-        status: f.status.value,
-        note: f.note.value.trim() || undefined,
-      });
-      AV.toast('Order status updated.', 'ok');
-      dlg.close();
-      orders(pane);
-    } catch (err) {
-      C.say(msg, AV.firstErr(err), false);
-    }
-  });
-
-  AV.qs('#shipForm', body)?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = e.target.elements;
-    const msg = e.target.querySelector('.form-msg');
-    try {
-      await AV.api.post(`/api/admin/orders/${encodeURIComponent(orderId)}/shipment`, {
-        carrier: f.carrier.value.trim(),
-        trackingNumber: f.trackingNumber.value.trim(),
-        trackingUrl: f.trackingUrl.value.trim() || undefined,
-        /* Sent as midnight UTC so the date the admin picked is the date stored,
-           rather than being shifted by a timezone on the way in. */
-        estimatedDelivery: f.estimatedDelivery.value ? new Date(`${f.estimatedDelivery.value}T00:00:00Z`).toISOString() : undefined,
-      });
-      AV.toast('Tracking attached.', 'ok');
-      dlg.close();
-      orders(pane);
-    } catch (err) {
-      C.say(msg, AV.firstErr(err), false);
-    }
-  });
-
-  AV.qs('#eventForm', body)?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = e.target.elements;
-    const msg = e.target.querySelector('.form-msg');
-    try {
-      await AV.api.post(`/api/admin/orders/${encodeURIComponent(orderId)}/tracking-events`, {
-        status: f.status.value,
-        title: f.title.value.trim(),
-        description: f.description.value.trim() || undefined,
-        location: f.location.value.trim() || undefined,
-      });
-      AV.toast('Tracking event added.', 'ok');
-      dlg.close();
-      manageOrder(orderId);
-    } catch (err) {
-      C.say(msg, AV.firstErr(err), false);
-    }
-  });
-}
-
-const shipmentBlock = (t) => `
-  <p class="note">${AV.esc(t.carrier)} · ${AV.esc(t.trackingNumber)} ${C.statusBadge(t.status)}</p>
-  ${t.events?.length
-    ? `<ol class="track-list">${t.events.map((ev) => `
-        <li><strong>${AV.esc(ev.title)}</strong>
-          <div class="muted">${AV.formatDate(ev.occurredAt)}</div>
-          ${ev.description ? `<div>${AV.esc(ev.description)}</div>` : ''}</li>`).join('')}</ol>`
-    : '<p class="note">No events recorded yet.</p>'}`;
-
-const eventForm = (t) => `
-  <form id="eventForm" class="form-narrow" style="margin-top:18px">
-    <label>Event<select name="status">${SHIPMENT_STATUSES.map(
-      (s) => `<option value="${s}"${s === t.status ? ' selected' : ''}>${AV.esc(label(s))}</option>`
-    ).join('')}</select></label>
-    <label>Title<input name="title" required placeholder="Picked up from the studio"></label>
-    <label>Description <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
-      <input name="description" maxlength="400"></label>
-    <label>Location <span style="color:var(--text-muted);text-transform:none;letter-spacing:0">(optional)</span>
-      <input name="location" maxlength="120"></label>
-    <button class="btn btn-light btn-sm" type="submit">Add event</button>
-    <p class="form-msg"></p>
-  </form>`;
-
-/* ── Inventory ────────────────────────────────────────────────── */
-/* PATCH /api/admin/products/:productId/inventory. Stock counts and availability
-   are the only product writes the API exposes — there is no create, edit or
-   delete endpoint, so those controls are not offered rather than faked.
-
-   The catalogue list reports `inStock` but not the raw count, so each row asks
-   for its own figure where one is needed. */
-async function inventory(pane) {
-  C.skeleton(pane, 4);
-  try {
-    const env = await AV.api.get('/api/products?limit=100');
-    const list = env.data || [];
-    pane.innerHTML = `
-      <p class="note" style="margin-bottom:18px">Setting a count of 0 takes a piece off the shop without deleting it, so past orders still resolve. Clearing tracking makes a piece untracked.</p>
-      ${list.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Product</th><th>Price</th><th>In shop</th><th style="text-align:right">Stock</th></tr></thead>
-        <tbody>${list.map((p) => `
-          <tr data-product="${AV.esc(p.id)}">
-            <td><a href="/product.html?slug=${encodeURIComponent(p.slug)}">${AV.esc(p.name)}</a>
-              <div class="muted">${AV.esc(p.category)}</div></td>
-            <td>${AV.formatPrice(p.effectivePrice ?? p.price)}</td>
-            <td>${p.inStock ? 'Yes' : 'No'}</td>
-            <td style="text-align:right">
-              <input type="number" min="0" step="1" data-stock value="${p.inStock ? '' : '0'}"
-                placeholder="not tracked" style="width:110px" aria-label="Stock count for ${AV.esc(p.name)}">
-              <button class="btn btn-ghost btn-sm" data-save-stock>Save</button>
-            </td>
-          </tr>`).join('')}
-        </tbody></table></div>`
-      : '<div class="empty">No products.</div>'}`;
-
-    pane.querySelector('tbody')?.addEventListener('click', async (e) => {
-      const btn = e.target.closest('[data-save-stock]');
-      if (!btn) return;
-      const row = btn.closest('[data-product]');
-      const input = row.querySelector('[data-stock]');
-      AV.setBusy(btn, true);
-      try {
-        /* An empty box means "stop tracking", which is a distinct instruction
-           from a count of 0 — that is why it is sent rather than guessed. */
-        const raw = input.value.trim();
-        const body = raw === '' ? { trackStock: false } : { stock: Number(raw), trackStock: true };
-        await AV.api.patch(`/api/admin/products/${encodeURIComponent(row.dataset.product)}/inventory`, body);
-        AV.toast('Stock updated.', 'ok');
-        inventory(pane);
-      } catch (err) {
-        AV.toast(AV.firstErr(err), 'err');
-      } finally {
-        AV.setBusy(btn, false);
-      }
-    });
-  } catch (e) {
-    fail(pane, e);
-  }
-}
-
-init();
-</script>
+<script src="/assets/admin.js"></script>
 </body>
 </html>
