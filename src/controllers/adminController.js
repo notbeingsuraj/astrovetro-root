@@ -24,6 +24,9 @@ import { Product } from '../models/Product.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { pageMeta } from '../utils/responses.js';
+/* Legacy PATCH /products/:id/inventory used to write stock directly. It now
+   delegates here so a balance change can never bypass the ledger. */
+import { setStockAbsolute, clearTracking } from '../services/inventoryService.js';
 
 const listSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
@@ -235,14 +238,30 @@ export const updateInventory = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.productId).catch(() => null);
   if (!product) throw ApiError.notFound('We could not find that piece.');
 
-  if (body.trackStock === false) product.stock = null;
-  if (body.stock !== undefined) product.stock = body.stock;
+  /* Routed through the service so every change writes a ledger entry with the
+     actor, reason and before/after balance. Untracked products (stock: null)
+     are handled by setStockAbsolute itself — setting a number on one starts
+     tracking rather than being refused. */
+  if (body.stock !== undefined && body.stock !== product.stock) {
+    await setStockAbsolute({
+      productId: product._id,
+      quantity: body.stock,
+      type: 'adjustment',
+      reason: body.trackStock === false ? 'Tracking disabled' : 'Set through the inventory endpoint',
+      actor: req.user,
+    });
+  }
+  if (body.trackStock === false && product.stock != null) {
+    await clearTracking({ productId: product._id, reason: 'Tracking disabled', actor: req.user });
+  }
+
   /* Setting stock to 0 takes the piece off the shop without deleting it, so past
      orders that reference it still resolve. */
+  await product.reload();
   if (body.availability !== undefined) product.availability = body.availability;
   else if (product.stock === 0) product.availability = false;
-
   await product.save();
+
   res.json({ success: true, data: { product: product.toPublic() } });
 });
 

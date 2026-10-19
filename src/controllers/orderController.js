@@ -38,6 +38,8 @@
 import { z } from 'zod';
 import { Order, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, canTransition, SHIPPED_STATUSES } from '../models/Order.js';
 import { Product } from '../models/Product.js';
+
+import { StockMovement } from '../models/StockMovement.js';
 import { Cart } from '../models/Cart.js';
 import { Address } from '../models/Address.js';
 import { Shipment } from '../models/Shipment.js';
@@ -212,27 +214,77 @@ async function findByIdempotency(userId, key) {
 async function commitInventory(order) {
   if (order.inventoryCommitted) return;
 
-  for (const item of order.items) {
-    if (!item.product) continue;
-    const product = await Product.findById(item.product);
-    if (!product || product.stock == null) continue;
+  /* Each line that we manage to decrement is remembered with the balance we
+     moved it from, so a failure further down the loop can be unwound rather
+     than leaving the stock partly reduced for an order that never placed. */
+  const applied = [];
 
-    const updated = await Product.findOneAndUpdate(
-      { _id: item.product, stock: { $gte: item.quantity } },
-      { $inc: { stock: -item.quantity } },
-      { new: true }
-    );
+  try {
+    for (const item of order.items) {
+      if (!item.product) continue;
+      const product = await Product.findById(item.product);
+      if (!product || product.stock == null) continue;
 
-    /* Lost the race: someone bought the last units while this order was being
-       placed. The order is left uncommitted and marked for attention rather
-       than being silently marked as sold. */
-    if (!updated) {
-      throw ApiError.outOfStock(`${item.name} sold out while the order was being placed.`);
+      /* Guarded atomic decrement, identical to before, but `new: false` gives
+         us the balance from before the change so the ledger entry can state a
+         true before/after. */
+      const beforeDoc = await Product.findOneAndUpdate(
+        { _id: item.product, stock: { $gte: item.quantity } },
+        { $inc: { stock: -item.quantity } },
+        { new: false }
+      );
+
+      /* Lost the race: someone bought the last units while this order was being
+         placed. The order is left uncommitted and marked for attention rather
+         than being silently marked as sold. */
+      if (!beforeDoc) {
+        throw ApiError.outOfStock(`${item.name} sold out while the order was being placed.`);
+      }
+
+      applied.push({ product: item.product, quantity: item.quantity });
+      await writeSaleMovement({
+        product: beforeDoc,
+        quantity: item.quantity,
+        balanceBefore: beforeDoc.stock,
+        balanceAfter: beforeDoc.stock - item.quantity,
+        order,
+      });
     }
+  } catch (err) {
+    /* Undo the lines that did commit, in reverse, so stock and ledger both
+       return to their pre-order state. The compensation itself writes a
+       compensating movement rather than editing history. */
+    for (const change of applied.reverse()) {
+      await Product.updateOne({ _id: change.product }, { $inc: { stock: change.quantity } }).catch(() => {});
+    }
+    throw err;
   }
 
   order.inventoryCommitted = true;
   await order.save();
+}
+
+/* Record the ledger entry for one committed sale line. Kept separate so the
+   numbers written here are the exact ones the decrement above produced. */
+async function writeSaleMovement({ product, quantity, balanceBefore, balanceAfter, order }) {
+  await StockMovement.create({
+    product: product._id,
+    sku: product.sku,
+    productName: product.name,
+    type: 'sale',
+    quantity: -quantity,
+    balanceBefore,
+    balanceAfter,
+    reason: `Sold on order ${order.orderNumber}`,
+    reference: order.orderNumber,
+    actor: { userId: order.user, email: 'checkout', role: 'customer' },
+  }).catch(async (err) => {
+    /* The balance already moved. A missing ledger entry would make the two
+       disagree, so put the units back and let the checkout fail loudly rather
+       than record a sale we cannot account for. */
+    await Product.updateOne({ _id: product._id }, { $inc: { stock: quantity } });
+    throw err;
+  });
 }
 
 /** Build the order document from a priced cart. Snapshots everything. */

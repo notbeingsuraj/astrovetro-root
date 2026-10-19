@@ -117,6 +117,14 @@ async function main() {
     }
   }
 
+  /* Lifecycle backfill: products created before the status field existed have
+     no value at all, which would hide them from the public catalogue. They
+     were all publicly listed, so 'active' is the truthful backfill. */
+  const statusBackfill = await Product.updateMany(
+    { $or: [{ status: { $exists: false } }, { status: null }] },
+    { $set: { status: 'active' } }
+  );
+
   /* Categories: insert the seeds that are missing; never delete or rename. */
   let categoriesCreated = 0;
   for (const seed of CATEGORY_SEEDS) {
@@ -131,7 +139,7 @@ async function main() {
     actor: { userId: null, email: 'migration:catalogue', role: 'system' },
     action: 'migration.catalogue',
     entity: { type: 'migration', id: 'catalogue-images', label: 'Catalogue image + SKU migration' },
-    summary: `images synced: ${imagesSynced}, skus assigned: ${skusAssigned}, flagged for review: ${flagged}, openings logged: ${openings}, categories created: ${categoriesCreated}`,
+    summary: `images synced: ${imagesSynced}, skus assigned: ${skusAssigned}, flagged for review: ${flagged}, openings logged: ${openings}, categories created: ${categoriesCreated}, statuses backfilled: ${statusBackfill.modifiedCount}`,
   });
 
   console.log({
@@ -140,6 +148,7 @@ async function main() {
     flagged,
     openings,
     categoriesCreated,
+    statusBackfilled: statusBackfill.modifiedCount,
   });
   await mongoose.disconnect();
 }
