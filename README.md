@@ -163,19 +163,27 @@ The architecture separates presentation from server-side business logic. This al
 
 ## ◈ Repository Structure
 
-The storefront has used a lightweight static-file structure. Exact paths may vary between the current frontend and backend repositories.
-
 ```text
-astrovetro/
-├── astrovetro_landing.html
-├── public/
-│   ├── index.html
+Astrovetro-production/
+├── public/                     # static storefront, served as-is by server.js
+│   ├── index.html … shop, product, cart, checkout,
+│   │   account, orders, admin, … (21 pages)
 │   └── assets/
-│       ├── app.css
-│       ├── styles.css
-│       ├── doors.css
-│       └── store.js
-├── server.js
+│       ├── api.js              # fetch wrapper (auth, CSRF, JSON, errors)
+│       ├── store.js            # storefront rendering
+│       ├── customer.js         # account / orders
+│       ├── admin.js            # admin desk logic (13 modules)
+│       ├── app.css, styles.css, doors.css, gateway.css
+│       └── img/                # local photography (products/, library/)
+├── src/
+│   ├── api/  routes/  controllers/   # HTTP layer + validation schemas
+│   ├── models/  services/  middleware/  # domain, stock ledger, auth/CSRF/rate-limit
+│   ├── db/ (connect, seed)  providers/  payments/
+│   └── data/catalogue.js       # static catalogue (pre-database reader)
+├── scripts/                    # create-admin, migrate:catalogue, migrate:users
+├── tests/                      # node --test suite (self-booting, isolated DB)
+├── docs/                       # IMAGE-MAPPING.md, image-manifest.json
+├── server.js                   # express app (PORT, default 5173)
 └── vercel.json
 ```
 
@@ -198,13 +206,46 @@ cd <PROJECT_DIRECTORY>
 npm install
 ```
 
-Run the development command defined in the relevant application's `package.json`. For example:
+Requirements beyond npm: a local MongoDB (`mongodb://127.0.0.1:27017/astrovetro`
+by default; set `MONGODB_URI` / `.env` to override) and, for the first
+administrator, a terminal to type the password into.
 
 ```bash
-npm run dev
+# First boot on an empty database: seeds the catalogue automatically.
+npm start                      # storefront + API on http://localhost:5173
+
+# One-time, on databases created before image integration:
+npm run migrate:catalogue      # non-destructive: real photos, SKUs, review flags,
+                               # categories, opening stock ledger entries
+
+# One-time: create the first admin login (no admin password is seeded, on purpose)
+node scripts/create-admin.mjs you@example.com
 ```
 
-These commands are illustrative. Use the scripts and directory structure present in the actual repository.
+Sign in at `/account.html`, then open `/admin.html` for the admin desk.
+
+### Admin desk
+
+`public/admin.html` (shell) + `public/assets/admin.js` (logic) render a
+dashboard with thirteen modules — Overview, Orders, Products, Inventory, Stock
+Movements, Categories, Suppliers, Purchase Orders, Image Library, Reports,
+Admin Users, Audit Log, Settings — all talking to the session-guarded
+`/api/admin/*` API. Authorization, stock atomicity and CSV/export safety are
+enforced server-side; the desk never holds privileged logic of its own.
+
+### Tests
+
+```bash
+npm test
+```
+
+`node --test tests/` boots its own server instances on dedicated ports against
+an isolated `astrovetro_test` database (dropped in teardown), so the suite
+needs MongoDB running but never touches development data. The suite covers
+authorization (401/403), catalogue asset integrity, inventory concurrency
+(no negative stock), order/PO/category/supplier flows, CSV injection safety,
+and static wiring of the admin desk (every tab has a renderer, every API path
+exists).
 
 ### Security
 
@@ -220,10 +261,10 @@ These commands are illustrative. Use the scripts and directory structure present
 
 The following items represent potential development priorities, not claims of completed functionality.
 
-- [ ] Connect verified product imagery and descriptions.
-- [ ] Integrate the product catalog with persistent data.
-- [ ] Implement inventory tracking and stock adjustments.
-- [ ] Build a secure administrative dashboard.
+- [x] Connect verified product imagery and descriptions — *mapped and stored locally; 4 of 12 products still await human photo verification (see `docs/IMAGE-MAPPING.md`)*.
+- [x] Integrate the product catalog with persistent data.
+- [x] Implement inventory tracking and stock adjustments.
+- [x] Build a secure administrative dashboard.
 - [ ] Connect cart, checkout, and order management.
 - [ ] Verify payment processing and order reconciliation.
 - [ ] Improve error handling, accessibility, and responsive performance.
