@@ -14,6 +14,8 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   startServer,
   api,
@@ -22,6 +24,8 @@ import {
   dropDatabase,
   tcpUp,
 } from './helpers/server.mjs';
+
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
 const PORT = 5312;
 const TEST_DB = 'mongodb://127.0.0.1:27017/astrovetro_test';
@@ -514,7 +518,18 @@ describe('admin API flows', { skip: mongoUp ? false : 'mongod is not reachable o
       method: 'DELETE',
     });
     assert.strictEqual(deleted.status, 200);
-    assert.ok(deleted.json.data.deleted >= 1);
+    /* Every physical file of this photograph must be gone — derivatives and
+       the uploaded source alike. A leftover `-original` is how the library
+       quietly fills with junk, so assert on the filesystem, not the count. */
+    assert.strictEqual(
+      deleted.json.data.deleted,
+      3,
+      'large, thumb and the uploaded original must all be removed'
+    );
+    for (const file of [image.large, image.thumb, image.original]) {
+      const abs = path.join(ROOT, file.replace(/^\/assets\//, 'public/assets/'));
+      assert.strictEqual(fs.existsSync(abs), false, `leftover file on disk: ${file}`);
+    }
   });
 
   /* ── Admin users, audit, settings ──────────────────────────────── */

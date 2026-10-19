@@ -141,7 +141,6 @@ export const listLibrary = asyncHandler(async (_req, res) => {
     return fs
       .readdirSync(dir)
       .filter((f) => /\.(jpe?g|png|webp|avif)$/i.test(f))
-      .filter((f) => !f.endsWith('-original.jpg') || true)
       .map((f) => {
         const publicPath = `/assets/img/${prefix}/${f}`;
         const stat = fs.statSync(path.join(dir, f));
@@ -297,9 +296,22 @@ export const deleteLibraryFile = asyncHandler(async (req, res) => {
   /* Deleting one derivative implies deleting its siblings, which are the same
      photograph in another size — but each sibling is checked the same way. */
   const m = publicPath.match(/^(.*)-(large|thumb|original)\.[a-z]+$/i);
-  const siblings = m
-    ? ['-large.webp', '-thumb.webp', '-original.jpg'].map((s) => `${m[1]}${s}`)
-    : [publicPath];
+  let siblings;
+  if (!m) {
+    siblings = [publicPath];
+  } else {
+    const base = m[1];
+    siblings = ['-large.webp', '-thumb.webp'].map((s) => `${base}${s}`);
+    /* The uploaded original keeps the source format (png/jpg/webp), so its
+       extension must never be assumed — look for whatever is actually there. */
+    if (base.startsWith('/assets/img/library/')) {
+      const baseName = path.basename(base);
+      const original = fs.existsSync(LIBRARY_DIR)
+        ? fs.readdirSync(LIBRARY_DIR).find((f) => f.startsWith(`${baseName}-original.`))
+        : null;
+      if (original) siblings.push(`/assets/img/library/${original}`);
+    }
+  }
   const siblingPaths = siblings.filter((p) => p === publicPath || p.startsWith('/assets/img/library/'));
   for (const sibling of siblingPaths) {
     const siblingAbs = safeResolve(sibling);
