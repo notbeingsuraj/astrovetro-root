@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "node -e \"console.log('Astro Vetro has no build step. public/ is plain HTML/CSS/JS and is served as-is by server.js; nothing to compile.')\""
+    "build": "node -e \"console.log('Astro Vetro has no build step. public/ is plain HTML/CSS/JS and is served as-is by server.js; nothing to compile.')\"",
+    "test": "node --test tests/",
+    "migrate:catalogue": "node scripts/migrate-catalogue.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -20,6 +22,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.4",
     "razorpay": "^2.9.8",
+    "sharp": "^0.35.5",
     "zod": "^4.6.5"
   }
 }

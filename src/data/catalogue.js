@@ -11,13 +11,17 @@
    database will hold once it is connected. The Mongo provider replaces this
    file's reader; no record needs rewriting.
 
-   Image handling is deliberately empty. The seed references per-product
-   files such as /product-amethyst-ring.png, but those live in the backend
-   public directory and are NOT served by this project. Attaching some other
-   crystal photograph to every product would imply a picture of that item
-   that does not exist, so images are left empty and the card renderer falls
-   back to its own placeholder. When the real photography is added here,
-   populate images[] and the cards pick it up with no other change.
+   Images now point at locally stored photography under
+   /assets/img/products/{slug}/. They were matched to products from the
+   studio album by CLIP zero-shot classification and are NOT yet
+   human-verified: uncertain matches carry a needsReview flag on the database
+   product (surfaced on the admin dashboard), and products the album did not
+   cover confidently — currently labradorite-pendant — keep an empty images[]
+   on purpose so the card renderer falls back to its placeholder rather than
+   showing a photograph that might be the wrong item. See IMAGE-MAPPING.md for
+   the full method, per-photo scores and the review checklist.
+   imageAlts runs parallel to images (same order, same length) and exists so
+   each photograph carries its own alt text.
 
    Read-only by design. Nothing here mutates, and nothing pretends to: a
    storefront that accepted orders into an in-memory array would be lying to
@@ -31,7 +35,8 @@ export const products = [
     "name": "Amethyst Ring",
     "category": "ring",
     "price": 888,
-    "images": [],
+    "images": ["/assets/img/products/amethyst-ring/1-large.webp","/assets/img/products/amethyst-ring/2-large.webp"],
+    "imageAlts": ["amethyst ring — photo 1","amethyst ring — photo 2"],
     "shortDescription": "Raw amethyst set in hammered sterling silver.",
     "description": "A beautifully raw amethyst crystal, bezel-set in hand-hammered sterling silver. Each stone is individually selected for its depth of colour and natural clarity.",
     "intentions": [
@@ -53,7 +58,8 @@ export const products = [
     "name": "Raw Black Tourmaline Ring",
     "category": "ring",
     "price": 999,
-    "images": [],
+    "images": ["/assets/img/products/raw-black-tourmaline-ring/1-large.webp","/assets/img/products/raw-black-tourmaline-ring/2-large.webp","/assets/img/products/raw-black-tourmaline-ring/3-large.webp","/assets/img/products/raw-black-tourmaline-ring/4-large.webp","/assets/img/products/raw-black-tourmaline-ring/5-large.webp","/assets/img/products/raw-black-tourmaline-ring/6-large.webp","/assets/img/products/raw-black-tourmaline-ring/7-large.webp"],
+    "imageAlts": ["raw black tourmaline ring — photo 1","raw black tourmaline ring — photo 2","raw black tourmaline ring — photo 3","raw black tourmaline ring — photo 4","raw black tourmaline ring — photo 5","raw black tourmaline ring — photo 6","raw black tourmaline ring — photo 7"],
     "shortDescription": "Protective raw tourmaline in oxidised silver.",
     "description": "Raw black tourmaline in a bold, oxidised silver setting. One of the most grounding and protective stones in the mineral world.",
     "intentions": [
@@ -75,7 +81,8 @@ export const products = [
     "name": "Rose Quartz Bracelet",
     "category": "bracelet",
     "price": 555,
-    "images": [],
+    "images": ["/assets/img/products/rose-quartz-bracelet/1-large.webp","/assets/img/products/rose-quartz-bracelet/2-large.webp","/assets/img/products/rose-quartz-bracelet/3-large.webp","/assets/img/products/rose-quartz-bracelet/4-large.webp","/assets/img/products/rose-quartz-bracelet/5-large.webp","/assets/img/products/rose-quartz-bracelet/6-large.webp","/assets/img/products/rose-quartz-bracelet/7-large.webp","/assets/img/products/rose-quartz-bracelet/8-large.webp","/assets/img/products/rose-quartz-bracelet/9-large.webp","/assets/img/products/rose-quartz-bracelet/10-large.webp","/assets/img/products/rose-quartz-bracelet/11-large.webp"],
+    "imageAlts": ["rose quartz bracelet — photo 1","rose quartz bracelet — photo 2","rose quartz bracelet — photo 3","rose quartz bracelet — photo 4","rose quartz bracelet — photo 5","rose quartz bracelet — photo 6","rose quartz bracelet — photo 7","rose quartz bracelet — photo 8","rose quartz bracelet — photo 9","rose quartz bracelet — photo 10","rose quartz bracelet — photo 11"],
     "shortDescription": "Pale rose beads with a gold-filled clasp.",
     "description": "Smooth, pale rose quartz beads strung on a durable cord with a gold-filled clasp. Worn close to the skin, a gentle daily reminder of softness.",
     "intentions": [
@@ -98,6 +105,7 @@ export const products = [
     "category": "pendant",
     "price": 1299,
     "images": [],
+    "imageAlts": [],
     "shortDescription": "Teardrop labradorite with blue-green flash.",
     "description": "A teardrop labradorite with a remarkable blue-green labradorescent flash, set in a hand-formed sterling silver bezel. Each stone shows a different play of light.",
     "intentions": [
@@ -119,7 +127,8 @@ export const products = [
     "name": "Citrine Tower",
     "category": "tower",
     "price": 1499,
-    "images": [],
+    "images": ["/assets/img/products/citrine-tower/1-large.webp","/assets/img/products/citrine-tower/2-large.webp","/assets/img/products/citrine-tower/3-large.webp","/assets/img/products/citrine-tower/4-large.webp","/assets/img/products/citrine-tower/5-large.webp","/assets/img/products/citrine-tower/6-large.webp"],
+    "imageAlts": ["citrine tower — photo 1","citrine tower — photo 2","citrine tower — photo 3","citrine tower — photo 4","citrine tower — photo 5","citrine tower — photo 6"],
     "shortDescription": "Polished natural citrine tower, warm amber glow.",
     "description": "A polished natural citrine tower, warm amber light moving through the stone. Placed in a space, it brings a quality of lightness and optimism.",
     "intentions": [
@@ -141,7 +150,8 @@ export const products = [
     "name": "Pyrite Cluster",
     "category": "cluster",
     "price": 799,
-    "images": [],
+    "images": ["/assets/img/products/pyrite-cluster/1-large.webp"],
+    "imageAlts": ["pyrite cluster — photo 1"],
     "shortDescription": "Geometric golden pyrite cluster, bold and grounding.",
     "description": "A raw pyrite cluster with bold geometric cubic formations. A striking piece for a desk or shelf — its reflective metallic surfaces create their own quiet drama.",
     "intentions": [
@@ -163,7 +173,8 @@ export const products = [
     "name": "Clear Quartz Point",
     "category": "tower",
     "price": 699,
-    "images": [],
+    "images": ["/assets/img/products/clear-quartz-point/1-large.webp","/assets/img/products/clear-quartz-point/2-large.webp","/assets/img/products/clear-quartz-point/3-large.webp","/assets/img/products/clear-quartz-point/4-large.webp","/assets/img/products/clear-quartz-point/5-large.webp","/assets/img/products/clear-quartz-point/6-large.webp","/assets/img/products/clear-quartz-point/7-large.webp","/assets/img/products/clear-quartz-point/8-large.webp","/assets/img/products/clear-quartz-point/9-large.webp","/assets/img/products/clear-quartz-point/10-large.webp","/assets/img/products/clear-quartz-point/11-large.webp"],
+    "imageAlts": ["clear quartz point — photo 1","clear quartz point — photo 2","clear quartz point — photo 3","clear quartz point — photo 4","clear quartz point — photo 5","clear quartz point — photo 6","clear quartz point — photo 7","clear quartz point — photo 8","clear quartz point — photo 9","clear quartz point — photo 10","clear quartz point — photo 11"],
     "shortDescription": "A faceted clear quartz point, crisp and amplifying.",
     "description": "A flawless-looking natural clear quartz point. Known for amplifying intention and thought, it pairs with any practice and works as a beautiful object on its own.",
     "intentions": [
@@ -185,7 +196,8 @@ export const products = [
     "name": "Black Obsidian Tumble",
     "category": "tumble",
     "price": 349,
-    "images": [],
+    "images": ["/assets/img/products/black-obsidian-tumble/1-large.webp","/assets/img/products/black-obsidian-tumble/2-large.webp","/assets/img/products/black-obsidian-tumble/3-large.webp","/assets/img/products/black-obsidian-tumble/4-large.webp","/assets/img/products/black-obsidian-tumble/5-large.webp","/assets/img/products/black-obsidian-tumble/6-large.webp","/assets/img/products/black-obsidian-tumble/7-large.webp","/assets/img/products/black-obsidian-tumble/8-large.webp","/assets/img/products/black-obsidian-tumble/9-large.webp","/assets/img/products/black-obsidian-tumble/10-large.webp","/assets/img/products/black-obsidian-tumble/11-large.webp","/assets/img/products/black-obsidian-tumble/12-large.webp","/assets/img/products/black-obsidian-tumble/13-large.webp","/assets/img/products/black-obsidian-tumble/14-large.webp","/assets/img/products/black-obsidian-tumble/15-large.webp","/assets/img/products/black-obsidian-tumble/16-large.webp","/assets/img/products/black-obsidian-tumble/17-large.webp","/assets/img/products/black-obsidian-tumble/18-large.webp"],
+    "imageAlts": ["black obsidian tumble — photo 1","black obsidian tumble — photo 2","black obsidian tumble — photo 3","black obsidian tumble — photo 4","black obsidian tumble — photo 5","black obsidian tumble — photo 6","black obsidian tumble — photo 7","black obsidian tumble — photo 8","black obsidian tumble — photo 9","black obsidian tumble — photo 10","black obsidian tumble — photo 11","black obsidian tumble — photo 12","black obsidian tumble — photo 13","black obsidian tumble — photo 14","black obsidian tumble — photo 15","black obsidian tumble — photo 16","black obsidian tumble — photo 17","black obsidian tumble — photo 18"],
     "shortDescription": "Glossy black obsidian, smooth in the palm.",
     "description": "A palm-sized black obsidian tumble. Said to draw out what does not serve you, it is a grounding, honest stone to keep on a desk or carry in a pocket.",
     "intentions": [
@@ -206,7 +218,8 @@ export const products = [
     "name": "Moonstone Pendant",
     "category": "pendant",
     "price": 1199,
-    "images": [],
+    "images": ["/assets/img/products/moonstone-pendant/1-large.webp","/assets/img/products/moonstone-pendant/2-large.webp","/assets/img/products/moonstone-pendant/3-large.webp","/assets/img/products/moonstone-pendant/4-large.webp","/assets/img/products/moonstone-pendant/5-large.webp"],
+    "imageAlts": ["moonstone pendant — photo 1","moonstone pendant — photo 2","moonstone pendant — photo 3","moonstone pendant — photo 4","moonstone pendant — photo 5"],
     "shortDescription": "Milky moonstone with a soft blue sheen.",
     "description": "A round moonstone cabochon with the delicate blue adularescence the stone is loved for, in a fine sterling silver setting. A gemstone associated with new beginnings.",
     "intentions": [
@@ -228,7 +241,8 @@ export const products = [
     "name": "Carnelian Pendant",
     "category": "pendant",
     "price": 799,
-    "images": [],
+    "images": ["/assets/img/products/carnelian-pendant/1-large.webp","/assets/img/products/carnelian-pendant/2-large.webp"],
+    "imageAlts": ["carnelian pendant — photo 1","carnelian pendant — photo 2"],
     "shortDescription": "Immersive orange carnelian, activating and warm.",
     "description": "A smooth carnelian cabochon with that signature translucent orange glow. Associated with courage, creativity and activating your own personal power.",
     "intentions": [
@@ -249,7 +263,8 @@ export const products = [
     "name": "Tiger's Eye Bracelet",
     "category": "bracelet",
     "price": 499,
-    "images": [],
+    "images": ["/assets/img/products/tigers-eye-bracelet/1-large.webp","/assets/img/products/tigers-eye-bracelet/2-large.webp","/assets/img/products/tigers-eye-bracelet/3-large.webp","/assets/img/products/tigers-eye-bracelet/4-large.webp"],
+    "imageAlts": ["tigers eye bracelet — photo 1","tigers eye bracelet — photo 2","tigers eye bracelet — photo 3","tigers eye bracelet — photo 4"],
     "shortDescription": "Golden-brown tiger's eye with a silky chatoyancy.",
     "description": "Rounded tiger's eye beads with the stone's characteristic shimmering bands of gold and brown. Steady, practical and quietly confident.",
     "intentions": [
@@ -271,7 +286,8 @@ export const products = [
     "name": "Lepidolite Tumble",
     "category": "tumble",
     "price": 299,
-    "images": [],
+    "images": ["/assets/img/products/lepidolite-tumble/1-large.webp","/assets/img/products/lepidolite-tumble/2-large.webp","/assets/img/products/lepidolite-tumble/3-large.webp","/assets/img/products/lepidolite-tumble/4-large.webp","/assets/img/products/lepidolite-tumble/5-large.webp","/assets/img/products/lepidolite-tumble/6-large.webp","/assets/img/products/lepidolite-tumble/7-large.webp","/assets/img/products/lepidolite-tumble/8-large.webp","/assets/img/products/lepidolite-tumble/9-large.webp","/assets/img/products/lepidolite-tumble/10-large.webp"],
+    "imageAlts": ["lepidolite tumble — photo 1","lepidolite tumble — photo 2","lepidolite tumble — photo 3","lepidolite tumble — photo 4","lepidolite tumble — photo 5","lepidolite tumble — photo 6","lepidolite tumble — photo 7","lepidolite tumble — photo 8","lepidolite tumble — photo 9","lepidolite tumble — photo 10"],
     "shortDescription": "Lilac lepidolite — a stone of transition and ease.",
     "description": "A soft lilac lepidolite tumble with a gentle shimmer. High in lithium, it is associated with calm, sleep and steadying the mind during times of change.",
     "intentions": [
