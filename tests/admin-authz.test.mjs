@@ -3,13 +3,30 @@
    be refused by every admin route, before any handler runs.
 
    The server is booted by the test itself on its own port — no manually
-   running `node server.js` is required for `npm test` to pass. */
+   running `node server.js` is required for `npm test` to pass. Like the rest
+   of the suite it is fully self-contained: it seeds its own admin into its
+   own disposable database (astrovetro_test_authz, distinct from the flows
+   suite's astrovetro_test so the two files can run concurrently) and drops it
+   in teardown. It never reads a password off the developer's machine — an
+   earlier version logged in as the locally seeded dev admin, which made the
+   suite fail on any machine that had not run scripts/create-admin.mjs. */
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { startServer, api, login, sessionCookie, tcpUp } from './helpers/server.mjs';
+import {
+  startServer,
+  api,
+  login,
+  sessionCookie,
+  createAdmin,
+  dropDatabase,
+  tcpUp,
+} from './helpers/server.mjs';
 
 const PORT = 5311;
+const TEST_DB = 'mongodb://127.0.0.1:27017/astrovetro_test_authz';
+const ADMIN_EMAIL = 'admin@astrovetro.test';
+const ADMIN_PASSWORD = 'authz-pass-12345';
 
 const mongoUp = await tcpUp('127.0.0.1', 27017);
 
@@ -18,7 +35,8 @@ describe('admin authorization', { skip: mongoUp ? false : 'mongod is not reachab
   let cookie;
 
   before(async () => {
-    server = await startServer({ port: PORT });
+    await createAdmin({ databaseUrl: TEST_DB, email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    server = await startServer({ port: PORT, databaseUrl: TEST_DB });
     /* Customer session: registered through the real endpoint, so it carries
        the role a normal sign-up produces. */
     const email = `authz-customer-${Date.now()}@example.com`;
@@ -33,6 +51,7 @@ describe('admin authorization', { skip: mongoUp ? false : 'mongod is not reachab
 
   after(async () => {
     await server?.stop();
+    await dropDatabase(TEST_DB);
   });
 
   it('refuses an unauthenticated admin request with 401', async () => {
@@ -65,8 +84,8 @@ describe('admin authorization', { skip: mongoUp ? false : 'mongod is not reachab
   });
 
   it('accepts the admin session for the same routes', async () => {
-    const adminCookie = await login(server.base, 'admin@astrovetro.com', 'astrovetro-dev-2026');
-    assert.ok(adminCookie, 'admin login failed — is the admin account seeded on this machine?');
+    const adminCookie = await login(server.base, ADMIN_EMAIL, ADMIN_PASSWORD);
+    assert.ok(adminCookie, 'admin login against the test database failed');
     const out = await api(server.base, '/api/admin/dashboard', { cookie: adminCookie });
     assert.strictEqual(out.status, 200);
     assert.strictEqual(out.json.success, true);
@@ -76,7 +95,7 @@ describe('admin authorization', { skip: mongoUp ? false : 'mongod is not reachab
   it('rejects a wrong password without issuing a session', async () => {
     const out = await api(server.base, '/api/auth/login', {
       method: 'POST',
-      body: { email: 'admin@astrovetro.com', password: 'wrong-password-here' },
+      body: { email: ADMIN_EMAIL, password: 'wrong-password-here' },
     });
     assert.strictEqual(out.status, 401);
     assert.ok(!sessionCookie(out.res), 'a refused login must not set a cookie');

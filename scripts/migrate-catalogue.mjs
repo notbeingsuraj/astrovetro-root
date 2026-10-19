@@ -70,8 +70,13 @@ async function main() {
     const changed = {};
 
     /* Only rewrite the images when they differ, so repeated runs do not touch
-       updatedAt or produce audit noise. */
-    if (JSON.stringify(product.images) !== JSON.stringify(nextImages)) {
+       updatedAt or produce audit noise. imageAlts is checked on its own
+       because the two arrays are parallel: a database migrated before the alt
+       texts existed can carry the right images with empty alts, and the image
+       comparison alone would never correct it. */
+    const imagesDiffer = JSON.stringify(product.images || []) !== JSON.stringify(nextImages);
+    const altsDiffer = JSON.stringify(product.imageAlts || []) !== JSON.stringify(nextAlts);
+    if (imagesDiffer || altsDiffer) {
       changed.images = nextImages;
       changed.imageAlts = nextAlts;
       imagesSynced++;
