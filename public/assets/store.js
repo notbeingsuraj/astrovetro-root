@@ -137,6 +137,10 @@ window.AV = window.AV || {};
     <a href="/orders.html">Order history</a>
     <a href="/account.html?view=addresses">Saved addresses</a>
   </div>
+  <div>
+    <div class="footer-title">Admin</div>
+    <a href="/admin">Admin</a>
+  </div>
 </div>
 <div class="footer-bottom">
   <span>&copy; ${y} Astro Vetro</span>

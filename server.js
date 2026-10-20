@@ -217,6 +217,12 @@ app.get('/orders', sendPage('orders.html'));
    still work, so old links and bookmarks do not break. */
 app.get('/order-history', (_req, res) => res.redirect(301, '/orders'));
 
+/* Admin dashboard: canonical routes. The dashboard requires admin auth and
+   is enforced server-side by the API; serving the static page is safe as the
+   client will redirect unauthenticated/non-admin users via the existing flow. */
+app.get('/admin', sendPage('admin.html'));
+app.get('/admin/', sendPage('admin.html'));
+
 app.use(express.static(PUBLIC_DIR, { index: 'index.html', extensions: ['html'] }));
 
 /* Real 404s. A catch-all that serves index.html for every unknown path makes
