@@ -17,8 +17,11 @@
     "backup:media": "node scripts/backup-media.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.450.0",
+    "@aws-sdk/s3-request-presigner": "^3.450.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
     "dotenv": "^18.0.5",
     "express": "^4.21.2",
     "express-rate-limit": "^8.7.0",
@@ -28,8 +31,6 @@
     "mongoose": "^9.10.4",
     "razorpay": "^2.9.8",
     "sharp": "^0.35.5",
-    "zod": "^4.6.5",
-    "@aws-sdk/client-s3": "^3.450.0",
-    "@aws-sdk/s3-request-presigner": "^3.450.0"
+    "zod": "^4.6.5"
   }
 }
