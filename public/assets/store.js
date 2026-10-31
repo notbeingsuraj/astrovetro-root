@@ -90,12 +90,20 @@ window.AV = window.AV || {};
 <div class="header-inner">
 <a href="/home.html" class="logo">Astro Vetro</a>
 <button class="icon menu" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="siteNav">${icon('menu')}</button>
-<nav id="siteNav">${links}</nav>
+<nav id="siteNav">${links}
+  <a class="mobile-auth-link" href="${AV.user ? '/account.html' : '/signin.html'}">${AV.user ? 'My account' : 'Sign in'}</a>
+  ${AV.user ? '' : '<a class="mobile-auth-link" href="/signup.html">Create account</a>'}
+</nav>
 <div class="header-actions">
   <a class="icon" href="/shop.html?focus=1" aria-label="Search" title="Search">${icon('search')}</a>
   <a class="icon" href="/wishlist.html" aria-label="Saved pieces" title="Saved pieces">${icon('heart')}<span class="cart-badge" data-wishlist-badge></span></a>
+  <div class="header-auth-links">
+    ${AV.user
+      ? '<a class="header-auth-link" href="/account.html">My account</a>'
+      : '<a class="header-auth-link" href="/signin.html">Sign in</a><a class="btn btn-light btn-sm header-auth-create" href="/signup.html">Create account</a>'}
+  </div>
   <a class="icon" href="/cart.html" aria-label="Bag" title="Your bag">${icon('bag')}<span class="cart-badge" data-cart-badge></span></a>
-  <a class="icon" href="${AV.user ? '/account.html' : '/account.html?view=login'}" aria-label="Account"
+  <a class="icon" href="${AV.user ? '/account.html' : '/signin.html'}" aria-label="Account"
      ${initial ? `title="Account \u2014 ${AV.esc(initial)}"` : 'title="Account"'}>${icon('account')}</a>
 </div>
 </div>`;
@@ -133,6 +141,8 @@ window.AV = window.AV || {};
     <div class="footer-title">Customer</div>
     <a href="/cart.html">Your bag</a>
     <a href="/wishlist.html">Saved pieces</a>
+    <a href="/signin.html">Sign in</a>
+    <a href="/signup.html">Create account</a>
     <a href="/account.html">Your account</a>
     <a href="/orders.html">Order history</a>
     <a href="/account.html?view=addresses">Saved addresses</a>
@@ -677,12 +687,16 @@ window.AV = window.AV || {};
            would read `.user.user`. */
         const user = env.data?.user ?? null;
         AV.setUser(user);
+        /* Repaint the shared header after the server confirms the real session.
+           localStorage is only a hint and may describe an expired session. */
+        AV.emit('auth', { user, reason: 'session-resolved' });
         return user;
       })
       .catch(() => {
         /* Signed out is the normal answer for most visitors, not an error worth
            surfacing, so it resolves to null rather than throwing. */
         AV.setUser(null);
+        AV.emit('auth', { user: null, reason: 'session-resolved' });
         return null;
       });
     return mePromise;
