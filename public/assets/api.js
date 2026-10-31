@@ -123,7 +123,7 @@ window.AV = window.AV || {};
 
   /* What this deployment can actually do -----------------------------------
      GET /api/status reports the active data provider, whether a database is
-     attached, and whether writes are possible. It is fetched once and cached.
+     attached, and whether writes are possible.
 
      Why this exists: without it, every page load asks /api/auth/me and gets a
      503 back, which is honest but pointless - it cannot succeed on a deployment
@@ -134,25 +134,14 @@ window.AV = window.AV || {};
      A failed probe is treated as "no database": an API we cannot reach can
      certainly not serve accounts, and the catalogue pages degrade on their own
      regardless. */
-  let caps = null;
-  let capsPending = null;
-
   AV.capabilities = function () {
-    if (caps) return Promise.resolve(caps);
-    if (capsPending) return capsPending;
-    capsPending = request('GET', '/api/status')
+    return request('GET', '/api/status')
       .then((env) => {
-        caps = Object.assign({ reachable: true, database: false, writable: false, paymentsLive: false }, env && env.data);
-        return caps;
+        return Object.assign({ reachable: true, database: false, writable: false, paymentsLive: false }, env && env.data);
       })
       .catch(() => {
-        caps = { reachable: false, provider: 'unknown', database: false, writable: false, paymentsLive: false };
-        return caps;
-      })
-      .finally(() => {
-        capsPending = null;
+        return { reachable: false, provider: 'unknown', database: false, writable: false, paymentsLive: false };
       });
-    return capsPending;
   };
 
   /* True when an endpoint that needs persistence would be refused. */
