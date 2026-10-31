@@ -1,0 +1,1609 @@
+{
+  "nodes": [
+    {
+      "id": "concept:AstroVetro",
+      "label": "AstroVetro",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_EXECUTIVE_SUMMARY.md",
+      "source_location": "lines 3-8",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Bespoke editorial-style e-commerce storefront for crystal jewellery and spiritual/ritual products",
+        "brand_identity": "crystals, rituals, celestial living",
+        "aesthetic": "refined, mineral-inspired"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "concept:CLIPZeroShotMatching",
+      "label": "CLIP Zero-Shot Matching",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 19-23",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Machine learning method used to classify product photos against candidate labels",
+        "candidate_labels": 13,
+        "products": 12,
+        "other_buckets": ["other-packaging", "other-crystal-not-listed", "other-jewelry-not-listed", "other-tarot"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "concept:ImageMapping",
+      "label": "Image Mapping",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 1-274",
+      "confidence": 0.95,
+      "properties": {
+        "source": "Google Photos album (300 photos)",
+        "local_storage": "public/assets/img/products/{slug}/",
+        "total_mapped": 77,
+        "unassigned": 84,
+        "flagged_products": 4,
+        "manifest": "docs/image-manifest.json"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "concept:AstrovetroStudio",
+      "label": "Astrovetro Studio",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 12-37",
+      "confidence": 0.95,
+      "properties": {
+        "path": "/admin.html",
+        "type": "Single-page editorial desk",
+        "sections": 13,
+        "extends": "existing Express/Mongo application"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "file:server.js",
+      "label": "server.js",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 9, 32, 24-27",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Main entry point",
+        "api_mounting": "Dynamic based on env vars",
+        "modes": ["proxy", "disabled", "staticApi", "commerceApi with fallback"],
+        "port": 5173,
+        "serverless_aware": true
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "file:src/api/commerceApi.js",
+      "label": "commerceApi.js",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 19, 49, 68-79",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Full commerce API (DB-backed)",
+        "webhook_handling": "express.raw() before JSON parser for Razorpay",
+        "routes": "Auth, CSRF, RBAC, validation mounted in order"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "file:src/api/staticApi.js",
+      "label": "staticApi.js",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 19, 50, 68-70",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Read-only catalogue API",
+        "writes_return": "503 DATABASE_NOT_CONFIGURED",
+        "data_source": "src/data/catalogue.js"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "file:src/providers/dbProvider.js",
+      "label": "dbProvider.js",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 20, 54, 74-77",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Database-backed data provider",
+        "interface": "Same as staticProvider",
+        "implements": "MongoDB/Mongoose queries"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "file:src/providers/staticProvider.js",
+      "label": "staticProvider.js",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 20, 54, 74-76",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Static data provider",
+        "data_source": "src/data/catalogue.js",
+        "interface": "Same as dbProvider"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "model:Product",
+      "label": "Product Model",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 265, 154-159",
+      "confidence": 0.95,
+      "properties": {
+        "key_fields": ["slug(unique)", "sku(unique sparse)", "category", "price>=0", "stock(null or >=0)", "status enum", "needsReview"],
+        "indexes": ["text index on name/description", "slug", "sku"],
+        "methods": ["toPublic()", "toAdmin()", "effectivePrice()", "canFulfil()"],
+        "stock_null_means": "untracked inventory"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "model:User",
+      "label": "User Model",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "line 266",
+      "confidence": 0.95,
+      "properties": {
+        "key_fields": ["email(unique)", "password hashed", "role enum(customer/admin)", "tokenVersion"],
+        "revocation": "tokenVersion for logout/password change"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "model:Order",
+      "label": "Order Model",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "line 267",
+      "confidence": 0.95,
+      "properties": {
+        "key_fields": ["orderId(unique)", "user ref", "items with price snapshots", "totals", "paymentStatus", "status"],
+        "critical_rule": "Snapshots prices at order time - prevents retroactive price changes"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "model:StockMovement",
+      "label": "StockMovement Model",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "line 271",
+      "confidence": 0.95,
+      "properties": {
+        "key_fields": ["product ref", "qty(signed)", "type", "ref", "note", "actor"],
+        "types": ["purchase_receipt", "adjustment", "order_sale", "order_cancellation", "manual", "transfer", "count_correction"],
+        "purpose": "Append-only inventory ledger"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "model:Collection",
+      "label": "Collection Model",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 203-208",
+      "confidence": 0.95,
+      "properties": {
+        "fields": ["slug", "name", "description", "image", "products[]", "sortOrder", "active", "featured", "seoTitle", "seoDescription"],
+        "membership": "Stored only in Collection.products, not duplicated on Product"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "model:Ritual",
+      "label": "Ritual Model",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 210-216",
+      "confidence": 0.95,
+      "properties": {
+        "fields": ["title", "slug", "previousSlugs", "intro", "description", "purpose", "preparation", "duration", "materials[]", "steps[{title,body}]", "images[]", "imageAlts[]", "relatedProducts[]", "relatedCollections[]", "linkedProduct", "tags[]", "featured", "status", "publishedAt", "SEO fields"],
+        "content_safety": "Refuses medical/guaranteed-outcome claims at controller boundary",
+        "structure": "Stored as structured arrays/steps, not HTML"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "model:BlogPost",
+      "label": "BlogPost Model",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 218-222",
+      "confidence": 0.95,
+      "properties": {
+        "fields": ["title", "slug", "previousSlugs", "excerpt", "content(plain text)", "image", "imageAlt", "author", "category", "tags[]", "featured", "status", "publishedAt", "SEO fields"],
+        "content_type": "Plain text only, no HTML"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "model:SiteContent",
+      "label": "SiteContent Model",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 224-227",
+      "confidence": 0.95,
+      "properties": {
+        "structure": "Fixed schema per placement key (currently homepage)",
+        "subdocuments": ["homepage", "contact"],
+        "validation": "Unknown keys and HTML rejected"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_admin_collections",
+      "label": "GET/POST /api/admin/collections",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 239-242",
+      "confidence": 0.95,
+      "properties": {
+        "methods": ["GET", "POST"],
+        "protection": "requireAdmin",
+        "controller": "adminCollectionController"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_admin_collections_id",
+      "label": "GET/PATCH/DELETE /api/admin/collections/:id",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 240",
+      "confidence": 0.95,
+      "properties": {
+        "methods": ["GET", "PATCH", "DELETE"],
+        "protection": "requireAdmin"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_admin_collections_products",
+      "label": "PUT /api/admin/collections/:id/products",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 241",
+      "confidence": 0.95,
+      "properties": {
+        "method": "PUT",
+        "protection": "requireAdmin",
+        "purpose": "Collection membership management"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_admin_rituals",
+      "label": "GET/POST /api/admin/rituals",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 243",
+      "confidence": 0.95,
+      "properties": {
+        "methods": ["GET", "POST"],
+        "protection": "requireAdmin",
+        "controller": "adminRitualController"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_admin_blog",
+      "label": "GET/POST /api/admin/blog",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 247",
+      "confidence": 0.95,
+      "properties": {
+        "methods": ["GET", "POST"],
+        "protection": "requireAdmin",
+        "controller": "adminBlogController"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_admin_content_homepage",
+      "label": "GET/PUT /api/admin/content/homepage",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 250",
+      "confidence": 0.95,
+      "properties": {
+        "methods": ["GET", "PUT"],
+        "protection": "requireAdmin",
+        "controller": "adminContentController"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_collections",
+      "label": "GET /api/collections",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 258",
+      "confidence": 0.95,
+      "properties": {
+        "method": "GET",
+        "protection": "Public",
+        "returns": "Active collections only"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_rituals",
+      "label": "GET /api/rituals",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 260",
+      "confidence": 0.95,
+      "properties": {
+        "method": "GET",
+        "protection": "Public",
+        "returns": "Active rituals only"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_content_homepage",
+      "label": "GET /api/content/homepage",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 262",
+      "confidence": 0.95,
+      "properties": {
+        "method": "GET",
+        "protection": "Public",
+        "consumer": "public/home.html"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "route:api_products_collection",
+      "label": "GET /api/products?collection=<slug>",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 263",
+      "confidence": 0.95,
+      "properties": {
+        "method": "GET",
+        "protection": "Public",
+        "filter": "Collection slug filter for shop page"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "controller:adminProductController",
+      "label": "adminProductController",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 83, 12, 514",
+      "confidence": 0.9,
+      "properties": {
+        "extensions": ["productType", "currency", "seoTitle", "seoDescription", "publishedAt", "previousSlugs"],
+        "features": ["collection-aware admin detail", "collection filtering", "guarded permanent deletion"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "controller:adminCollectionController",
+      "label": "adminCollectionController",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 73",
+      "confidence": 0.9,
+      "properties": {
+        "handles": "Collection CRUD, archive/restore, product reassignment on delete"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "controller:adminRitualController",
+      "label": "adminRitualController",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 74",
+      "confidence": 0.9,
+      "properties": {
+        "handles": "Ritual CRUD, content safety validation, archive/restore"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "controller:adminBlogController",
+      "label": "adminBlogController",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 75",
+      "confidence": 0.9,
+      "properties": {
+        "handles": "BlogPost CRUD, draft/published/archived lifecycle"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "controller:adminContentController",
+      "label": "adminContentController",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 76",
+      "confidence": 0.9,
+      "properties": {
+        "handles": "Website content (homepage) management"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "controller:adminImageController",
+      "label": "adminImageController",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 85, 516",
+      "confidence": 0.9,
+      "properties": {
+        "extensions": ["library and deletion checks see ritual and journal references"],
+        "features": ["upload", "preview", "search/filter", "reuse", "unused detection", "guarded deletion"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "middleware:requireAdmin",
+      "label": "requireAdmin middleware",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 112, 244",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Protects all /api/admin/* routes",
+        "checks": "JWT auth + role === 'admin'",
+        "mounted": "Globally on admin router (admin.js:17)"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "middleware:requireSameOrigin",
+      "label": "requireSameOrigin middleware",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 111, 239",
+      "confidence": 0.95,
+      "properties": {
+        "role": "CSRF protection for cookie-authenticated writes",
+        "checks": ["Sec-Fetch-Site", "Origin", "Referer"],
+        "strictness": "Rejects cookie requests with no headers"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "middleware:auth",
+      "label": "Auth middleware (resolveUser, issueToken)",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 23, 38-39, 238",
+      "confidence": 0.95,
+      "properties": {
+        "auth_type": "JWT in httpOnly cookie (av_token)",
+        "revocation": "tokenVersion",
+        "cookie_settings": "httpOnly, SameSite=Lax, Secure in production, 7-day expiry"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "service:inventoryService",
+      "label": "inventoryService",
+      "type": "function",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 52-53, 104",
+      "confidence": 0.9,
+      "properties": {
+        "role": "Authoritative inventory management",
+        "ledger": "Append-only StockMovement",
+        "atomic_updates": "Product.stock updated atomically",
+        "validation": "Prevents negative stock for tracked items"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "page:admin.html",
+      "label": "admin.html",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 14, 105",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Studio shell",
+        "sidebar": "Only implemented sections shown",
+        "styling": "Scoped styling in public/admin.html"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "page:home.html",
+      "label": "home.html",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 115, 17",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Homepage with editable content",
+        "data_source": "GET /api/content/homepage",
+        "gateway": "Split-screen (Crystals | Rituals)"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "page:shop.html",
+      "label": "shop.html",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 116",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Product listing with collection filter",
+        "query_param": "?collection=<slug>"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "page:product.html",
+      "label": "product.html",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 117",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Product detail with SEO fields",
+        "seo": "Uses editable seoTitle/seoDescription"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "page:rituals.html",
+      "label": "rituals.html",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 113",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Rituals listing page",
+        "rendering": "Escaped plain text"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "page:ritual.html",
+      "label": "ritual.html",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "line 113",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Single ritual detail page",
+        "rendering": "Escaped plain text"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "asset:public/assets/admin.js",
+      "label": "admin.js (2022 LOC)",
+      "type": "asset",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 103, 12, 471",
+      "confidence": 0.95,
+      "properties": {
+        "size": "2022 lines",
+        "modules": ["Collections", "Rituals", "Blog", "Website Content", "Product/Category fields"],
+        "issue": "Large monolith, hard to maintain"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "asset:public/assets/api.js",
+      "label": "api.js",
+      "type": "asset",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_PROJECT_CONTEXT.md",
+      "source_location": "lines 78",
+      "confidence": 0.95,
+      "properties": {
+        "role": "HTTP wrapper, API client, event bus",
+        "features": ["Handles 401s", "CSRF implicit via cookies", "cart/wishlist/auth events", "checkout with idempotency keys"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "asset:public/assets/store.js",
+      "label": "store.js",
+      "type": "asset",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_PROJECT_CONTEXT.md",
+      "source_location": "line 79",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Storefront UI logic",
+        "handles": ["Product listing", "cart/wishlist interactions"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "asset:public/assets/customer.js",
+      "label": "customer.js",
+      "type": "asset",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_PROJECT_CONTEXT.md",
+      "source_location": "line 80",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Account/orders UI",
+        "handles": ["Customer dashboard"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "config:env.js",
+      "label": "env.js",
+      "type": "config",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 20, 51, 155-160",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Environment configuration",
+        "production_validation": "assertProductionSecrets() enforces JWT >=32 chars, key pairs",
+        "variables": ["NODE_ENV", "PORT", "FRONTEND_URL", "DATABASE_URL/MONGODB_URI", "JWT_SECRET", "JWT_EXPIRES_IN", "COOKIE_NAME", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "config:vercel.json",
+      "label": "vercel.json",
+      "type": "config",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "line 11",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Vercel deployment config",
+        "routes": "All traffic to server.js via @vercel/node"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "script:create-admin.mjs",
+      "label": "create-admin.mjs",
+      "type": "script",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 372-376",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Create/reset admin user",
+        "usage": "node scripts/create-admin.mjs email@example.com",
+        "non_interactive": "AV_ADMIN_PASSWORD env var supported"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "script:generate-image-review.mjs",
+      "label": "generate-image-review.mjs",
+      "type": "script",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 227-233",
+      "confidence": 0.95,
+      "properties": {
+        "role": "Generate image review HTML page",
+        "output": "docs/image-review.html",
+        "features": ["Renders mapped photos with scores", "Flags uncertain products", "Shows unassigned Image Library"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "test:catalogue-assets.test.mjs",
+      "label": "catalogue-assets.test.mjs",
+      "type": "test",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 335, 439",
+      "confidence": 0.95,
+      "properties": {
+        "status": "PASSED (5/5)",
+        "verifies": ["Image paths exist locally", "Alts parallel to images", "No duplicate images", "Correct structure", "labradorite-pendant photo-less by design"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "test:studio.test.mjs",
+      "label": "studio.test.mjs",
+      "type": "test",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 123, 416-433",
+      "confidence": 0.95,
+      "properties": {
+        "count": 8,
+        "type": "Integration tests",
+        "covers": ["Anonymous access refused", "Product SEO fields", "Draft products private", "Category copy edits", "Collection cover-image rejection", "Ritual HTML/claims refusal", "Draft rituals/posts private", "Homepage content edits"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "issue:P0-001",
+      "label": "Rate limiting not applied",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_ISSUE_REGISTER.md",
+      "source_location": "lines 9-10",
+      "confidence": 0.95,
+      "properties": {
+        "severity": "High",
+        "category": "Security",
+        "evidence": "express-rate-limit v8.7.0 in deps but no usage in server.js or route middleware",
+        "impact": "Account takeover risk, abuse, resource exhaustion",
+        "effort": "S"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "issue:P0-002",
+      "label": "Payment flow unverified",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_ISSUE_REGISTER.md",
+      "source_location": "lines 10-11",
+      "confidence": 0.95,
+      "properties": {
+        "severity": "Critical",
+        "category": "Payments/Revenue",
+        "evidence": "Razorpay integration code exists but README marks verification unchecked",
+        "impact": "Financial loss, compliance issues, customer trust",
+        "effort": "M"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "issue:P0-003",
+      "label": "Checkout/cart/order flows need verification",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_ISSUE_REGISTER.md",
+      "source_location": "lines 11-12",
+      "confidence": 0.95,
+      "properties": {
+        "severity": "Critical",
+        "category": "Core Commerce",
+        "evidence": "Code exists but marked incomplete in README",
+        "impact": "Cannot reliably take orders; release-blocking",
+        "effort": "M"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "issue:P0-004",
+      "label": "Image upload validation hardening needed",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_ISSUE_REGISTER.md",
+      "source_location": "lines 12-13",
+      "confidence": 0.95,
+      "properties": {
+        "severity": "High",
+        "category": "Security",
+        "evidence": "Upload accepts image/* with 12mb limit via express.raw(); need magic byte validation, filename sanitization, path traversal prevention",
+        "impact": "Malicious file upload risk",
+        "effort": "S"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:amethyst-ring",
+      "label": "Amethyst Ring",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 59, 79-86",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "amethyst-ring",
+        "photos": 2,
+        "primary": "#138",
+        "score": 0.952,
+        "margin": 0.938,
+        "runner_up": "lepidolite-tumble(0.01)",
+        "flag": "needsReview",
+        "reason": "Only 2 confident photos matched"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:pyrite-cluster",
+      "label": "Pyrite Cluster",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 60, 88-94",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "pyrite-cluster",
+        "photos": 1,
+        "primary": "#161",
+        "score": 0.495,
+        "margin": 0.135,
+        "runner_up": "other-packaging(0.36)",
+        "flag": "needsReview",
+        "reason": "Weak primary score, narrow margin over other-packaging"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:citrine-tower",
+      "label": "Citrine Tower",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 61, 96-105",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "citrine-tower",
+        "photos": 6,
+        "primary": "#43",
+        "score": 0.946,
+        "margin": 0.945,
+        "runner_up": "clear-quartz-point(0.00)",
+        "flag": "ok"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:rose-quartz-bracelet",
+      "label": "Rose Quartz Bracelet",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 62, 107-121",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "rose-quartz-bracelet",
+        "photos": 11,
+        "primary": "#100",
+        "score": 0.887,
+        "margin": 0.887,
+        "runner_up": "other-crystal-not-listed(0.00)",
+        "flag": "ok"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:raw-black-tourmaline-ring",
+      "label": "Raw Black Tourmaline Ring",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 63, 123-133",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "raw-black-tourmaline-ring",
+        "photos": 7,
+        "primary": "#265",
+        "score": 0.656,
+        "margin": 0.47,
+        "runner_up": "black-obsidian-tumble(0.19)",
+        "flag": "ok"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:carnelian-pendant",
+      "label": "Carnelian Pendant",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 64, 135-142",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "carnelian-pendant",
+        "photos": 2,
+        "primary": "#208",
+        "score": 0.871,
+        "margin": 0.858,
+        "runner_up": "citrine-tower(0.01)",
+        "flag": "needsReview",
+        "reason": "Only 2 confident photos matched"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:moonstone-pendant",
+      "label": "Moonstone Pendant",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 65, 144-152",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "moonstone-pendant",
+        "photos": 5,
+        "primary": "#91",
+        "score": 0.829,
+        "margin": 0.812,
+        "runner_up": "labradorite-pendant(0.02)",
+        "flag": "ok"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:clear-quartz-point",
+      "label": "Clear Quartz Point",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 66, 154-168",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "clear-quartz-point",
+        "photos": 11,
+        "primary": "#200",
+        "score": 0.972,
+        "margin": 0.954,
+        "runner_up": "moonstone-pendant(0.02)",
+        "flag": "ok"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:tigers-eye-bracelet",
+      "label": "Tiger's Eye Bracelet",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 67, 170-177",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "tigers-eye-bracelet",
+        "photos": 4,
+        "primary": "#147",
+        "score": 0.994,
+        "margin": 0.994,
+        "runner_up": "other-jewelry-not-listed(0.00)",
+        "flag": "ok"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:lepidolite-tumble",
+      "label": "Lepidolite Tumble",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 68, 179-192",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "lepidolite-tumble",
+        "photos": 10,
+        "primary": "#213",
+        "score": 0.838,
+        "margin": 0.798,
+        "runner_up": "black-obsidian-tumble(0.04)",
+        "flag": "ok"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:black-obsidian-tumble",
+      "label": "Black Obsidian Tumble",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 69, 194-215",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "black-obsidian-tumble",
+        "photos": 18,
+        "primary": "#123",
+        "score": 0.894,
+        "margin": 0.876,
+        "runner_up": "lepidolite-tumble(0.02)",
+        "flag": "ok"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "product:labradorite-pendant",
+      "label": "Labradorite Pendant",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md",
+      "source_location": "lines 70, 217-221",
+      "confidence": 0.95,
+      "properties": {
+        "slug": "labradorite-pendant",
+        "photos": 0,
+        "primary": "none",
+        "score": "N/A",
+        "margin": "N/A",
+        "runner_up": "N/A",
+        "flag": "needsReview",
+        "reason": "No confident match in album; renders gradient placeholder",
+        "candidate": "Album photo #262 unassigned in Image Library"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "integration:Razorpay",
+      "label": "Razorpay Payment Integration",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_EXECUTIVE_SUMMARY.md",
+      "source_location": "lines 65, 89",
+      "confidence": 0.95,
+      "properties": {
+        "status": "Groundwork exists, needs verification",
+        "components": ["Controllers", "Routes", "Checkout session", "Confirm", "Webhook"],
+        "env_vars": ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "integration:MongoDB",
+      "label": "MongoDB Database",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 61, 195, 83-88",
+      "confidence": 0.95,
+      "properties": {
+        "version": "6+",
+        "odm": "Mongoose",
+        "models": 13,
+        "connection": "Graceful fallback to staticApi on failure"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "integration:Sharp",
+      "label": "Sharp Image Processing",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 65, 202",
+      "confidence": 0.9,
+      "properties": {
+        "role": "Image processing on upload",
+        "derivatives": ["-large.webp (max 1600px)", "-thumb.webp (max 480px)"],
+        "original_preserved": true
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "concept:GracefulDegradation",
+      "label": "Graceful Degradation Architecture",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_EXECUTIVE_SUMMARY.md",
+      "source_location": "lines 79, 29",
+      "confidence": 0.95,
+      "properties": {
+        "description": "DB outage doesn't take site offline, falls back to catalogue browsing",
+        "modes": ["Proxy to external backend", "API disabled", "Static read-only", "Full DB with fallback"]
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "concept:InventoryLedger",
+      "label": "Inventory Ledger (StockMovement/StockReceipt)",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md",
+      "source_location": "lines 53, 162-174",
+      "confidence": 0.95,
+      "properties": {
+        "authoritative": true,
+        "models": ["StockMovement", "StockReceipt"],
+        "types": ["purchase_receipt", "adjustment", "order_sale", "order_cancellation", "manual", "transfer", "count_correction"],
+        "untracked": "stock=null means not tracked, never blocks fulfillment"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "concept:PriceSnapshot",
+      "label": "Order Price Snapshots",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 280, 267",
+      "confidence": 0.95,
+      "properties": {
+        "rule": "Orders snapshot item prices at order time",
+        "prevents": "Retroactive price changes affecting paid orders",
+        "method": "effectivePrice() for current price, snapshot stored in Order.items"
+      },
+      "_origin": "semantic"
+    },
+    {
+      "id": "concept:IdempotencyKeys",
+      "label": "Idempotency Keys for Checkout",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md",
+      "source_location": "lines 98, 286",
+      "confidence": 0.95,
+      "properties": {
+        "header": "Idempotency-Key",
+        "purpose": "Prevent duplicate orders on retries",
+        "applies_to": "Checkout endpoints (COD + Razorpay)"
+      },
+      "_origin": "semantic"
+    }
+  ],
+  "edges": [
+    {
+      "source": "concept:AstroVetro",
+      "target": "file:server.js",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "server.js is the main entry point for the AstroVetro application",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstroVetro",
+      "target": "concept:GracefulDegradation",
+      "type": "implements",
+      "confidence": 0.95,
+      "evidence": "Executive summary identifies graceful degradation as strongest capability",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:server.js",
+      "target": "file:src/api/commerceApi.js",
+      "type": "mounts",
+      "confidence": 0.95,
+      "evidence": "server.js mounts commerceApi when DB connected successfully",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:server.js",
+      "target": "file:src/api/staticApi.js",
+      "type": "mounts",
+      "confidence": 0.95,
+      "evidence": "server.js mounts staticApi when no DB URL or DB connection fails",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:src/api/commerceApi.js",
+      "target": "file:src/providers/dbProvider.js",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "commerceApi uses dbProvider for database-backed data access",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:src/api/staticApi.js",
+      "target": "file:src/providers/staticProvider.js",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "staticApi uses staticProvider for read-only catalogue data",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:src/providers/dbProvider.js",
+      "target": "model:Product",
+      "type": "queries",
+      "confidence": 0.95,
+      "evidence": "dbProvider implements Product queries via Mongoose",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:src/providers/staticProvider.js",
+      "target": "model:Product",
+      "type": "queries",
+      "confidence": 0.95,
+      "evidence": "staticProvider reads Product data from src/data/catalogue.js",
+      "_origin": "semantic"
+    },
+    {
+      "source": "model:Product",
+      "target": "concept:ImageMapping",
+      "type": "references",
+      "confidence": 0.9,
+      "evidence": "Product model has images[] and imageAlts[] arrays parallel to image mapping",
+      "_origin": "semantic"
+    },
+    {
+      "source": "model:Product",
+      "target": "concept:InventoryLedger",
+      "type": "tracks",
+      "confidence": 0.95,
+      "evidence": "Product.stock field updated via inventoryService with StockMovement ledger",
+      "_origin": "semantic"
+    },
+    {
+      "source": "model:Order",
+      "target": "concept:PriceSnapshot",
+      "type": "implements",
+      "confidence": 0.95,
+      "evidence": "Order model snapshots prices at order time to prevent retroactive changes",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "page:admin.html",
+      "type": "renders",
+      "confidence": 0.95,
+      "evidence": "Studio is implemented as /admin.html single-page editorial desk",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "controller:adminCollectionController",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "Studio adds Collections section with dedicated controller",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "controller:adminRitualController",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "Studio adds Rituals section with dedicated controller",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "controller:adminBlogController",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "Studio adds Blog section with dedicated controller",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "controller:adminContentController",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "Studio adds Website Content section with dedicated controller",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "model:Collection",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "Studio introduces new Collection model",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "model:Ritual",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "Studio introduces new Ritual model",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "model:BlogPost",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "Studio introduces new BlogPost model",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstrovetroStudio",
+      "target": "model:SiteContent",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "Studio introduces new SiteContent model",
+      "_origin": "semantic"
+    },
+    {
+      "source": "route:api_admin_collections",
+      "target": "controller:adminCollectionController",
+      "type": "handled_by",
+      "confidence": 0.95,
+      "evidence": "Admin collections routes handled by adminCollectionController",
+      "_origin": "semantic"
+    },
+    {
+      "source": "route:api_admin_rituals",
+      "target": "controller:adminRitualController",
+      "type": "handled_by",
+      "confidence": 0.95,
+      "evidence": "Admin rituals routes handled by adminRitualController",
+      "_origin": "semantic"
+    },
+    {
+      "source": "route:api_admin_blog",
+      "target": "controller:adminBlogController",
+      "type": "handled_by",
+      "confidence": 0.95,
+      "evidence": "Admin blog routes handled by adminBlogController",
+      "_origin": "semantic"
+    },
+    {
+      "source": "route:api_admin_content_homepage",
+      "target": "controller:adminContentController",
+      "type": "handled_by",
+      "confidence": 0.95,
+      "evidence": "Admin content routes handled by adminContentController",
+      "_origin": "semantic"
+    },
+    {
+      "source": "middleware:requireAdmin",
+      "target": "route:api_admin_collections",
+      "type": "protects",
+      "confidence": 0.95,
+      "evidence": "All admin routes protected by requireAdmin middleware",
+      "_origin": "semantic"
+    },
+    {
+      "source": "middleware:requireAdmin",
+      "target": "route:api_admin_rituals",
+      "type": "protects",
+      "confidence": 0.95,
+      "evidence": "All admin routes protected by requireAdmin middleware",
+      "_origin": "semantic"
+    },
+    {
+      "source": "middleware:requireAdmin",
+      "target": "route:api_admin_blog",
+      "type": "protects",
+      "confidence": 0.95,
+      "evidence": "All admin routes protected by requireAdmin middleware",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:home.html",
+      "target": "route:api_content_homepage",
+      "type": "fetches",
+      "confidence": 0.95,
+      "evidence": "home.html reads /api/content/homepage for editable content",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:shop.html",
+      "target": "route:api_products_collection",
+      "type": "fetches",
+      "confidence": 0.95,
+      "evidence": "shop.html accepts ?collection=<slug> filter parameter",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:rituals.html",
+      "target": "route:api_rituals",
+      "type": "fetches",
+      "confidence": 0.95,
+      "evidence": "rituals.html renders rituals from public API",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:ritual.html",
+      "target": "route:api_rituals",
+      "type": "fetches",
+      "confidence": 0.95,
+      "evidence": "ritual.html renders single ritual from public API",
+      "_origin": "semantic"
+    },
+    {
+      "source": "asset:public/assets/admin.js",
+      "target": "page:admin.html",
+      "type": "renders",
+      "confidence": 0.95,
+      "evidence": "admin.js provides all Studio UI renderers for admin.html",
+      "_origin": "semantic"
+    },
+    {
+      "source": "asset:public/assets/api.js",
+      "target": "middleware:requireSameOrigin",
+      "type": "works_with",
+      "confidence": 0.9,
+      "evidence": "api.js handles CSRF implicitly via cookies, requireSameOrigin enforces on server",
+      "_origin": "semantic"
+    },
+    {
+      "source": "integration:Razorpay",
+      "target": "file:src/api/commerceApi.js",
+      "type": "integrated_in",
+      "confidence": 0.95,
+      "evidence": "Razorpay webhook registered with express.raw() before JSON parser in commerceApi",
+      "_origin": "semantic"
+    },
+    {
+      "source": "integration:MongoDB",
+      "target": "model:Product",
+      "type": "persists",
+      "confidence": 0.95,
+      "evidence": "Product model persisted via Mongoose to MongoDB",
+      "_origin": "semantic"
+    },
+    {
+      "source": "integration:Sharp",
+      "target": "controller:adminImageController",
+      "type": "used_by",
+      "confidence": 0.9,
+      "evidence": "Sharp used for image processing on upload (WebP derivatives)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:CLIPZeroShotMatching",
+      "target": "concept:ImageMapping",
+      "type": "method_of",
+      "confidence": 0.95,
+      "evidence": "CLIP zero-shot matching is the method used for image mapping",
+      "_origin": "semantic"
+    },
+    {
+      "source": "product:amethyst-ring",
+      "target": "concept:ImageMapping",
+      "type": "part_of",
+      "confidence": 0.95,
+      "evidence": "Amethyst Ring is one of 12 products in image mapping",
+      "_origin": "semantic"
+    },
+    {
+      "source": "product:pyrite-cluster",
+      "target": "concept:ImageMapping",
+      "type": "part_of",
+      "confidence": 0.95,
+      "evidence": "Pyrite Cluster is one of 12 products in image mapping",
+      "_origin": "semantic"
+    },
+    {
+      "source": "product:labradorite-pendant",
+      "target": "concept:ImageMapping",
+      "type": "part_of",
+      "confidence": 0.95,
+      "evidence": "Labradorite Pendant is one of 12 products in image mapping (intentionally photo-less)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "issue:P0-001",
+      "target": "file:server.js",
+      "type": "affects",
+      "confidence": 0.9,
+      "evidence": "Rate limiting should be applied in server.js or route middleware",
+      "_origin": "semantic"
+    },
+    {
+      "source": "issue:P0-002",
+      "target": "integration:Razorpay",
+      "type": "affects",
+      "confidence": 0.95,
+      "evidence": "Payment flow verification needed for Razorpay integration",
+      "_origin": "semantic"
+    },
+    {
+      "source": "issue:P0-003",
+      "target": "file:src/api/commerceApi.js",
+      "type": "affects",
+      "confidence": 0.9,
+      "evidence": "Checkout/cart/order flows implemented in commerceApi need verification",
+      "_origin": "semantic"
+    },
+    {
+      "source": "issue:P0-004",
+      "target": "controller:adminImageController",
+      "type": "affects",
+      "confidence": 0.9,
+      "evidence": "Image upload validation hardening needed in adminImageController",
+      "_origin": "semantic"
+    },
+    {
+      "source": "test:catalogue-assets.test.mjs",
+      "target": "concept:ImageMapping",
+      "type": "validates",
+      "confidence": 0.95,
+      "evidence": "Catalogue asset tests verify image paths, alts, structure, no duplicates",
+      "_origin": "semantic"
+    },
+    {
+      "source": "test:studio.test.mjs",
+      "target": "concept:AstrovetroStudio",
+      "type": "validates",
+      "confidence": 0.95,
+      "evidence": "Studio tests cover admin access, SEO fields, draft visibility, content safety",
+      "_origin": "semantic"
+    },
+    {
+      "source": "config:env.js",
+      "target": "integration:Razorpay",
+      "type": "configures",
+      "confidence": 0.95,
+      "evidence": "env.js validates Razorpay key pairs in production",
+      "_origin": "semantic"
+    },
+    {
+      "source": "config:env.js",
+      "target": "middleware:auth",
+      "type": "configures",
+      "confidence": 0.95,
+      "evidence": "env.js provides JWT_SECRET, JWT_EXPIRES_IN, COOKIE_NAME for auth",
+      "_origin": "semantic"
+    },
+    {
+      "source": "script:create-admin.mjs",
+      "target": "model:User",
+      "type": "creates",
+      "confidence": 0.95,
+      "evidence": "create-admin.mjs creates first admin user with role='admin'",
+      "_origin": "semantic"
+    },
+    {
+      "source": "script:generate-image-review.mjs",
+      "target": "concept:ImageMapping",
+      "type": "generates_review_for",
+      "confidence": 0.95,
+      "evidence": "Generates image-review.html for manual verification of image mappings",
+      "_origin": "semantic"
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "hyperedge:studio_models",
+      "nodes": ["model:Collection", "model:Ritual", "model:BlogPost", "model:SiteContent"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "All four models introduced by Astrovetro Studio implementation",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:studio_controllers",
+      "nodes": ["controller:adminCollectionController", "controller:adminRitualController", "controller:adminBlogController", "controller:adminContentController"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "Four new controllers added for Studio sections",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:studio_public_routes",
+      "nodes": ["route:api_collections", "route:api_rituals", "route:api_content_homepage", "route:api_products_collection"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "Public API routes added for Studio content",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:studio_admin_routes",
+      "nodes": ["route:api_admin_collections", "route:api_admin_collections_id", "route:api_admin_collections_products", "route:api_admin_rituals", "route:api_admin_blog", "route:api_admin_content_homepage"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "Admin API routes added for Studio management",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:flagged_products",
+      "nodes": ["product:amethyst-ring", "product:pyrite-cluster", "product:carnelian-pendant", "product:labradorite-pendant"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "Four products flagged needsReview in image mapping",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:p0_issues",
+      "nodes": ["issue:P0-001", "issue:P0-002", "issue:P0-003", "issue:P0-004"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "All P0 (immediate blocker) issues from issue register",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:core_models",
+      "nodes": ["model:Product", "model:User", "model:Order", "model:StockMovement"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "Core domain models for e-commerce functionality",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:auth_middleware",
+      "nodes": ["middleware:requireAdmin", "middleware:requireSameOrigin", "middleware:auth"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "Authentication and authorization middleware stack",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:frontend_assets",
+      "nodes": ["asset:public/assets/admin.js", "asset:public/assets/api.js", "asset:public/assets/store.js", "asset:public/assets/customer.js"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "Client-side JavaScript assets in public/assets/",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:storefront_pages",
+      "nodes": ["page:home.html", "page:shop.html", "page:product.html", "page:rituals.html", "page:ritual.html", "page:admin.html"],
+      "type": "group",
+      "confidence": 0.95,
+      "evidence": "Key frontend HTML pages for storefront and admin",
+      "_origin": "semantic"
+    }
+  ],
+  "input_tokens": 15000,
+  "output_tokens": 8500,
+  "coverage": {
+    "/Users/surajkumar/Desktop/Astrovetro-production/docs/IMAGE-MAPPING.md": 274,
+    "/Users/surajkumar/Desktop/Astrovetro-production/docs/STUDIO.md": 544,
+    "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_EXECUTIVE_SUMMARY.md": 112,
+    "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_ISSUE_REGISTER.md": 59,
+    "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_PROJECT_CONTEXT.md": 229,
+    "/Users/surajkumar/Desktop/Astrovetro-production/docs/audit/ASTROVETRO_TECHNICAL_AUDIT.md": 460
+  }
+}

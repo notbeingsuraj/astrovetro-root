@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<meta name="robots" content="index, follow">
+<meta name="description" content="A ritual from the Astro Vetro studio — purpose, materials and steps.">
+<title>Ritual — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/rituals">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ritual — Astro Vetro">
+<meta property="og:description" content="A ritual from the Astro Vetro studio.">
+<meta property="og:url" content="/rituals">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ritual — Astro Vetro">
+<meta name="twitter:description" content="A ritual from the Astro Vetro studio.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+
+<main id="main">
+  <div class="page">
+    <div class="wrap article" id="ritualRoot">
+      <div class="empty">Loading…</div>
+    </div>
+  </div>
+  <section class="section" id="ritualProducts">
+    <div class="wrap">
+      <div class="section-title">
+        <div><div class="eyebrow">For this ritual</div><h2>Pieces that belong with it</h2></div>
+        <a class="btn btn-outline" href="/shop.html">View the collection</a>
+      </div>
+      <div class="journal-grid" id="ritualProductGrid"></div>
+    </div>
+  </section>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const root = AV.qs('#ritualRoot');
+const relatedGrid = AV.qs('#ritualProductGrid');
+const productsSection = AV.qs('#ritualProducts');
+const slug = location.pathname.split('/').filter(Boolean).pop();
+
+function paragraphs(text) {
+  return String(text || '')
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${AV.esc(p)}</p>`)
+    .join('');
+}
+
+(async () => {
+  if (!slug) {
+    location.replace('/rituals');
+    return;
+  }
+  try {
+    const env = await AV.api.get(`/api/rituals/${encodeURIComponent(slug)}`);
+    const r = env.data;
+    if (!r) throw new Error('Ritual not found');
+
+    AV.seo({
+      title: r.seoTitle || `${r.title} — Rituals`,
+      description: r.seoDescription || r.intro || 'A ritual from the Astro Vetro studio.',
+      url: `/rituals/${encodeURIComponent(r.slug)}`,
+      type: 'article',
+    });
+
+    const photos = (r.images || []).map((src, i) => ({
+      src,
+      alt: (r.imageAlts || [])[i] || r.title,
+    }));
+
+    root.innerHTML = `
+      <a class="back" href="/rituals">← Rituals</a>
+      <div class="eyebrow" style="margin-top:30px">${AV.esc(r.duration || 'A quiet practice')}${r.purpose ? ' · ' + AV.esc(r.purpose) : ''}</div>
+      <h1 style="font:400 clamp(40px,5vw,64px)/0.95 'Cormorant Garamond';text-transform:uppercase;letter-spacing:-.01em;margin:6px 0 18px">${AV.esc(r.title)}</h1>
+      <p class="lead">${AV.esc(r.intro || '')}</p>
+      ${photos.length ? `<div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:30px 0">${photos.map((p) => `<img src="${AV.esc(p.src)}" alt="${AV.esc(p.alt)}" style="width:100%;height:320px;object-fit:cover;border-radius:16px">`).join('')}</div>` : ''}
+      <div class="prose">${paragraphs(r.description)}</div>
+      ${r.preparation ? `<h2 style="margin-top:36px">Before you begin</h2><div class="prose">${paragraphs(r.preparation)}</div>` : ''}
+      ${(r.materials || []).length ? `<h2 style="margin-top:36px">What you need</h2><ul class="prose">${r.materials.map((m) => `<li>${AV.esc(m)}</li>`).join('')}</ul>` : ''}
+      ${(r.steps || []).length ? `<h2 style="margin-top:36px">The ritual</h2><ol class="prose">${r.steps.map((s) => `<li style="margin-bottom:18px">${s.title ? `<strong>${AV.esc(s.title)}</strong><br>` : ''}${AV.esc(s.body)}</li>`).join('')}</ol>` : ''}
+      ${(r.relatedCollections || []).length ? `<div class="intention-chips" style="margin-top:34px">${r.relatedCollections.map((c) => `<a class="chip" href="/collections/${encodeURIComponent(c.slug)}">${AV.esc(c.name)}</a>`).join('')}</div>` : ''}`;
+
+    const products = [...(r.relatedProducts || [])];
+    if (r.linkedProduct && !products.some((p) => p.id === r.linkedProduct.id)) {
+      products.unshift(r.linkedProduct);
+    }
+    if (products.length) {
+      relatedGrid.innerHTML = products.map((p, i) => AV.productCard(p, i)).join('');
+      AV.markInCart();
+    } else {
+      productsSection.hidden = true;
+    }
+  } catch (e) {
+    root.innerHTML = `<h1 style="font-size:clamp(32px,4vw,52px);text-transform:uppercase;margin-bottom:18px">Ritual unavailable</h1>
+      <div class="empty">${AV.esc(AV.firstErr(e))}<br><a class="btn btn-ghost" href="/rituals">Back to rituals</a></div>`;
+    productsSection.hidden = true;
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1358 @@
+{
+  "nodes": [
+    {
+      "id": "file:Astrovetro-landing-page-animation.html",
+      "label": "Astrovetro-landing-page-animation.html",
+      "type": "file",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "1-229",
+      "confidence": 1.0,
+      "properties": {
+        "description": "Landing page with interactive crystal/ritual split animation",
+        "language": "html"
+      }
+    },
+    {
+      "id": "file:DELIVERY-SUMMARY.md",
+      "label": "DELIVERY-SUMMARY.md",
+      "type": "file",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "1-230",
+      "confidence": 1.0,
+      "properties": {
+        "description": "Delivery summary document for Astrovetro project",
+        "language": "markdown"
+      }
+    },
+    {
+      "id": "file:README.txt",
+      "label": "README.txt",
+      "type": "file",
+      "source_file": "More-frontend-files/README.txt",
+      "source_location": "1-4",
+      "confidence": 1.0,
+      "properties": {
+        "description": "Readme for customer frontend pages",
+        "language": "text"
+      }
+    },
+    {
+      "id": "file:accounts.html",
+      "label": "accounts.html",
+      "type": "file",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1-1",
+      "confidence": 1.0,
+      "properties": {
+        "description": "Customer account page",
+        "language": "html"
+      }
+    },
+    {
+      "id": "file:cart.html",
+      "label": "cart.html",
+      "type": "file",
+      "source_file": "More-frontend-files/cart.html",
+      "source_location": "1-1",
+      "confidence": 1.0,
+      "properties": {
+        "description": "Shopping cart page",
+        "language": "html"
+      }
+    },
+    {
+      "id": "file:checkout.html",
+      "label": "checkout.html",
+      "type": "file",
+      "source_file": "More-frontend-files/checkout.html",
+      "source_location": "1-1",
+      "confidence": 1.0,
+      "properties": {
+        "description": "Checkout page",
+        "language": "html"
+      }
+    },
+    {
+      "id": "concept:AstroVetro",
+      "label": "AstroVetro",
+      "type": "concept",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "6,194",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Brand name for the crystal/ritual e-commerce site"
+      }
+    },
+    {
+      "id": "page:landing",
+      "label": "Landing Page",
+      "type": "page",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "179-199",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Interactive split-screen landing with crystal/ritual panels",
+        "route": "/"
+      }
+    },
+    {
+      "id": "page:accounts",
+      "label": "My Account",
+      "type": "page",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Customer account management page",
+        "route": "/account.html"
+      }
+    },
+    {
+      "id": "page:cart",
+      "label": "Shopping Cart",
+      "type": "page",
+      "source_file": "More-frontend-files/cart.html",
+      "source_location": "1",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Shopping cart page",
+        "route": "/cart.html"
+      }
+    },
+    {
+      "id": "page:checkout",
+      "label": "Checkout",
+      "type": "page",
+      "source_file": "More-frontend-files/checkout.html",
+      "source_location": "1",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Checkout/payment page",
+        "route": "/checkout.html"
+      }
+    },
+    {
+      "id": "ui_component:crystal_panel",
+      "label": "Crystal Panel",
+      "type": "ui_component",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "41-56,180",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Left panel showing crystals products",
+        "css_class": "panel crystal"
+      }
+    },
+    {
+      "id": "ui_component:ritual_panel",
+      "label": "Ritual Panel",
+      "type": "ui_component",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "41-43,181",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Right panel showing rituals products",
+        "css_class": "panel ritual"
+      }
+    },
+    {
+      "id": "ui_component:center_mark",
+      "label": "Center Mark/Brand",
+      "type": "ui_component",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "74-98,193-196",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Central brand mark with AstroVetro name",
+        "css_class": "center-mark"
+      }
+    },
+    {
+      "id": "ui_component:crystal_content",
+      "label": "Crystal Content",
+      "type": "ui_component",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "99-138,183-186",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Content overlay for crystal side",
+        "css_class": "content crystal-content"
+      }
+    },
+    {
+      "id": "ui_component:ritual_content",
+      "label": "Ritual Content",
+      "type": "ui_component",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "128-150,188-191",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Content overlay for ritual side",
+        "css_class": "content ritual-content"
+      }
+    },
+    {
+      "id": "ui_component:credit_bar",
+      "label": "Credit Bar",
+      "type": "ui_component",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "156-168,198",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Bottom credit/navigation hint",
+        "css_class": "credit"
+      }
+    },
+    {
+      "id": "style:css_variables",
+      "label": "CSS Custom Properties",
+      "type": "style",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "8-11",
+      "confidence": 0.95,
+      "properties": {
+        "variables": ["--cream:#f1eadc", "--deep:#10261f"]
+      }
+    },
+    {
+      "id": "style:design_system",
+      "label": "Design System (Extended)",
+      "type": "style",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.95,
+      "properties": {
+        "colors": ["--forest:#18372c", "--deep:#10261f", "--moss:#536b4e", "--sage:#87947b", "--olive:#9a9b69", "--cream:#f1eadc", "--sand:#d9cbb5", "--clay:#a76d4d", "--ink:#17221d", "--white:#faf8f1", "--brown:#3f3026"],
+        "fonts": ["Cormorant Garamond", "DM Sans"],
+        "gradient": "--ritual-gradient:linear-gradient(118deg,#10261f 0%,#18372c 45%,#4b3027 100%)"
+      }
+    },
+    {
+      "id": "function:mouse_tracking",
+      "label": "Mouse Position Tracking",
+      "type": "function",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "204-213",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Tracks mouse X position to activate crystal/ritual panels",
+        "event": "mousemove"
+      }
+    },
+    {
+      "id": "function:mouse_leave",
+      "label": "Mouse Leave Reset",
+      "type": "function",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "215-217",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Resets panel states on mouse leave",
+        "event": "mouseleave"
+      }
+    },
+    {
+      "id": "function:click_navigation",
+      "label": "Click Navigation",
+      "type": "function",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "220-226",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Navigates to shop or rituals page based on click position",
+        "event": "click",
+        "targets": ["astrovetro_final_website_combined_name.html#shop", "astrovetro_final_website_combined_name.html#rituals"]
+      }
+    },
+    {
+      "id": "concept:crystals_category",
+      "label": "Crystals Category",
+      "type": "concept",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "184-185",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Objects chosen for texture, presence and quiet ritual of touch"
+      }
+    },
+    {
+      "id": "concept:rituals_category",
+      "label": "Rituals Category",
+      "type": "concept",
+      "source_file": "Astrovetro-landing-page-animation.html",
+      "source_location": "189-190",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Small practices and meaningful objects for making space in the everyday"
+      }
+    },
+    {
+      "id": "concept:image_integration",
+      "label": "Product Image Integration",
+      "type": "concept",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "3,98-101",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Real photography on cards, product gallery with stage + thumbnails + per-photo alt",
+        "status": "delivered"
+      }
+    },
+    {
+      "id": "concept:inventory_management",
+      "label": "Inventory Management",
+      "type": "concept",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "3,102-104",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Ledgered, atomic, never negative stock with opening balances, adjust/write-off/return/sale types",
+        "status": "delivered"
+      }
+    },
+    {
+      "id": "concept:admin_dashboard",
+      "label": "Admin Dashboard",
+      "type": "concept",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "3,105-111",
+      "confidence": 0.95,
+      "properties": {
+        "description": "13 modules: Overview, Orders, Products, Inventory, Stock Movements, Categories, Suppliers, Purchase Orders, Image Library, Reports, Admin Users, Audit Log, Settings",
+        "status": "delivered",
+        "modules": 13
+      }
+    },
+    {
+      "id": "concept:security_features",
+      "label": "Security Features",
+      "type": "concept",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "112-115",
+      "confidence": 0.95,
+      "properties": {
+        "description": "JWT httpOnly cookie sessions, requireAdmin guards, CSRF origin checks, rate-limited auth, CSV formula-injection neutralisation, upload magic-byte validation, last-admin guard, audit trail",
+        "status": "delivered"
+      }
+    },
+    {
+      "id": "data_model:Product",
+      "label": "Product Model",
+      "type": "data_model",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "21-23,119-122",
+      "confidence": 0.95,
+      "properties": {
+        "fields": ["sku (unique sparse)", "status (enum)", "costPrice", "reorderThreshold", "reorderQuantity", "imageAlts", "needsReview", "reviewNote", "tags"],
+        "methods": ["toAdmin()", "isLowStock()"]
+      }
+    },
+    {
+      "id": "data_model:StockMovement",
+      "label": "Stock Movement",
+      "type": "data_model",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "24-25",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Immutable stock ledger entries"
+      }
+    },
+    {
+      "id": "data_model:StockReceipt",
+      "label": "Stock Receipt",
+      "type": "data_model",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "24-25",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Stock receipt with unique idempotency"
+      }
+    },
+    {
+      "id": "data_model:AuditLog",
+      "label": "Audit Log",
+      "type": "data_model",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "24-25",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Audit trail entries"
+      }
+    },
+    {
+      "id": "data_model:Category",
+      "label": "Category",
+      "type": "data_model",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "24-25,122",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Product categories (kept as slug)"
+      }
+    },
+    {
+      "id": "data_model:Supplier",
+      "label": "Supplier",
+      "type": "data_model",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "24-25",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Supplier information"
+      }
+    },
+    {
+      "id": "data_model:PurchaseOrder",
+      "label": "Purchase Order",
+      "type": "data_model",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "24-25,109-110",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Draft→send→receive with idempotency keys + partial receive + receipts"
+      }
+    },
+    {
+      "id": "service:inventoryService",
+      "label": "Inventory Service",
+      "type": "function",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "19-20",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Guarded atomic $inc with compensating rollback, movement + audit recorded",
+        "file": "src/services/inventoryService.js"
+      }
+    },
+    {
+      "id": "service:auditService",
+      "label": "Audit Service",
+      "type": "function",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "62",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Audit logging service",
+        "file": "src/services/auditService.js"
+      }
+    },
+    {
+      "id": "route:admin_api",
+      "label": "Admin API Routes",
+      "type": "api_endpoint",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "91,112-113",
+      "confidence": 0.95,
+      "properties": {
+        "count": "40+",
+        "prefix": "/api/admin/*",
+        "auth": "requireAdmin guard"
+      }
+    },
+    {
+      "id": "route:public_api",
+      "label": "Public API Routes",
+      "type": "api_endpoint",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "44",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Includes AV.api.put for images endpoint",
+        "file": "public/assets/api.js"
+      }
+    },
+    {
+      "id": "test:test_suite",
+      "label": "Test Suite",
+      "type": "test",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "92-93,128-139",
+      "confidence": 0.95,
+      "properties": {
+        "files": 7,
+        "tests": 47,
+        "pass": 47,
+        "fail": 0,
+        "duration": "~2.0s",
+        "coverage": "401/403/200 authz; product/category/supplier/PO flows; SKU/slug uniqueness; image assign/append/remove; concurrent adjustments; racing withdrawals; ledger sum === stored stock; untrack → 409; PO send/receive idempotent; dashboard metrics; CSV formula safety; upload magic-bytes + filesystem assertion; last-admin guard; audit trail; catalogue asset integrity; no hotlinks; static wiring of admin desk"
+      }
+    },
+    {
+      "id": "script:migrate_catalogue",
+      "label": "Migrate Catalogue Script",
+      "type": "script",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "56,123-124,181-187",
+      "confidence": 0.95,
+      "properties": {
+        "file": "scripts/migrate-catalogue.mjs",
+        "description": "Additive, idempotent migration for catalogue with alt-text backfill guard"
+      }
+    },
+    {
+      "id": "script:create_admin",
+      "label": "Create Admin Script",
+      "type": "script",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "62,127,215",
+      "confidence": 0.95,
+      "properties": {
+        "file": "scripts/create-admin.mjs",
+        "description": "Creates dev admin user (no password seeded in repo)"
+      }
+    },
+    {
+      "id": "script:smoke_admin",
+      "label": "Smoke Admin Script",
+      "type": "script",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "56,155-161,223-225",
+      "confidence": 0.95,
+      "properties": {
+        "file": "scripts/smoke-admin.mjs",
+        "description": "Signs in as dev admin against RUNNING server and exercises every admin endpoint"
+      }
+    },
+    {
+      "id": "script:generate_image_review",
+      "label": "Generate Image Review Script",
+      "type": "script",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "168-175",
+      "confidence": 0.95,
+      "properties": {
+        "file": "scripts/generate-image-review.mjs",
+        "description": "Renders docs/image-review.html for human photo verification"
+      }
+    },
+    {
+      "id": "asset:image_library",
+      "label": "Image Library",
+      "type": "asset",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "60,71-74,176-179",
+      "confidence": 0.95,
+      "properties": {
+        "location": "public/assets/img/library/",
+        "unassigned_photos": 84,
+        "total_files": 168,
+        "description": "Unassigned photos for manual curation"
+      }
+    },
+    {
+      "id": "asset:mapped_photos",
+      "label": "Mapped Product Photos",
+      "type": "asset",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "66-70",
+      "confidence": 0.95,
+      "properties": {
+        "count": 77,
+        "products": 11,
+        "formats": ["-large.webp", "-thumb.webp"],
+        "size": "45 MB",
+        "location": "public/assets/img/products/{slug}/"
+      }
+    },
+    {
+      "id": "document:image_manifest",
+      "label": "Image Manifest",
+      "type": "document",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "75-76",
+      "confidence": 0.95,
+      "properties": {
+        "file": "docs/image-manifest.json",
+        "description": "Per-photo score, margin, runner-up, album index, dimensions, bytes"
+      }
+    },
+    {
+      "id": "document:image_mapping_md",
+      "label": "IMAGE-MAPPING.md",
+      "type": "document",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "76",
+      "confidence": 0.95,
+      "properties": {
+        "file": "docs/IMAGE-MAPPING.md",
+        "description": "Human-readable version of image manifest"
+      }
+    },
+    {
+      "id": "document:readme_md",
+      "label": "README.md",
+      "type": "document",
+      "source_file": "DELIVERY-SUMMARY.md",
+      "source_location": "61",
+      "confidence": 0.95,
+      "properties": {
+        "file": "README.md",
+        "description": "Real setup/admin/test instructions, structure, roadmap"
+      }
+    },
+    {
+      "id": "ui_component:site_header",
+      "label": "Site Header",
+      "type": "ui_component",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Sticky header with logo, nav, and header actions",
+        "css_class": "site-header",
+        "height": "78px",
+        "backdrop_filter": "blur(12px)"
+      }
+    },
+    {
+      "id": "ui_component:logo",
+      "label": "Logo",
+      "type": "ui_component",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Cormorant Garamond uppercase logo",
+        "css_class": "logo",
+        "font_size": "29px"
+      }
+    },
+    {
+      "id": "ui_component:site_nav",
+      "label": "Site Navigation",
+      "type": "ui_component",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Uppercase navigation links",
+        "css_class": "site-nav",
+        "font_size": "11px"
+      }
+    },
+    {
+      "id": "ui_component:header_actions",
+      "label": "Header Actions",
+      "type": "ui_component",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Icon buttons (cart, search, account)",
+        "css_class": "header-actions"
+      }
+    },
+    {
+      "id": "ui_component:icon_button",
+      "label": "Icon Button",
+      "type": "ui_component",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Circular icon buttons with border",
+        "css_class": "icon",
+        "size": "37px"
+      }
+    },
+    {
+      "id": "ui_component:page_container",
+      "label": "Page Container",
+      "type": "ui_component",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Main page content container",
+        "css_class": "page",
+        "max_width": "1440px",
+        "padding": "78px 4vw 110px"
+      }
+    },
+    {
+      "id": "ui_component:panel",
+      "label": "Panel/Card",
+      "type": "ui_component",
+      "source_file": "More-frontend-files/accounts.html",
+      "source_location": "1",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Bordered content panel",
+        "css_class": "panel",
+        "border": "1px solid var(--line)",
+        "background": "rgba(250,248,241,...)"
+      }
+    },
+    {
+      "id": "concept:customer_pages",
+      "label": "Customer Pages",
+      "type": "concept",
+      "source_file": "More-frontend-files/README.txt",
+      "source_location": "1-4",
+      "confidence": 0.95,
+      "properties": {
+        "pages": ["cart.html", "checkout.html", "accounts.html", "wishlist.html", "tracking.html", "order-history.html"],
+        "description": "Six standalone responsive HTML pages based on Astro Vetro design system"
+      }
+    },
+    {
+      "id": "page:wishlist",
+      "label": "Wishlist",
+      "type": "page",
+      "source_file": "More-frontend-files/README.txt",
+      "source_location": "4",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Customer wishlist page",
+        "route": "/wishlist.html"
+      }
+    },
+    {
+      "id": "page:tracking",
+      "label": "Order Tracking",
+      "type": "page",
+      "source_file": "More-frontend-files/README.txt",
+      "source_location": "4",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Order tracking page",
+        "route": "/tracking.html"
+      }
+    },
+    {
+      "id": "page:order_history",
+      "label": "Order History",
+      "type": "page",
+      "source_file": "More-frontend-files/README.txt",
+      "source_location": "4",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Order history page",
+        "route": "/order-history.html"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "page:landing",
+      "type": "contains",
+      "confidence": 0.95,
+      "evidence": "Landing page markup at lines 179-199",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "concept:AstroVetro",
+      "type": "displays",
+      "confidence": 0.95,
+      "evidence": "Brand name in title (line 6) and center-mark (line 194)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "ui_component:crystal_panel",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Crystal panel div at line 180",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "ui_component:ritual_panel",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Ritual panel div at line 181",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "ui_component:center_mark",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Center mark div at lines 193-196",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "ui_component:crystal_content",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Crystal content div at lines 183-186",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "ui_component:ritual_content",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Ritual content div at lines 188-191",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "ui_component:credit_bar",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Credit div at line 198",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "style:css_variables",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "CSS variables defined at lines 8-11",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "function:mouse_tracking",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "Mousemove event listener at lines 204-213",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "function:mouse_leave",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "Mouseleave event listener at lines 215-217",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:Astrovetro-landing-page-animation.html",
+      "target": "function:click_navigation",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "Click event listener at lines 220-226",
+      "_origin": "semantic"
+    },
+    {
+      "source": "ui_component:crystal_panel",
+      "target": "concept:crystals_category",
+      "type": "showcases",
+      "confidence": 0.9,
+      "evidence": "Crystal panel displays 'Crystals' heading and description",
+      "_origin": "semantic"
+    },
+    {
+      "source": "ui_component:ritual_panel",
+      "target": "concept:rituals_category",
+      "type": "showcases",
+      "confidence": 0.9,
+      "evidence": "Ritual panel displays 'Rituals' heading and description",
+      "_origin": "semantic"
+    },
+    {
+      "source": "function:click_navigation",
+      "target": "page:landing",
+      "type": "navigates_to",
+      "confidence": 0.9,
+      "evidence": "Click navigates to shop/rituals anchors on combined site",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "concept:image_integration",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Described in Features delivered section (lines 98-101)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "concept:inventory_management",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Described in Features delivered section (lines 102-104)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "concept:admin_dashboard",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Described in Features delivered section (lines 105-111)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "concept:security_features",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Described in Features delivered section (lines 112-115)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "data_model:Product",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "Product schema extension described (lines 21-23, 119-122)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "data_model:StockMovement",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "New model for immutable stock ledger (line 24-25)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "data_model:StockReceipt",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "New model with unique idempotency (line 24-25)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "data_model:AuditLog",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "New model for audit trail (line 24-25)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "data_model:Category",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "Category model (line 24-25, 122)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "data_model:Supplier",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "Supplier model (line 24-25)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "data_model:PurchaseOrder",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "PurchaseOrder model with idempotency keys (line 24-25, 109-110)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "service:inventoryService",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "Inventory service with atomic operations (lines 19-20)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "service:auditService",
+      "type": "describes",
+      "confidence": 0.9,
+      "evidence": "Audit service mentioned in backend files (line 62)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "route:admin_api",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "40+ admin API routes with requireAdmin guard (lines 91, 112-113)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "route:public_api",
+      "type": "describes",
+      "confidence": 0.9,
+      "evidence": "AV.api.put added to public/assets/api.js (line 44)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "test:test_suite",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Test suite results and coverage (lines 92-93, 128-139)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "script:migrate_catalogue",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Migration script with alt-text backfill (lines 56, 123-124, 181-187)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "script:create_admin",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Create admin script (lines 62, 127, 215)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "script:smoke_admin",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Smoke admin script (lines 56, 155-161, 223-225)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "script:generate_image_review",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Generate image review script (lines 168-175)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "asset:image_library",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Image library with 84 unassigned photos (lines 60, 71-74, 176-179)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "asset:mapped_photos",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "77 mapped photos across 11 products (lines 66-70)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "document:image_manifest",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Image manifest JSON (lines 75-76)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "document:image_mapping_md",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Human-readable image mapping (line 76)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:DELIVERY-SUMMARY.md",
+      "target": "document:readme_md",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "README.md with setup instructions (line 61)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "page:accounts",
+      "type": "contains",
+      "confidence": 0.95,
+      "evidence": "Account page markup",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "style:design_system",
+      "type": "defines",
+      "confidence": 0.95,
+      "evidence": "Extended design system with colors, fonts, gradient",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "ui_component:site_header",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Site header component in markup",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "ui_component:logo",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Logo component in header",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "ui_component:site_nav",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Site navigation in header",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "ui_component:header_actions",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Header actions with icon buttons",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "ui_component:icon_button",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Icon button component",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "ui_component:page_container",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Page container for main content",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/accounts.html",
+      "target": "ui_component:panel",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Panel/card component for content sections",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/cart.html",
+      "target": "page:cart",
+      "type": "contains",
+      "confidence": 0.95,
+      "evidence": "Cart page markup",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/cart.html",
+      "target": "style:design_system",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "Uses same design system as accounts.html",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/checkout.html",
+      "target": "page:checkout",
+      "type": "contains",
+      "confidence": 0.95,
+      "evidence": "Checkout page markup",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/checkout.html",
+      "target": "style:design_system",
+      "type": "uses",
+      "confidence": 0.95,
+      "evidence": "Uses same design system as accounts.html",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:More-frontend-files/README.txt",
+      "target": "concept:customer_pages",
+      "type": "documents",
+      "confidence": 0.95,
+      "evidence": "Documents the 6 customer pages",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:customer_pages",
+      "target": "page:wishlist",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Wishlist listed in customer pages",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:customer_pages",
+      "target": "page:tracking",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Tracking listed in customer pages",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:customer_pages",
+      "target": "page:order_history",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Order history listed in customer pages",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:customer_pages",
+      "target": "page:cart",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Cart listed in customer pages",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:customer_pages",
+      "target": "page:checkout",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Checkout listed in customer pages",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:customer_pages",
+      "target": "page:accounts",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Accounts listed in customer pages",
+      "_origin": "semantic"
+    },
+    {
+      "source": "service:inventoryService",
+      "target": "data_model:StockMovement",
+      "type": "writes",
+      "confidence": 0.9,
+      "evidence": "Service writes stock movements to ledger",
+      "_origin": "semantic"
+    },
+    {
+      "source": "service:inventoryService",
+      "target": "data_model:Product",
+      "type": "updates",
+      "confidence": 0.9,
+      "evidence": "Service updates product stock atomically",
+      "_origin": "semantic"
+    },
+    {
+      "source": "route:admin_api",
+      "target": "concept:admin_dashboard",
+      "type": "serves",
+      "confidence": 0.95,
+      "evidence": "Admin API routes serve the admin dashboard modules",
+      "_origin": "semantic"
+    },
+    {
+      "source": "data_model:Product",
+      "target": "asset:mapped_photos",
+      "type": "references",
+      "confidence": 0.9,
+      "evidence": "Products reference mapped photos via images array",
+      "_origin": "semantic"
+    },
+    {
+      "source": "data_model:Product",
+      "target": "data_model:Category",
+      "type": "references",
+      "confidence": 0.9,
+      "evidence": "Products have category slug",
+      "_origin": "semantic"
+    },
+    {
+      "source": "data_model:PurchaseOrder",
+      "target": "data_model:Supplier",
+      "type": "references",
+      "confidence": 0.9,
+      "evidence": "Purchase orders reference suppliers",
+      "_origin": "semantic"
+    },
+    {
+      "source": "data_model:PurchaseOrder",
+      "target": "data_model:StockReceipt",
+      "type": "creates",
+      "confidence": 0.9,
+      "evidence": "Receiving PO creates stock receipts",
+      "_origin": "semantic"
+    },
+    {
+      "source": "script:migrate_catalogue",
+      "target": "data_model:Product",
+      "type": "migrates",
+      "confidence": 0.95,
+      "evidence": "Migrates catalogue data to Product model",
+      "_origin": "semantic"
+    },
+    {
+      "source": "script:smoke_admin",
+      "target": "route:admin_api",
+      "type": "tests",
+      "confidence": 0.95,
+      "evidence": "Smoke script exercises all admin endpoints",
+      "_origin": "semantic"
+    },
+    {
+      "source": "test:test_suite",
+      "target": "route:admin_api",
+      "type": "tests",
+      "confidence": 0.95,
+      "evidence": "Tests exercise admin API routes",
+      "_origin": "semantic"
+    },
+    {
+      "source": "test:test_suite",
+      "target": "service:inventoryService",
+      "type": "tests",
+      "confidence": 0.95,
+      "evidence": "Tests cover concurrent adjustments and racing withdrawals",
+      "_origin": "semantic"
+    },
+    {
+      "source": "asset:image_library",
+      "target": "asset:mapped_photos",
+      "type": "feeds",
+      "confidence": 0.9,
+      "evidence": "Library photos can be assigned to products",
+      "_origin": "semantic"
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "hyperedge:landing_animation_system",
+      "nodes": ["ui_component:crystal_panel", "ui_component:ritual_panel", "ui_component:center_mark", "ui_component:crystal_content", "ui_component:ritual_content", "function:mouse_tracking", "function:mouse_leave", "function:click_navigation"],
+      "type": "composes",
+      "confidence": 0.9,
+      "evidence": "All components and functions work together to create the interactive landing animation",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:admin_dashboard_modules",
+      "nodes": ["concept:admin_dashboard", "route:admin_api", "service:inventoryService", "service:auditService", "data_model:Product", "data_model:StockMovement", "data_model:Category", "data_model:Supplier", "data_model:PurchaseOrder"],
+      "type": "composes",
+      "confidence": 0.9,
+      "evidence": "Admin dashboard composed of 13 modules backed by these models, services, and routes",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:customer_page_suite",
+      "nodes": ["page:accounts", "page:cart", "page:checkout", "page:wishlist", "page:tracking", "page:order_history", "style:design_system", "ui_component:site_header", "ui_component:panel"],
+      "type": "composes",
+      "confidence": 0.9,
+      "evidence": "Six customer pages sharing common design system and UI components",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:image_pipeline",
+      "nodes": ["asset:image_library", "asset:mapped_photos", "document:image_manifest", "document:image_mapping_md", "script:generate_image_review", "concept:image_integration"],
+      "type": "pipeline",
+      "confidence": 0.9,
+      "evidence": "Image pipeline from library curation to product mapping to review",
+      "_origin": "semantic"
+    }
+  ],
+  "input_tokens": 15000,
+  "output_tokens": 8000,
+  "coverage": {
+    "Astrovetro-landing-page-animation.html": 229,
+    "DELIVERY-SUMMARY.md": 230,
+    "More-frontend-files/README.txt": 4,
+    "More-frontend-files/accounts.html": 1,
+    "More-frontend-files/cart.html": 1,
+    "More-frontend-files/checkout.html": 1
+  }
+}

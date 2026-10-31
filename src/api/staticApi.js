@@ -100,6 +100,49 @@ router.get('/products/:slug', async (req, res, next) => {
   }
 });
 
+/* ── Editorial content ─────────────────────────────────────────────────── */
+router.get('/collections', async (_req, res, next) => {
+  try {
+    const { data, meta } = await provider.listCollections();
+    return ok(res, data, meta);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/collections/:slug', async (req, res, next) => {
+  try {
+    return ok(res, await provider.getCollection(req.params.slug));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/rituals', async (req, res, next) => {
+  try {
+    const { data, meta } = await provider.listRituals(req.query);
+    return ok(res, data, meta);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/rituals/:slug', async (req, res, next) => {
+  try {
+    return ok(res, await provider.getRitual(req.params.slug));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/content/homepage', async (_req, res, next) => {
+  try {
+    return ok(res, await provider.getHomepageContent());
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.get('/services', async (req, res, next) => {
   try {
     return ok(res, await provider.listServices(req.query));

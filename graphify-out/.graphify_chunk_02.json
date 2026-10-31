@@ -1,0 +1,1185 @@
+{
+  "nodes": [
+    {
+      "id": "file:order-history.html",
+      "label": "order-history.html",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/order-history.html",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "page_title": "Order History — Astro Vetro",
+        "language": "en",
+        "has_inline_styles": true,
+        "has_inline_scripts": false
+      }
+    },
+    {
+      "id": "file:tracking.html",
+      "label": "tracking.html",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/tracking.html",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "page_title": "Order Tracking — Astro Vetro",
+        "language": "en",
+        "has_inline_styles": true,
+        "has_inline_scripts": false
+      }
+    },
+    {
+      "id": "file:wishlist.html",
+      "label": "wishlist.html",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/wishlist.html",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "page_title": "Wishlist — Astro Vetro",
+        "language": "en",
+        "has_inline_styles": true,
+        "has_inline_scripts": false
+      }
+    },
+    {
+      "id": "file:README.md",
+      "label": "README.md",
+      "type": "document",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "project_name": "Astrovetro",
+        "tagline": "The art of intention. The beauty of the unseen.",
+        "categories": ["CRYSTALS", "RITUALS", "CELESTIAL LIVING"],
+        "status": "CLIENT PROJECT"
+      }
+    },
+    {
+      "id": "file:astrovetro_final_website.html",
+      "label": "astrovetro_final_website.html",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "page_title": "Astro Vetro — Objects, Rituals & Symbols",
+        "language": "en",
+        "has_inline_styles": true,
+        "has_inline_scripts": true,
+        "sections": ["home", "shop", "products", "tarot", "readings", "rituals", "about", "journal", "newsletter", "contact"]
+      }
+    },
+    {
+      "id": "file:astrovetro_landing.html",
+      "label": "astrovetro_landing.html",
+      "type": "file",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_landing.html",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "page_title": "Astro Vetro — Crystals, Tarot & Ritual Objects",
+        "language": "en",
+        "has_external_styles": true,
+        "has_inline_scripts": true,
+        "has_external_scripts": true,
+        "sections": ["intro", "intentions", "products", "readings", "rituals", "about", "journal", "newsletter", "contact"]
+      }
+    },
+    {
+      "id": "concept:AstroVetro",
+      "label": "Astro Vetro",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 1-6",
+      "confidence": 1.0,
+      "properties": {
+        "description": "Bespoke digital storefront for crystals, rituals, and celestial living",
+        "tagline": "The art of intention. The beauty of the unseen."
+      }
+    },
+    {
+      "id": "concept:Crystals",
+      "label": "Crystals",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 79-82",
+      "confidence": 0.95,
+      "properties": {
+        "category": "product",
+        "subtypes": ["towers", "points", "clusters", "raw stones", "polished stones", "jewellery"]
+      }
+    },
+    {
+      "id": "concept:Rituals",
+      "label": "Rituals",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 79, 87-90",
+      "confidence": 0.95,
+      "properties": {
+        "category": "content",
+        "subtypes": ["tarot readings", "herbs", "essential oils", "ritual objects", "daily practices"]
+      }
+    },
+    {
+      "id": "concept:Tarot",
+      "label": "Tarot",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 79, 87",
+      "confidence": 0.95,
+      "properties": {
+        "category": "product",
+        "services": ["30-Minute Reading", "60-Minute Reading", "Relationship Reading", "Career & Direction"]
+      }
+    },
+    {
+      "id": "concept:Bracelets",
+      "label": "Bracelets",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 182",
+      "confidence": 0.9,
+      "properties": {
+        "category": "product",
+        "description": "Wearable crystal pieces"
+      }
+    },
+    {
+      "id": "concept:Journal",
+      "label": "Journal",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 194-200",
+      "confidence": 0.9,
+      "properties": {
+        "category": "content",
+        "articles": ["How to Choose Your First Crystal", "A Beginner's Guide to Tarot", "Make Space for a Daily Ritual"]
+      }
+    },
+    {
+      "id": "page:landing",
+      "label": "Landing Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_landing.html",
+      "source_location": "line 91-242",
+      "confidence": 1.0,
+      "properties": {
+        "route": "/",
+        "has_doors_overlay": true,
+        "loads_dynamic_content": true
+      }
+    },
+    {
+      "id": "page:home",
+      "label": "Home Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 180",
+      "confidence": 1.0,
+      "properties": {
+        "route": "#home",
+        "hero_section": true
+      }
+    },
+    {
+      "id": "page:shop",
+      "label": "Shop Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 182",
+      "confidence": 1.0,
+      "properties": {
+        "route": "#shop",
+        "intention_based_navigation": true
+      }
+    },
+    {
+      "id": "page:products",
+      "label": "Products Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 183",
+      "confidence": 1.0,
+      "properties": {
+        "route": "#products",
+        "product_grid": true,
+        "featured_products": 8
+      }
+    },
+    {
+      "id": "page:tarot",
+      "label": "Tarot Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 184",
+      "confidence": 1.0,
+      "properties": {
+        "route": "#tarot",
+        "banner_section": true
+      }
+    },
+    {
+      "id": "page:readings",
+      "label": "Readings Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 185",
+      "confidence": 1.0,
+      "properties": {
+        "route": "#readings",
+        "reading_types": 4,
+        "booking_cta": true
+      }
+    },
+    {
+      "id": "page:rituals",
+      "label": "Rituals Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 186",
+      "confidence": 1.0,
+      "properties": {
+        "route": "#rituals",
+        "ritual_categories": ["Herbs", "Essential oils", "Ritual objects"]
+      }
+    },
+    {
+      "id": "page:about",
+      "label": "About Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 187",
+      "confidence": 1.0,
+      "properties": {
+        "route": "#about",
+        "story_section": true
+      }
+    },
+    {
+      "id": "page:journal",
+      "label": "Journal Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 188",
+      "confidence": 1.0,
+      "properties": {
+        "route": "#journal",
+        "article_grid": true,
+        "articles_displayed": 3
+      }
+    },
+    {
+      "id": "page:order-history",
+      "label": "Order History Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/order-history.html",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "route": "order-history.html",
+        "order_table": true,
+        "empty_state": true
+      }
+    },
+    {
+      "id": "page:tracking",
+      "label": "Order Tracking Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/tracking.html",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "route": "tracking.html",
+        "tracking_timeline": true,
+        "order_lookup": true
+      }
+    },
+    {
+      "id": "page:wishlist",
+      "label": "Wishlist Page",
+      "type": "page",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/wishlist.html",
+      "source_location": "line 1",
+      "confidence": 1.0,
+      "properties": {
+        "route": "wishlist.html",
+        "wishlist_grid": true,
+        "move_to_cart": true
+      }
+    },
+    {
+      "id": "ui_component:site-header",
+      "label": "Site Header",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 4-5, 178",
+      "confidence": 1.0,
+      "properties": {
+        "sticky": true,
+        "height": "78px",
+        "backdrop_blur": true,
+        "contains": ["logo", "navigation", "header_actions"]
+      }
+    },
+    {
+      "id": "ui_component:logo",
+      "label": "Logo",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 5, 178",
+      "confidence": 1.0,
+      "properties": {
+        "font": "Cormorant Garamond",
+        "text": "Astro Vetro",
+        "link": "#home"
+      }
+    },
+    {
+      "id": "ui_component:navigation",
+      "label": "Navigation",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 5, 178",
+      "confidence": 1.0,
+      "properties": {
+        "links": ["Home", "Shop", "Tarot", "Rituals", "About", "Journal", "Contact"],
+        "mobile_menu": true
+      }
+    },
+    {
+      "id": "ui_component:header-actions",
+      "label": "Header Actions",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 5, 178",
+      "confidence": 1.0,
+      "properties": {
+        "icons": ["Search", "Bag/Cart"],
+        "icon_style": "circular with border"
+      }
+    },
+    {
+      "id": "ui_component:hero",
+      "label": "Hero Section",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 6, 180",
+      "confidence": 1.0,
+      "properties": {
+        "min_height": "720px",
+        "background_blur": true,
+        "cta_buttons": ["Shop the collection", "Explore tarot"]
+      }
+    },
+    {
+      "id": "ui_component:intention-card",
+      "label": "Intention Card",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 9-10, 182",
+      "confidence": 1.0,
+      "properties": {
+        "variants": ["Crystals", "Bracelets", "Tarot"],
+        "hover_effect": "translateY(-6px)",
+        "cta_button": true
+      }
+    },
+    {
+      "id": "ui_component:product-card",
+      "label": "Product Card",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 13, 183",
+      "confidence": 1.0,
+      "properties": {
+        "grid_columns": 4,
+        "art_placeholder": true,
+        "price_display": true,
+        "add_to_cart": true,
+        "products": ["Amethyst", "Clear Quartz", "Citrine", "Black Obsidian", "Labradorite", "Rose Quartz", "Moonstone"]
+      }
+    },
+    {
+      "id": "ui_component:journal-card",
+      "label": "Journal Card",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 18, 188",
+      "confidence": 1.0,
+      "properties": {
+        "grid_columns": 3,
+        "rounded_corners": true,
+        "articles": ["How to Choose Your First Crystal", "A Beginner's Guide to Tarot", "Make Space for a Daily Ritual"]
+      }
+    },
+    {
+      "id": "ui_component:newsletter-form",
+      "label": "Newsletter Form",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 19, 189",
+      "confidence": 1.0,
+      "properties": {
+        "inline_validation": true,
+        "submit_alert": true
+      }
+    },
+    {
+      "id": "ui_component:contact-form",
+      "label": "Contact Form",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 20, 190",
+      "confidence": 1.0,
+      "properties": {
+        "fields": ["Name", "Email", "Message"],
+        "submit_alert": true
+      }
+    },
+    {
+      "id": "ui_component:footer",
+      "label": "Footer",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 21, 192",
+      "confidence": 1.0,
+      "properties": {
+        "columns": 4,
+        "sections": ["Navigate", "Customer", "Astro Vetro"],
+        "copyright": "© 2026 Astro Vetro"
+      }
+    },
+    {
+      "id": "ui_component:doors-overlay",
+      "label": "Doors Overlay (First Visit)",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_landing.html",
+      "source_location": "line 30-52, 61-87",
+      "confidence": 1.0,
+      "properties": {
+        "doors": ["Rituals", "Crystals"],
+        "localStorage_key": "av_intro_seen",
+        "viewport_min_width": "700px",
+        "shown_once": true
+      }
+    },
+    {
+      "id": "ui_component:order-table",
+      "label": "Order Table",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/order-history.html",
+      "source_location": "line 1",
+      "confidence": 0.9,
+      "properties": {
+        "columns": ["Order", "Date", "Status", "Total", "Action"],
+        "empty_state_message": "You haven't placed any orders yet."
+      }
+    },
+    {
+      "id": "ui_component:tracking-timeline",
+      "label": "Tracking Timeline",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/tracking.html",
+      "source_location": "line 1",
+      "confidence": 0.9,
+      "properties": {
+        "steps": ["Order placed", "Processing", "Shipped", "Out for delivery", "Delivered"],
+        "order_lookup_input": true
+      }
+    },
+    {
+      "id": "ui_component:wishlist-grid",
+      "label": "Wishlist Grid",
+      "type": "ui_component",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/wishlist.html",
+      "source_location": "line 1",
+      "confidence": 0.9,
+      "properties": {
+        "item_actions": ["Move to cart", "Remove"],
+        "empty_state": true
+      }
+    },
+    {
+      "id": "style:design-system",
+      "label": "Design System",
+      "type": "style",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 1-3",
+      "confidence": 1.0,
+      "properties": {
+        "colors": {
+          "forest": "#18372c",
+          "deep": "#10261f",
+          "moss": "#536b4e",
+          "sage": "#87947b",
+          "olive": "#9a9b69",
+          "cream": "#f1eadc",
+          "sand": "#d9cbb5",
+          "clay": "#a76d4d",
+          "ink": "#17221d",
+          "white": "#faf8f1",
+          "brown": "#3f3026"
+        },
+        "fonts": {
+          "heading": "Cormorant Garamond (400, 500, 600)",
+          "body": "DM Sans (300, 400, 500)"
+        },
+        "gradient": "ritual-gradient: linear-gradient(118deg, #10261f 0%, #18372c 45%, #4b3027 100%)"
+      }
+    },
+    {
+      "id": "style:button-variants",
+      "label": "Button Variants",
+      "type": "style",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html",
+      "source_location": "line 7",
+      "confidence": 1.0,
+      "properties": {
+        "variants": ["btn-light", "btn-outline", "btn-dark"],
+        "border_radius": "30px",
+        "min_height": "48px"
+      }
+    },
+    {
+      "id": "tech:frontend-stack",
+      "label": "Frontend Technology Stack",
+      "type": "module",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 101-108",
+      "confidence": 1.0,
+      "properties": {
+        "technologies": ["HTML5", "CSS3", "JavaScript"]
+      }
+    },
+    {
+      "id": "tech:backend-stack",
+      "label": "Backend Technology Stack",
+      "type": "module",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 109-118",
+      "confidence": 1.0,
+      "properties": {
+        "technologies": ["Node.js", "Express", "MongoDB", "Mongoose", "JWT/cookie auth", "Razorpay"]
+      }
+    },
+    {
+      "id": "tech:devops-stack",
+      "label": "DevOps & Deployment Stack",
+      "type": "module",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 120-128",
+      "confidence": 1.0,
+      "properties": {
+        "technologies": ["Git", "GitHub", "Vercel", "vercel.json"]
+      }
+    },
+    {
+      "id": "script:api-js",
+      "label": "api.js",
+      "type": "script",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 172",
+      "confidence": 0.9,
+      "properties": {
+        "purpose": "fetch wrapper (auth, CSRF, JSON, errors)",
+        "location": "public/assets/api.js"
+      }
+    },
+    {
+      "id": "script:store-js",
+      "label": "store.js",
+      "type": "script",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 173",
+      "confidence": 0.9,
+      "properties": {
+        "purpose": "storefront rendering",
+        "location": "public/assets/store.js"
+      }
+    },
+    {
+      "id": "script:customer-js",
+      "label": "customer.js",
+      "type": "script",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 174",
+      "confidence": 0.9,
+      "properties": {
+        "purpose": "account / orders",
+        "location": "public/assets/customer.js"
+      }
+    },
+    {
+      "id": "script:admin-js",
+      "label": "admin.js",
+      "type": "script",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 175",
+      "confidence": 0.9,
+      "properties": {
+        "purpose": "admin desk logic (13 modules)",
+        "location": "public/assets/admin.js"
+      }
+    },
+    {
+      "id": "api:endpoint-products",
+      "label": "/api/products",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_landing.html",
+      "source_location": "line 293, 296",
+      "confidence": 1.0,
+      "properties": {
+        "method": "GET",
+        "parameters": ["limit", "featured", "sort", "order"],
+        "used_by": "landing page product rail"
+      }
+    },
+    {
+      "id": "api:endpoint-articles",
+      "label": "/api/articles",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_landing.html",
+      "source_location": "line 315",
+      "confidence": 1.0,
+      "properties": {
+        "method": "GET",
+        "parameters": ["limit"],
+        "used_by": "landing page journal rail"
+      }
+    },
+    {
+      "id": "api:endpoint-newsletter",
+      "label": "/api/newsletter/subscribe",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_landing.html",
+      "source_location": "line 341",
+      "confidence": 1.0,
+      "properties": {
+        "method": "POST",
+        "body": ["email"],
+        "used_by": "newsletter form"
+      }
+    },
+    {
+      "id": "api:endpoint-contact",
+      "label": "/api/contact",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_landing.html",
+      "source_location": "line 372",
+      "confidence": 1.0,
+      "properties": {
+        "method": "POST",
+        "body": ["name", "email", "message"],
+        "used_by": "contact form"
+      }
+    },
+    {
+      "id": "api:endpoint-admin",
+      "label": "/api/admin/*",
+      "type": "api_endpoint",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 232",
+      "confidence": 0.9,
+      "properties": {
+        "description": "Admin dashboard API endpoints (13 modules)",
+        "modules": ["Overview", "Orders", "Products", "Inventory", "Stock Movements", "Categories", "Suppliers", "Purchase Orders", "Image Library", "Reports", "Admin Users", "Audit Log", "Settings"]
+      }
+    },
+    {
+      "id": "architecture:separation",
+      "label": "Presentation-Backend Separation",
+      "type": "concept",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 160",
+      "confidence": 0.95,
+      "properties": {
+        "description": "Architecture separates presentation from server-side business logic"
+      }
+    },
+    {
+      "id": "data:catalogue",
+      "label": "Product Catalogue",
+      "type": "data_model",
+      "source_file": "/Users/surajkumar/Desktop/Astrovetro-production/README.md",
+      "source_location": "line 182",
+      "confidence": 0.9,
+      "properties": {
+        "source": "src/data/catalogue.js",
+        "pre_database": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:astrovetro_landing.html",
+      "target": "page:landing",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Landing page structure defined in astrovetro_landing.html lines 91-242",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_final_website.html",
+      "target": "page:home",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Home page section defined at line 180 with id=\"home\"",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_final_website.html",
+      "target": "page:shop",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Shop section defined at line 182 with id=\"shop\"",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_final_website.html",
+      "target": "page:products",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Products section defined at line 183 with id=\"products\"",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_final_website.html",
+      "target": "page:tarot",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Tarot section defined at line 184 with id=\"tarot\"",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_final_website.html",
+      "target": "page:readings",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Readings section defined at line 185 with id=\"readings\"",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_final_website.html",
+      "target": "page:rituals",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Rituals section defined at line 186 with id=\"rituals\"",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_final_website.html",
+      "target": "page:about",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "About section defined at line 187 with id=\"about\"",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_final_website.html",
+      "target": "page:journal",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Journal section defined at line 188 with id=\"journal\"",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:order-history.html",
+      "target": "page:order-history",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Order history page defined in order-history.html",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:tracking.html",
+      "target": "page:tracking",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Tracking page defined in tracking.html",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:wishlist.html",
+      "target": "page:wishlist",
+      "type": "defines",
+      "confidence": 1.0,
+      "evidence": "Wishlist page defined in wishlist.html",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:landing",
+      "target": "ui_component:doors-overlay",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Doors overlay rendered in landing page (lines 61-87)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:landing",
+      "target": "ui_component:site-header",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Header placeholder div#siteHeader at line 89",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:home",
+      "target": "ui_component:site-header",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Site header rendered at line 178",
+      "_origin": "semantic"
+    },
+    {
+      "source": "ui_component:site-header",
+      "target": "ui_component:logo",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Logo anchor with class=\"logo\" inside header",
+      "_origin": "semantic"
+    },
+    {
+      "source": "ui_component:site-header",
+      "target": "ui_component:navigation",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Nav element with id=\"siteNav\" inside header",
+      "_origin": "semantic"
+    },
+    {
+      "source": "ui_component:site-header",
+      "target": "ui_component:header-actions",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Header actions div with search and bag icons",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:home",
+      "target": "ui_component:hero",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Hero section with id=\"home\" at line 180",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:shop",
+      "target": "ui_component:intention-card",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Three intention cards (Crystals, Bracelets, Tarot) in intention-grid",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:products",
+      "target": "ui_component:product-card",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "8 product cards in products-grid at line 183",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:journal",
+      "target": "ui_component:journal-card",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "3 journal cards in journal-grid at line 188",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:home",
+      "target": "ui_component:newsletter-form",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Newsletter section with form at line 189",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:home",
+      "target": "ui_component:contact-form",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Contact section with form at line 190",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:home",
+      "target": "ui_component:footer",
+      "type": "contains",
+      "confidence": 1.0,
+      "evidence": "Footer element at line 192",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:order-history",
+      "target": "ui_component:order-table",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Order history page contains order table with columns",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:tracking",
+      "target": "ui_component:tracking-timeline",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Tracking page contains timeline component",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:wishlist",
+      "target": "ui_component:wishlist-grid",
+      "type": "contains",
+      "confidence": 0.9,
+      "evidence": "Wishlist page contains wishlist grid",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstroVetro",
+      "target": "concept:Crystals",
+      "type": "features",
+      "confidence": 0.95,
+      "evidence": "README describes Crystals as core product category",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstroVetro",
+      "target": "concept:Rituals",
+      "type": "features",
+      "confidence": 0.95,
+      "evidence": "README describes Rituals as complementary brand destination",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:AstroVetro",
+      "target": "concept:Tarot",
+      "type": "features",
+      "confidence": 0.95,
+      "evidence": "README and pages feature Tarot as product and service",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:Crystals",
+      "target": "ui_component:intention-card",
+      "type": "displays",
+      "confidence": 0.9,
+      "evidence": "Intention card variant for Crystals (01)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:Bracelets",
+      "target": "ui_component:intention-card",
+      "type": "displays",
+      "confidence": 0.9,
+      "evidence": "Intention card variant for Bracelets (02)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:Tarot",
+      "target": "ui_component:intention-card",
+      "type": "displays",
+      "confidence": 0.9,
+      "evidence": "Intention card variant for Tarot (03)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:Tarot",
+      "target": "page:readings",
+      "type": "routes_to",
+      "confidence": 0.95,
+      "evidence": "Tarot section links to readings page for booking",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_landing.html",
+      "target": "script:api-js",
+      "type": "loads",
+      "confidence": 1.0,
+      "evidence": "Script tag loads /assets/api.js at line 276",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_landing.html",
+      "target": "script:store-js",
+      "type": "loads",
+      "confidence": 1.0,
+      "evidence": "Script tag loads /assets/store.js at line 277",
+      "_origin": "semantic"
+    },
+    {
+      "source": "script:store-js",
+      "target": "api:endpoint-products",
+      "type": "fetches",
+      "confidence": 0.9,
+      "evidence": "AV.api.get('/api/products') called in loadProducts() at line 293",
+      "_origin": "semantic"
+    },
+    {
+      "source": "script:store-js",
+      "target": "api:endpoint-articles",
+      "type": "fetches",
+      "confidence": 0.9,
+      "evidence": "AV.api.get('/api/articles') called in loadJournal() at line 315",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_landing.html",
+      "target": "api:endpoint-newsletter",
+      "type": "calls",
+      "confidence": 1.0,
+      "evidence": "AV.api.post('/api/newsletter/subscribe') in newsletter form handler at line 341",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:astrovetro_landing.html",
+      "target": "api:endpoint-contact",
+      "type": "calls",
+      "confidence": 1.0,
+      "evidence": "AV.api.post('/api/contact') in contact form handler at line 372",
+      "_origin": "semantic"
+    },
+    {
+      "source": "tech:frontend-stack",
+      "target": "tech:backend-stack",
+      "type": "integrates_with",
+      "confidence": 0.9,
+      "evidence": "README describes API integration between frontend and backend",
+      "_origin": "semantic"
+    },
+    {
+      "source": "tech:backend-stack",
+      "target": "data:catalogue",
+      "type": "uses",
+      "confidence": 0.9,
+      "evidence": "Backend uses catalogue data from src/data/catalogue.js",
+      "_origin": "semantic"
+    },
+    {
+      "source": "file:README.md",
+      "target": "architecture:separation",
+      "type": "describes",
+      "confidence": 0.95,
+      "evidence": "README documents presentation-backend separation architecture",
+      "_origin": "semantic"
+    },
+    {
+      "source": "style:design-system",
+      "target": "file:astrovetro_final_website.html",
+      "type": "styles",
+      "confidence": 1.0,
+      "evidence": "CSS custom properties defined in style block lines 1-3",
+      "_origin": "semantic"
+    },
+    {
+      "source": "style:design-system",
+      "target": "file:astrovetro_landing.html",
+      "type": "styles",
+      "confidence": 0.9,
+      "evidence": "Landing page references external stylesheets (styles.css, app.css, doors.css)",
+      "_origin": "semantic"
+    },
+    {
+      "source": "style:button-variants",
+      "target": "ui_component:intention-card",
+      "type": "styles",
+      "confidence": 0.9,
+      "evidence": "Intention cards use btn-outline variant",
+      "_origin": "semantic"
+    },
+    {
+      "source": "style:button-variants",
+      "target": "ui_component:product-card",
+      "type": "styles",
+      "confidence": 0.9,
+      "evidence": "Product cards use btn-outline variant for Add to cart",
+      "_origin": "semantic"
+    },
+    {
+      "source": "concept:Journal",
+      "target": "page:journal",
+      "type": "displays",
+      "confidence": 0.9,
+      "evidence": "Journal page displays journal articles",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:landing",
+      "target": "page:shop",
+      "type": "navigates_to",
+      "confidence": 0.9,
+      "evidence": "Intention cards link to /shop.html with category params",
+      "_origin": "semantic"
+    },
+    {
+      "source": "page:landing",
+      "target": "page:readings",
+      "type": "navigates_to",
+      "confidence": 0.9,
+      "evidence": "Ritual links and CTAs navigate to /readings.html",
+      "_origin": "semantic"
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "hyperedge:product-catalog",
+      "nodes": ["concept:Crystals", "concept:Bracelets", "concept:Tarot", "ui_component:product-card", "api:endpoint-products", "data:catalogue"],
+      "type": "composes",
+      "confidence": 0.9,
+      "evidence": "Product catalog system spans concepts, UI, API, and data layer",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:ritual-experience",
+      "nodes": ["concept:Rituals", "concept:Tarot", "page:readings", "page:rituals", "ui_component:ritual-links"],
+      "type": "composes",
+      "confidence": 0.9,
+      "evidence": "Ritual experience spans content, pages, and navigation",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:customer-account-flow",
+      "nodes": ["page:order-history", "page:tracking", "page:wishlist", "script:customer-js", "api:endpoint-admin"],
+      "type": "composes",
+      "confidence": 0.85,
+      "evidence": "Customer account pages share backend integration",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:landing-page-system",
+      "nodes": ["page:landing", "ui_component:doors-overlay", "ui_component:hero", "ui_component:intention-card", "script:api-js", "script:store-js", "api:endpoint-products", "api:endpoint-articles", "api:endpoint-newsletter", "api:endpoint-contact"],
+      "type": "composes",
+      "confidence": 0.95,
+      "evidence": "Landing page integrates doors, dynamic content loading, forms, and API calls",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:design-system",
+      "nodes": ["style:design-system", "style:button-variants", "ui_component:site-header", "ui_component:hero", "ui_component:intention-card", "ui_component:product-card", "ui_component:journal-card", "ui_component:newsletter-form", "ui_component:contact-form", "ui_component:footer"],
+      "type": "styles",
+      "confidence": 0.95,
+      "evidence": "Design system applies to all UI components across pages",
+      "_origin": "semantic"
+    },
+    {
+      "id": "hyperedge:admin-dashboard",
+      "nodes": ["api:endpoint-admin", "script:admin-js", "tech:backend-stack"],
+      "type": "composes",
+      "confidence": 0.9,
+      "evidence": "Admin dashboard comprises 13 modules backed by admin API and backend",
+      "_origin": "semantic"
+    }
+  ],
+  "input_tokens": 15000,
+  "output_tokens": 8500,
+  "coverage": {
+    "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/order-history.html": 1,
+    "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/tracking.html": 1,
+    "/Users/surajkumar/Desktop/Astrovetro-production/More-frontend-files/wishlist.html": 1,
+    "/Users/surajkumar/Desktop/Astrovetro-production/README.md": 337,
+    "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_final_website.html": 194,
+    "/Users/surajkumar/Desktop/Astrovetro-production/astrovetro_landing.html": 389
+  }
+}

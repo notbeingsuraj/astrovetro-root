@@ -16,8 +16,12 @@
    history.
    ------------------------------------------------------------------------- */
 
-import { products } from '../data/catalogue.js';
+import { products, articles } from '../data/catalogue.js';
 import { Product } from '../models/Product.js';
+import { Category } from '../models/Category.js';
+import { BlogPost } from '../models/BlogPost.js';
+import { SiteContent } from '../models/SiteContent.js';
+import { HOMEPAGE_DEFAULTS, CONTACT_DEFAULTS } from '../data/siteContent.js';
 import { isConnected } from './connect.js';
 
 /* Fields copied from the catalogue. `stock` is deliberately absent: it is live
@@ -27,6 +31,7 @@ const COPYABLE = [
   'name',
   'category',
   'images',
+  'imageAlts',
   'shortDescription',
   'description',
   'intentions',
@@ -85,11 +90,120 @@ export async function seedCatalogue({ quiet = false } = {}) {
 }
 
 /**
- * Called on boot. A no-op once products exist, so it costs one count on every
- * start and nothing after that.
+ * Ensure the category list exists. Upserts by slug with $setOnInsert, so an
+ * administrator's rename, description or retirement is never overwritten.
+ */
+export async function seedCategories({ quiet = false } = {}) {
+  if (!isConnected()) throw new Error('seedCategories called before the database was connected');
+
+  const names = {
+    ring: 'Rings',
+    bracelet: 'Bracelets',
+    pendant: 'Pendants',
+    tower: 'Towers',
+    cluster: 'Clusters',
+    tumble: 'Tumbled stones',
+  };
+  const descriptions = {
+    ring: 'Stones set to be worn, close to the hand.',
+    bracelet: 'Beads and bands chosen for the wrist.',
+    pendant: 'A single stone, held at the heart line.',
+    tower: 'Tall points for a shelf, a desk or a quiet corner.',
+    cluster: 'Raw formations that keep their own shape.',
+    tumble: 'Small, smooth stones to carry or place.',
+  };
+
+  const present = [...new Set(products.map((p) => p.category))];
+  let created = 0;
+  for (const [index, slug] of present.entries()) {
+    const result = await Category.updateOne(
+      { slug },
+      {
+        $setOnInsert: {
+          slug,
+          name: names[slug] || slug,
+          description: descriptions[slug] || '',
+          active: true,
+          sortOrder: index,
+        },
+      },
+      { upsert: true }
+    );
+    if (result.upsertedCount) created += 1;
+  }
+  if (!quiet && created) console.log(`[seed] categories ready — ${created} created`);
+  return { created, total: present.length };
+}
+
+/**
+ * Ensure the homepage content document exists, seeded from the storefront's
+ * current copy. Existing content is left untouched.
+ */
+export async function seedSiteContent({ quiet = false } = {}) {
+  if (!isConnected()) throw new Error('seedSiteContent called before the database was connected');
+  const result = await SiteContent.updateOne(
+    { key: 'homepage' },
+    {
+      $setOnInsert: {
+        key: 'homepage',
+        homepage: { ...HOMEPAGE_DEFAULTS },
+        contact: { ...CONTACT_DEFAULTS },
+      },
+    },
+    { upsert: true }
+  );
+  if (!quiet && result.upsertedCount) console.log('[seed] homepage content created');
+  return { created: result.upsertedCount ? 1 : 0 };
+}
+
+/**
+ * Publish the starter journal articles once. If any post exists, the database
+ * is the source of truth and nothing is inserted.
+ */
+export async function seedJournal({ quiet = false } = {}) {
+  if (!isConnected()) throw new Error('seedJournal called before the database was connected');
+  const count = await BlogPost.countDocuments();
+  if (count > 0) {
+    if (!quiet) console.log(`[seed] ${count} journal post(s) already present — skipping journal seed`);
+    return { created: 0, skipped: true, total: count };
+  }
+
+  let created = 0;
+  for (const article of articles) {
+    const publishedAt = article.publishedAt ? new Date(article.publishedAt) : new Date();
+    await BlogPost.create({
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt || '',
+      content: article.content || '',
+      image: article.image || '',
+      imageAlt: article.title,
+      author: article.author || 'Astro Vetro',
+      category: article.category || 'journal',
+      tags: article.tags || [],
+      featured: Boolean(article.featured),
+      status: 'active',
+      publishedAt,
+      seoTitle: article.title,
+      seoDescription: article.excerpt || '',
+    });
+    created += 1;
+  }
+  if (!quiet) console.log(`[seed] journal ready — ${created} post(s) published`);
+  return { created, total: created };
+}
+
+/**
+ * Called on boot. Ensures categories, homepage content and (once) journal
+ * posts, then seeds products only when the catalogue is empty. A no-op for
+ * descriptive content that already exists.
  */
 export async function seedIfEmpty({ quiet = false } = {}) {
   if (!isConnected()) return null;
+  await seedCategories({ quiet });
+  await seedSiteContent({ quiet });
+  await seedJournal({ quiet });
+
   const count = await Product.countDocuments();
   if (count > 0) {
     if (!quiet) console.log(`[seed] ${count} products already present — skipping catalogue seed`);
@@ -105,6 +219,9 @@ if (process.argv[1] && process.argv[1].endsWith('seed.js')) {
   try {
     await connectDB();
     await seedCatalogue();
+    await seedCategories();
+    await seedSiteContent();
+    await seedJournal();
     await disconnectDB();
   } catch (err) {
     console.error('[seed] failed:', err.message);

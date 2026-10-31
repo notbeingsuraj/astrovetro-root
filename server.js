@@ -3,12 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import staticApi from './src/api/staticApi.js';
 import commerceApi from './src/api/commerceApi.js';
-import { connectDB, isConnected } from './src/db/connect.js';
+import { connectDB, isConnected, disconnectDB } from './src/db/connect.js';
 import { env, assertProductionSecrets } from './src/config/env.js';
 import { seedIfEmpty } from './src/db/seed.js';
+import { setStorageAdapter, getAvailableAdapters } from './src/utils/storage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -37,6 +39,15 @@ const apiDisabled = process.env.AV_DISABLE_API === '1';
    looks healthy and quietly refuses every checkout, so the missing secrets are
    a hard failure there and only there. */
 if (env.isProduction) assertProductionSecrets();
+
+/* Initialize storage adapter from STORAGE_ADAPTER env (defaults to 'local').
+   Fails fast if an unknown adapter is explicitly configured. */
+const storageAdapter = process.env.STORAGE_ADAPTER || 'local';
+if (!getAvailableAdapters().includes(storageAdapter)) {
+  throw new Error(`Unknown storage adapter: ${storageAdapter}. Available: ${getAvailableAdapters().join(', ')}`);
+}
+setStorageAdapter(storageAdapter);
+console.log(`[storage] using adapter: ${storageAdapter}`);
 
 /* Which provider answers /api. Resolved lazily because connecting is async and
    the app has to be constructed synchronously for both `listen` and the
@@ -86,6 +97,35 @@ const app = express();
 
 app.disable('x-powered-by');
 
+/* Trust proxy configuration — required when running behind a reverse proxy
+   (nginx, Vercel, AWS ALB, Cloudflare, etc.) so that:
+   - req.ip reflects the real client IP (not the proxy IP)
+   - express-rate-limit keys by client IP, not proxy IP
+   - Secure cookies work correctly (X-Forwarded-Proto)
+
+   Set TRUST_PROXY to:
+   - '1' or 'true'  : trust first hop (single proxy, e.g., Vercel, Heroku)
+   - '2'            : trust two hops (e.g., Cloudflare -> nginx)
+   - 'loopback'     : trust loopback addresses only (localhost dev)
+   - 'linklocal'    : trust link-local addresses only
+   - 'uniquelocal'  : trust unique local addresses only
+   - Comma-separated IPs/CIDRs for explicit trusted proxies
+   - Omit in development where there's no proxy */
+const trustProxy = process.env.TRUST_PROXY;
+const validTrustProxyValues = ['1', 'true', '2', 'loopback', 'linklocal', 'uniquelocal'];
+if (trustProxy && trustProxy !== 'false' && trustProxy !== '0') {
+  // Allow comma-separated IPs/CIDRs or known keywords
+  const isKeyword = validTrustProxyValues.includes(trustProxy);
+  const isIpList = /^(\s*\d{1,3}(?:\.\d{1,3}){3}(?:\/\d{1,2})?\s*(?:,\s*\d{1,3}(?:\.\d{1,3}){3}(?:\/\d{1,2})?\s*)*)+$/.test(trustProxy);
+  if (!isKeyword && !isIpList) {
+    throw new Error(`Invalid TRUST_PROXY value: "${trustProxy}". Use a number (1, 2), keyword (loopback, linklocal, uniquelocal), or comma-separated IPs/CIDRs.`);
+  }
+  app.set('trust proxy', trustProxy === 'true' ? 1 : trustProxy);
+  console.log(`[proxy] trust proxy enabled: ${app.get('trust proxy')}`);
+} else if (!env.isProduction) {
+  console.log('[proxy] trust proxy disabled (development mode)');
+}
+
 /* Security headers. The CSP is deliberately permissive about inline styles and
    the Razorpay script, because the site uses inline style attributes and the
    payment dialog is loaded from Razorpay's origin. script-src is NOT opened to
@@ -117,6 +157,22 @@ app.use(
 /* Needed for the httpOnly session cookie. Registered before any /api route so
    the auth middleware can read it. */
 app.use(cookieParser());
+
+/* CORS — allow credentialed requests from the configured frontend origin.
+   Only applied to /api routes; static files are served same-origin.
+   Wildcard origin is rejected when credentials are enabled (security best practice). */
+const corsOrigin = env.frontendUrl;
+if (corsOrigin === '*') {
+  throw new Error('CORS origin cannot be "*" when credentials are enabled. Set FRONTEND_URL to a specific origin.');
+}
+app.use('/api', cors({
+  origin: corsOrigin,
+  credentials: true,               // allow cookies/auth headers
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+  maxAge: 86400,                   // cache preflight for 24h
+}));
+console.log(`[cors] enabled for ${corsOrigin}`);
 
 if (apiDisabled) {
   app.use('/api', (_req, res) => {
@@ -161,6 +217,20 @@ if (apiDisabled) {
     return resolved(req, res, next);
   });
 }
+
+/* Health check endpoint — for load balancers, orchestrators, and monitoring.
+   Returns 200 if the server is running, with database status if connected. */
+app.get('/health', async (_req, res) => {
+  const dbStatus = isConnected() ? 'connected' : 'disconnected';
+  const checks = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    database: dbStatus,
+    environment: env.nodeEnv,
+  };
+  res.json(checks);
+});
 
 /* "/": the gateway — the isolated Crystals | Rituals entry screen — so the home
    page needs its own address and /home.html is no longer a redirect target.
@@ -217,6 +287,25 @@ app.get('/orders', sendPage('orders.html'));
    still work, so old links and bookmarks do not break. */
 app.get('/order-history', (_req, res) => res.redirect(301, '/orders'));
 
+/* Rituals are a real content section backed by the database, with a document
+   per ritual. The index and detail pages are separate files; the slug is
+   validated so an obviously malformed link lands on the index rather than a
+   page that can only fail. */
+const SLUG_REF = /^[a-z0-9][a-z0-9-]{0,159}$/;
+
+app.get('/rituals', sendPage('rituals.html'));
+app.get('/rituals/:slug', (req, res) =>
+  SLUG_REF.test(req.params.slug) ? sendPage('ritual.html')(req, res) : res.redirect(301, '/rituals')
+);
+
+/* A collection is a filter on the shop, not a separate catalogue. Keeping one
+   shop page means stock, sorting and search behave identically everywhere. */
+app.get('/collections/:slug', (req, res) =>
+  SLUG_REF.test(req.params.slug)
+    ? res.redirect(302, `/shop.html?collection=${encodeURIComponent(req.params.slug)}`)
+    : res.redirect(302, '/shop.html')
+);
+
 /* Admin dashboard: canonical routes. The dashboard requires admin auth and
    is enforced server-side by the API; serving the static page is safe as the
    client will redirect unauthenticated/non-admin users via the existing flow. */
@@ -250,7 +339,7 @@ app.use((req, res) => {
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
 if (!isServerless) {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Astro Vetro frontend running at http://localhost:${PORT}`);
     console.log(
       API_TARGET
@@ -258,6 +347,25 @@ if (!isServerless) {
         : 'No API_TARGET - catalogue served from the static provider'
     );
   });
+
+  /* Graceful shutdown — finish in-flight requests, close DB connections. */
+  const shutdown = async (signal) => {
+    console.log(`[shutdown] ${signal} received, closing server...`);
+    server.close(async () => {
+      console.log('[shutdown] HTTP server closed');
+      await disconnectDB();
+      console.log('[shutdown] Database disconnected');
+      process.exit(0);
+    });
+    /* Force exit after 10s if connections don't close */
+    setTimeout(() => {
+      console.error('[shutdown] Force exit after timeout');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 export default app;

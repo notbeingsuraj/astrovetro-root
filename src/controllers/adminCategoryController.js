@@ -13,6 +13,8 @@ import { Product } from '../models/Product.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { recordAudit } from '../services/auditService.js';
+import { plainText, pickSubmitted } from '../utils/content.js';
+import { assertOptionalImage } from '../utils/media.js';
 
 const slugify = (s) =>
   String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -29,6 +31,10 @@ export const listCategories = asyncHandler(async (_req, res) => {
       items: categories.map((c) => ({
         slug: c.slug,
         name: c.name,
+        description: c.description || '',
+        image: c.image || '',
+        seoTitle: c.seoTitle || '',
+        seoDescription: c.seoDescription || '',
         active: c.active,
         sortOrder: c.sortOrder,
         productCount: bySlug[c.slug] || 0,
@@ -39,8 +45,12 @@ export const listCategories = asyncHandler(async (_req, res) => {
 });
 
 const categorySchema = z.object({
-  name: z.string().trim().min(1).max(60),
+  name: plainText(60, { required: true }),
   slug: z.string().trim().max(80).optional(),
+  description: plainText(1200).default(''),
+  image: z.string().trim().max(300).default(''),
+  seoTitle: plainText(70).default(''),
+  seoDescription: plainText(170).default(''),
   active: z.boolean().default(true),
   sortOrder: z.coerce.number().int().default(0),
 });
@@ -53,7 +63,7 @@ export const createCategory = asyncHandler(async (req, res) => {
   const exists = await Category.findOne({ slug });
   if (exists) throw ApiError.conflict('A category with that link already exists.');
 
-  const category = await Category.create({ ...body, slug });
+  const category = await Category.create({ ...body, slug, image: assertOptionalImage(body.image, 'Category image') });
   await recordAudit({
     actor: req.user,
     action: 'category.create',
@@ -64,7 +74,7 @@ export const createCategory = asyncHandler(async (req, res) => {
 });
 
 export const updateCategory = asyncHandler(async (req, res) => {
-  const body = categorySchema.partial().parse(req.body);
+  const body = pickSubmitted(categorySchema.partial().parse(req.body), req.body);
   const category = await Category.findOne({ slug: req.params.slug });
   if (!category) throw ApiError.notFound('We could not find that category.');
 
@@ -79,6 +89,7 @@ export const updateCategory = asyncHandler(async (req, res) => {
   }
   delete body.slug;
 
+  if (body.image !== undefined) body.image = assertOptionalImage(body.image, 'Category image');
   Object.assign(category, body);
   await category.save();
 

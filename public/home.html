@@ -36,10 +36,10 @@
 
   <section class="section intro" id="intro">
     <div>
-      <div class="kicker">Our approach</div>
-      <h1>Come back to<br>yourself.</h1>
+      <div class="kicker" id="heroEyebrow">Our approach</div>
+      <h1 id="heroTitle">Come back to<br>yourself.</h1>
     </div>
-    <p><b>Objects with intention. Rituals with meaning.</b> We make and gather a
+    <p id="heroIntro"><b>Objects with intention. Rituals with meaning.</b> We make and gather a
       small number of things: crystals, jewellery and tarot, chosen for how they
       sit in a room and how they feel in the hand. Nothing here is decoration for
       its own sake. Each piece is meant to be lived with, and to become more
@@ -77,8 +77,8 @@
 
   <section class="section products" id="products">
     <div class="section-title">
-      <div class="kicker">The collection</div>
-      <h2>What we have in stock.</h2>
+      <div class="kicker" id="productsEyebrow">The collection</div>
+      <h2 id="productsTitle">What we have in stock.</h2>
     </div>
     <div class="products-grid js-load" id="homeProducts"></div>
     <div class="actions" id="homeProductsActions"></div>
@@ -95,13 +95,13 @@
        tarot experience has been removed; only the duplicate way in to it. -->
   <section class="section reading" id="rituals">
     <div class="reading-copy">
-      <div class="kicker">Rituals</div>
-      <h2>A moment to look inward.</h2>
-      <p>Readings — tarot among them — for the questions, decisions and
+      <div class="kicker" id="ritualsEyebrow">Rituals</div>
+      <h2 id="ritualsTitle">A moment to look inward.</h2>
+      <p id="ritualsBody">Readings — tarot among them — for the questions, decisions and
         reflections occupying your mind. Conducted online, at a time that suits
         you.</p>
       <div class="actions">
-        <a class="btn btn-light" href="/readings.html">Enter rituals</a>
+        <a class="btn btn-light" id="ritualsCta" href="/rituals">Enter rituals</a>
       </div>
     </div>
     <div class="reading-image"></div>
@@ -119,6 +119,40 @@ AV.boot();
 
 (function () {
   const empty = (msg) => '<div class="empty">' + AV.esc(msg) + '</div>';
+
+  /* Homepage copy is editable in Studio. Apply it with textContent / escaped
+     markup only — the API stores plain text, and this page never trusts it
+     with innerHTML. */
+  async function loadContent() {
+    try {
+      const env = await AV.api.get('/api/content/homepage');
+      const h = env.data?.homepage || {};
+      const set = (id, value) => {
+        const el = AV.qs('#' + id);
+        if (el && value) el.textContent = value;
+      };
+      set('heroEyebrow', h.heroEyebrow);
+      if (h.heroTitle) {
+        const title = AV.qs('#heroTitle');
+        title.innerHTML = AV.esc(h.heroTitle).replace(/\n/g, '<br>');
+      }
+      set('heroIntro', h.heroIntro);
+      set('productsEyebrow', h.productsEyebrow);
+      set('productsTitle', h.productsTitle);
+      set('ritualsEyebrow', h.ritualsEyebrow);
+      set('ritualsTitle', h.ritualsTitle);
+      set('ritualsBody', h.ritualsBody);
+      if (h.ritualsCtaLabel) set('ritualsCta', h.ritualsCtaLabel);
+      if (h.ritualsCtaHref && /^\/(?!\/)/.test(h.ritualsCtaHref)) {
+        AV.qs('#ritualsCta').setAttribute('href', h.ritualsCtaHref);
+      }
+      if (h.seoTitle || h.seoDescription) {
+        AV.seo({ title: h.seoTitle || undefined, description: h.seoDescription || undefined, url: '/home.html' });
+      }
+    } catch (_e) {
+      /* The page already carries the default copy; content is an enhancement. */
+    }
+  }
 
   /* Products rail. Renders the collection; the section stays useful (with a
      direct link through) even when the API cannot be reached. */
@@ -143,6 +177,7 @@ AV.boot();
     }
   }
 
+  loadContent();
   loadProducts();
 })();
 </script>

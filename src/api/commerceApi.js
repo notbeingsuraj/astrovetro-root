@@ -89,6 +89,49 @@ router.get('/products/:slug', async (req, res, next) => {
   }
 });
 
+/* ── Editorial content ─────────────────────────────────────────────────── */
+router.get('/collections', async (_req, res, next) => {
+  try {
+    const { data, meta } = await dbProvider.listCollections();
+    return ok(res, data, meta);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/collections/:slug', async (req, res, next) => {
+  try {
+    return ok(res, await dbProvider.getCollection(req.params.slug));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/rituals', async (req, res, next) => {
+  try {
+    const { data, meta } = await dbProvider.listRituals(req.query);
+    return ok(res, data, meta);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/rituals/:slug', async (req, res, next) => {
+  try {
+    return ok(res, await dbProvider.getRitual(req.params.slug));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get('/content/homepage', async (_req, res, next) => {
+  try {
+    return ok(res, await dbProvider.getHomepageContent());
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.get('/services', async (req, res, next) => {
   try {
     const { data, meta } = await dbProvider.listServices(req.query);

@@ -18,9 +18,25 @@
    ------------------------------------------------------------------------- */
 
 import { Product } from '../models/Product.js';
+import { Collection } from '../models/Collection.js';
+import { Ritual } from '../models/Ritual.js';
+import { BlogPost } from '../models/BlogPost.js';
+import { SiteContent } from '../models/SiteContent.js';
+import { HOMEPAGE_DEFAULTS, CONTACT_DEFAULTS } from '../data/siteContent.js';
 import staticProvider from './staticProvider.js';
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/* The compact product shape embedded in ritual and collection responses. One
+   helper so every editorial page shows the same price and image fields. */
+const productSummary = (p) => ({
+  id: String(p._id),
+  slug: p.slug,
+  name: p.name,
+  price: p.price,
+  salePrice: p.salePrice ?? null,
+  image: p.images?.[0] || null,
+});
 
 /* Reused by list and get so a filter and a lookup cannot drift on how a
    category or availability is interpreted. */
@@ -54,6 +70,18 @@ export const dbProvider = {
     if (query.category) filter.category = query.category;
     if (query.featured !== undefined) filter.featured = Boolean(query.featured);
     if (query.availability !== undefined) filter.availability = Boolean(query.availability);
+
+    /* A collection is a merchandising shelf, not a category. Resolving it to
+       the ids stored on the collection keeps membership in one place. */
+    if (query.collection) {
+      const collection = await Collection.findOne({
+        slug: String(query.collection).toLowerCase(),
+        active: true,
+      })
+        .select('products')
+        .lean();
+      filter._id = { $in: collection?.products || [] };
+    }
 
     if (query.minPrice != null || query.maxPrice != null) {
       /* salePrice-aware: a product is within range if its *effective* price is,
@@ -127,8 +155,13 @@ export const dbProvider = {
 
   async getProduct(slug) {
     /* Same lifecycle gate as the list — a retired product's page 404s for the
-       public but the document itself is untouched. */
-    const product = await Product.findOne({ slug: String(slug).toLowerCase(), status: 'active' });
+       public but the document itself is untouched. Old slugs resolve too, so a
+       renamed product does not break a shared link. */
+    const key = String(slug).toLowerCase();
+    const product = await Product.findOne({
+      status: 'active',
+      $or: [{ slug: key }, { previousSlugs: key }],
+    });
     return product ? product.toPublic() : null;
   },
 
@@ -139,11 +172,210 @@ export const dbProvider = {
     return rows.filter(Boolean).sort().map((name) => ({ name }));
   },
 
-  /* Editorial content still comes from the static catalogue for now. */
+  /* ── Collections ─────────────────────────────────────────────────────── */
+
+  async listCollections() {
+    const rows = await Collection.find({ active: true }).sort({ sortOrder: 1, name: 1 }).lean();
+    return {
+      data: rows.map((c) => ({
+        id: String(c._id),
+        slug: c.slug,
+        name: c.name,
+        description: c.description,
+        image: c.image || null,
+        featured: Boolean(c.featured),
+        productCount: (c.products || []).length,
+      })),
+      meta: { provider: 'mongo', database: true },
+    };
+  },
+
+  async getCollection(slug) {
+    const collection = await Collection.findOne({ slug: String(slug).toLowerCase(), active: true });
+    if (!collection) return null;
+
+    const products = await Product.find({
+      _id: { $in: collection.products },
+      status: 'active',
+    });
+    const byId = new Map(products.map((p) => [String(p._id), p]));
+    const ordered = collection.products.map((id) => byId.get(String(id))).filter(Boolean);
+
+    return {
+      ...collection.toPublic(ordered.length),
+      seoTitle: collection.seoTitle,
+      seoDescription: collection.seoDescription,
+      products: ordered.map((p) => p.toPublic()),
+    };
+  },
+
+  /* ── Rituals ─────────────────────────────────────────────────────────── */
+
+  async listRituals(query = {}) {
+    const filter = { status: 'active' };
+    if (query.featured !== undefined) filter.featured = Boolean(query.featured);
+    if (query.search) {
+      const rx = new RegExp(escapeRegex(query.search), 'i');
+      filter.$or = [{ title: rx }, { intro: rx }, { purpose: rx }, { tags: rx }];
+    }
+
+    const limit = Math.max(1, Number(query.limit) || 12);
+    const page = Math.max(1, Number(query.page) || 1);
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await Promise.all([
+      Ritual.find(filter).sort({ featured: -1, publishedAt: -1, title: 1 }).skip(skip).limit(limit),
+      Ritual.countDocuments(filter),
+    ]);
+
+    /* One query for every product referenced on this page, rather than one per
+       ritual — the index renders up to a page of rituals at a time. */
+    const productIds = [...new Set(rows.flatMap((r) => (r.relatedProducts || []).map(String)))];
+    const products = productIds.length
+      ? await Product.find({ _id: { $in: productIds }, status: 'active' }).lean()
+      : [];
+    const byId = new Map(products.map((p) => [String(p._id), p]));
+
+    const data = rows.map((ritual) =>
+      ritual.toPublic({
+        relatedProducts: (ritual.relatedProducts || [])
+          .map((id) => byId.get(String(id)))
+          .filter(Boolean)
+          .map(productSummary),
+      })
+    );
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+        hasMore: page * limit < total,
+        provider: 'mongo',
+        database: true,
+      },
+    };
+  },
+
+  async getRitual(slug) {
+    const key = String(slug).toLowerCase();
+    const ritual = await Ritual.findOne({
+      status: 'active',
+      $or: [{ slug: key }, { previousSlugs: key }],
+    });
+    if (!ritual) return null;
+
+    const [products, collections, linkedProduct] = await Promise.all([
+      Product.find({ _id: { $in: ritual.relatedProducts || [] }, status: 'active' }).lean(),
+      Collection.find({ slug: { $in: ritual.relatedCollections || [] }, active: true }).lean(),
+      /* The linked product is the sellable form of the ritual (a kit, a
+         reading). Only an active product is public; a draft or archived one
+         simply disappears from the page. */
+      ritual.linkedProduct
+        ? Product.findOne({ _id: ritual.linkedProduct, status: 'active' }).lean()
+        : null,
+    ]);
+
+    const byId = new Map(products.map((p) => [String(p._id), p]));
+    const ordered = (ritual.relatedProducts || [])
+      .map((id) => byId.get(String(id)))
+      .filter(Boolean);
+
+    return {
+      ...ritual.toPublic({
+        relatedProducts: ordered.map(productSummary),
+        linkedProduct: linkedProduct ? productSummary(linkedProduct) : null,
+      }),
+      relatedCollections: collections.map((c) => ({
+        slug: c.slug,
+        name: c.name,
+        description: c.description,
+      })),
+    };
+  },
+
+  /* ── Website content ─────────────────────────────────────────────────── */
+
+  async getHomepageContent() {
+    const doc = await SiteContent.findOne({ key: 'homepage' }).lean();
+    return {
+      homepage: { ...HOMEPAGE_DEFAULTS, ...(doc?.homepage || {}) },
+      contact: { ...CONTACT_DEFAULTS, ...(doc?.contact || {}) },
+      updatedAt: doc?.updatedAt || null,
+    };
+  },
+
+  /* ── Journal ─────────────────────────────────────────────────────────── */
+
+  async listArticles(query = {}) {
+    /* Until the journal has any documents at all, keep serving the static
+       starter articles so a brand-new install is not an empty page. Once one
+       post exists — draft, active or archived — the database owns the journal:
+       falling back on "no active posts" would make an archived post reappear
+       from the static file, which is not what archiving means. */
+    const totalPosts = await BlogPost.countDocuments({});
+    if (!totalPosts) return staticProvider.listArticles(query);
+
+    const filter = { status: 'active' };
+    if (query.category) filter.category = String(query.category);
+    if (query.featured !== undefined) filter.featured = Boolean(query.featured);
+
+    const limit = Math.max(1, Number(query.limit) || 12);
+    const page = Math.max(1, Number(query.page) || 1);
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await Promise.all([
+      BlogPost.find(filter).sort({ featured: -1, publishedAt: -1 }).skip(skip).limit(limit),
+      BlogPost.countDocuments(filter),
+    ]);
+
+    return {
+      data: rows.map((post) => post.toPublic()),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+        hasMore: page * limit < total,
+        provider: 'mongo',
+        database: true,
+      },
+    };
+  },
+
+  async getArticle(slug) {
+    const totalPosts = await BlogPost.countDocuments({});
+    if (!totalPosts) return staticProvider.getArticle(slug);
+
+    const key = String(slug).toLowerCase();
+    const post = await BlogPost.findOne({
+      status: 'active',
+      $or: [{ slug: key }, { previousSlugs: key }],
+    });
+    if (!post) return null;
+
+    const related = await BlogPost.find({ status: 'active', _id: { $ne: post._id } })
+      .sort({ publishedAt: -1 })
+      .limit(3)
+      .lean();
+    return post.toPublic({
+      related: related.map((r) => ({
+        slug: r.slug,
+        title: r.title,
+        category: r.category,
+        excerpt: r.excerpt,
+        image: r.image || null,
+        readingTime: Math.max(1, Math.ceil(String(r.content || '').trim().split(/\s+/).filter(Boolean).length / 220)),
+        publishedAt: r.publishedAt,
+      })),
+    });
+  },
+
+  /* Services and testimonials are still static editorial content. */
   listServices: (...args) => staticProvider.listServices(...args),
   getService: (...args) => staticProvider.getService(...args),
-  listArticles: (...args) => staticProvider.listArticles(...args),
-  getArticle: (...args) => staticProvider.getArticle(...args),
   listTestimonials: (...args) => staticProvider.listTestimonials(...args),
 };
 

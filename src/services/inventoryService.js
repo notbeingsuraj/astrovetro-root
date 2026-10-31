@@ -393,3 +393,68 @@ export async function recordReceipt({
 
 /** Purchase-order status label used by the UI and reports. */
 export const PO_STATUS_VALUES = PO_STATUS;
+
+/**
+ * Restore inventory for a cancelled order.
+ * Only restores stock for items that were previously committed (inventoryCommitted = true).
+ * Idempotent: safe to call multiple times for the same order.
+ */
+export async function restoreInventoryForCancelledOrder({ order, actor }) {
+  if (!order.inventoryCommitted) {
+    return { restored: false, reason: 'Inventory was not committed for this order' };
+  }
+
+  const applied = [];
+
+  try {
+    for (const item of order.items) {
+      if (!item.product) continue;
+      const product = await Product.findById(item.product);
+      if (!product || product.stock == null) continue;
+
+      /* Guarded atomic increment to restore stock */
+      const beforeDoc = await Product.findOneAndUpdate(
+        { _id: item.product, stock: { $ne: null } },
+        { $inc: { stock: item.quantity } },
+        { new: false }
+      );
+
+      if (!beforeDoc) {
+        throw ApiError.conflict(`Could not restore stock for ${item.name}. Product may have been untracked.`);
+      }
+
+      applied.push({ product: item.product, quantity: item.quantity, balanceBefore: beforeDoc.stock, balanceAfter: beforeDoc.stock + item.quantity });
+
+      await writeMovement({
+        product: beforeDoc,
+        before: beforeDoc.stock,
+        after: beforeDoc.stock + item.quantity,
+        delta: item.quantity,
+        type: 'return',
+        reason: `Restocked from cancelled order ${order.orderNumber}`,
+        reference: order.orderNumber,
+        actor,
+      });
+    }
+  } catch (err) {
+    /* Rollback any restocks that succeeded */
+    for (const change of applied.reverse()) {
+      await Product.updateOne({ _id: change.product }, { $inc: { stock: -change.quantity } }).catch(() => {});
+      await StockMovement.collection.deleteOne({ _id: change.movementId }).catch(() => {});
+    }
+    throw err;
+  }
+
+  order.inventoryCommitted = false;
+  await order.save();
+
+  await auditBestEffort({
+    actor,
+    action: 'inventory.restock_cancelled',
+    entity: { type: 'order', id: order._id.toString(), label: order.orderNumber },
+    summary: `Restored inventory for cancelled order ${order.orderNumber}`,
+    meta: { orderNumber: order.orderNumber, items: applied.map(a => ({ productId: a.product, quantity: a.quantity })) },
+  });
+
+  return { restored: true, items: applied };
+}

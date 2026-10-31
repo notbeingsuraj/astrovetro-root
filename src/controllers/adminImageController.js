@@ -24,9 +24,12 @@ import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 import { z } from 'zod';
 import { Product } from '../models/Product.js';
+import { Ritual } from '../models/Ritual.js';
+import { BlogPost } from '../models/BlogPost.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { recordAudit } from '../services/auditService.js';
+import { getStorageAdapter } from '../utils/storage.js';
 
 const PUBLIC_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
 const IMG_ROOT = path.join(PUBLIC_ROOT, 'assets', 'img');
@@ -53,10 +56,8 @@ function detectImage(buffer) {
 /* Resolve a caller-supplied public path to an absolute file, or null when it
    would escape the image root. Used for every path that crosses the API. */
 function safeResolve(publicPath) {
-  if (typeof publicPath !== 'string' || !publicPath.startsWith('/assets/img/')) return null;
-  const abs = path.resolve(PUBLIC_ROOT, `.${publicPath}`);
-  if (!abs.startsWith(IMG_ROOT + path.sep)) return null;
-  return abs;
+  const adapter = getStorageAdapter();
+  return adapter.resolve(publicPath);
 }
 
 /* ── Upload ──────────────────────────────────────────────────────────────── */
@@ -80,30 +81,13 @@ export const uploadImage = asyncHandler(async (req, res) => {
   }
   if (!meta.width || !meta.height) throw ApiError.badRequest('That image has no readable dimensions.');
 
-  fs.mkdirSync(LIBRARY_DIR, { recursive: true });
-  const base = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  const originalName = `${base}-original.${sig.ext}`;
-  const largeName = `${base}-large.webp`;
-  const thumbName = `${base}-thumb.webp`;
-
-  fs.writeFileSync(path.join(LIBRARY_DIR, originalName), buffer);
-  const large = await sharp(buffer)
-    .rotate()
-    .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 82 })
-    .toBuffer();
-  const thumb = await sharp(buffer)
-    .rotate()
-    .resize(480, 480, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 75 })
-    .toBuffer();
-  fs.writeFileSync(path.join(LIBRARY_DIR, largeName), large);
-  fs.writeFileSync(path.join(LIBRARY_DIR, thumbName), thumb);
+  const adapter = getStorageAdapter();
+  const result = await adapter.upload({ buffer });
 
   await recordAudit({
     actor: req.user,
     action: 'image.upload',
-    entity: { type: 'image', id: `/assets/img/library/${largeName}`, label: originalName },
+    entity: { type: 'image', id: result.large, label: path.basename(result.original) },
     summary: `Uploaded image (${meta.width}×${meta.height}, ${Math.round(buffer.length / 1024)}KB)`,
   });
 
@@ -111,9 +95,9 @@ export const uploadImage = asyncHandler(async (req, res) => {
     success: true,
     data: {
       image: {
-        original: `/assets/img/library/${originalName}`,
-        large: `/assets/img/library/${largeName}`,
-        thumb: `/assets/img/library/${thumbName}`,
+        original: result.original,
+        large: result.large,
+        thumb: result.thumb,
         width: meta.width,
         height: meta.height,
       },
@@ -128,42 +112,31 @@ export const uploadImage = asyncHandler(async (req, res) => {
    candidates and any upload) sit alongside the ones products use. */
 export const listLibrary = asyncHandler(async (_req, res) => {
   const assignedBy = new Map(); // publicPath -> [{productId, name, index}]
-  const products = await Product.find({ images: { $ne: [] } }).select('name slug images imageAlts').lean();
+  const [products, rituals, posts] = await Promise.all([
+    Product.find({ images: { $ne: [] } }).select('name slug images imageAlts').lean(),
+    Ritual.find({ images: { $ne: [] } }).select('title slug images').lean(),
+    BlogPost.find({ image: { $ne: '' } }).select('title slug image').lean(),
+  ]);
   for (const p of products) {
     (p.images || []).forEach((img, index) => {
       if (!assignedBy.has(img)) assignedBy.set(img, []);
       assignedBy.get(img).push({ productId: p._id.toString(), name: p.name, index });
     });
   }
-
-  const scan = (dir, prefix) => {
-    if (!fs.existsSync(dir)) return [];
-    return fs
-      .readdirSync(dir)
-      .filter((f) => /\.(jpe?g|png|webp|avif)$/i.test(f))
-      .map((f) => {
-        const publicPath = `/assets/img/${prefix}/${f}`;
-        const stat = fs.statSync(path.join(dir, f));
-        return {
-          path: publicPath,
-          bytes: stat.size,
-          assignedTo: assignedBy.get(publicPath) || [],
-        };
-      });
-  };
-
-  const library = scan(LIBRARY_DIR, 'library');
-  /* Library thumbs are derived siblings of a -large file; pair them so the UI
-     shows one entry per photograph rather than three. */
-  const grouped = new Map();
-  for (const file of library) {
-    const m = file.path.match(/^(.*)-(large|thumb|original)\.[a-z]+$/i);
-    const key = m ? m[1] : file.path;
-    if (!grouped.has(key)) grouped.set(key, { base: key, files: [], assignedTo: [] });
-    const g = grouped.get(key);
-    g.files.push(file.path);
-    g.assignedTo.push(...file.assignedTo);
+  for (const r of rituals) {
+    (r.images || []).forEach((img, index) => {
+      if (!assignedBy.has(img)) assignedBy.set(img, []);
+      assignedBy.get(img).push({ ritualId: r._id.toString(), name: r.title, index });
+    });
   }
+  for (const post of posts) {
+    if (!assignedBy.has(post.image)) assignedBy.set(post.image, []);
+    assignedBy.get(post.image).push({ blogId: post._id.toString(), name: post.title, index: 0 });
+  }
+
+  const adapter = getStorageAdapter();
+  const assignedPaths = new Set(assignedBy.keys());
+  const library = await adapter.list({ assignedPaths });
 
   const perProduct = products.map((p) => ({
     productId: p._id.toString(),
@@ -180,8 +153,8 @@ export const listLibrary = asyncHandler(async (_req, res) => {
   return res.json({
     success: true,
     data: {
-      unassigned: [...grouped.values()].filter((g) => g.assignedTo.length === 0),
-      library: [...grouped.values()],
+      unassigned: library.filter((g) => !g.assigned),
+      library,
       products: perProduct,
     },
   });
@@ -195,9 +168,9 @@ const imagesPatchSchema = z.object({
 });
 
 async function assertFilesExist(images) {
+  const adapter = getStorageAdapter();
   for (const img of images) {
-    const abs = safeResolve(img);
-    if (!abs || !fs.existsSync(abs)) {
+    if (!adapter.exists(img)) {
       throw ApiError.badRequest(`That image does not exist on the server: ${img}`);
     }
   }
@@ -284,50 +257,23 @@ export const removeProductImage = asyncHandler(async (req, res) => {
    a derivative sibling still points at. */
 export const deleteLibraryFile = asyncHandler(async (req, res) => {
   const publicPath = String(req.query.path || '');
-  const abs = safeResolve(publicPath);
-  if (!abs || !fs.existsSync(abs)) throw ApiError.notFound('We could not find that file.');
+  const adapter = getStorageAdapter();
+  const abs = adapter.resolve(publicPath);
+  if (!abs || !adapter.exists(publicPath)) throw ApiError.notFound('We could not find that file.');
 
-  /* Any product referencing this exact path blocks deletion. */
-  const referencing = await Product.findOne({ images: publicPath }).select('name').lean();
+  /* Any product, ritual or journal post referencing this exact path blocks
+     deletion. */
+  const [refProduct, refRitual, refPost] = await Promise.all([
+    Product.findOne({ images: publicPath }).select('name').lean(),
+    Ritual.findOne({ images: publicPath }).select('title').lean(),
+    BlogPost.findOne({ image: publicPath }).select('title').lean(),
+  ]);
+  const referencing = refProduct || refRitual || refPost;
   if (referencing) {
-    throw ApiError.conflict(`${referencing.name} still uses this image. Remove it from the product first.`);
+    throw ApiError.conflict(`${referencing.name || referencing.title} still uses this image. Remove it there first.`);
   }
 
-  /* Deleting one derivative implies deleting its siblings, which are the same
-     photograph in another size — but each sibling is checked the same way. */
-  const m = publicPath.match(/^(.*)-(large|thumb|original)\.[a-z]+$/i);
-  let siblings;
-  if (!m) {
-    siblings = [publicPath];
-  } else {
-    const base = m[1];
-    siblings = ['-large.webp', '-thumb.webp'].map((s) => `${base}${s}`);
-    /* The uploaded original keeps the source format (png/jpg/webp), so its
-       extension must never be assumed — look for whatever is actually there. */
-    if (base.startsWith('/assets/img/library/')) {
-      const baseName = path.basename(base);
-      const original = fs.existsSync(LIBRARY_DIR)
-        ? fs.readdirSync(LIBRARY_DIR).find((f) => f.startsWith(`${baseName}-original.`))
-        : null;
-      if (original) siblings.push(`/assets/img/library/${original}`);
-    }
-  }
-  const siblingPaths = siblings.filter((p) => p === publicPath || p.startsWith('/assets/img/library/'));
-  for (const sibling of siblingPaths) {
-    const siblingAbs = safeResolve(sibling);
-    if (!siblingAbs || !fs.existsSync(siblingAbs)) continue;
-    const used = await Product.findOne({ images: sibling }).select('_id').lean();
-    if (used) throw ApiError.conflict('That photograph is still used by a product.');
-  }
-
-  let deleted = 0;
-  for (const sibling of siblingPaths) {
-    const siblingAbs = safeResolve(sibling);
-    if (siblingAbs && fs.existsSync(siblingAbs)) {
-      fs.unlinkSync(siblingAbs);
-      deleted++;
-    }
-  }
+  const deleted = await adapter.delete(publicPath);
 
   await recordAudit({
     actor: req.user,

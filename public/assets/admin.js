@@ -22,12 +22,16 @@ const TABS = [
   ['dashboard', 'Overview'],
   ['orders', 'Orders'],
   ['products', 'Products'],
+  ['categories', 'Categories'],
+  ['collections', 'Collections'],
+  ['rituals', 'Rituals'],
   ['inventory', 'Inventory'],
   ['movements', 'Stock Movements'],
-  ['categories', 'Categories'],
   ['suppliers', 'Suppliers'],
   ['purchase-orders', 'Purchase Orders'],
-  ['images', 'Image Library'],
+  ['images', 'Media Library'],
+  ['blog', 'Blog'],
+  ['content', 'Website Content'],
   ['reports', 'Reports'],
   ['users', 'Admin Users'],
   ['audit', 'Audit Log'],
@@ -81,7 +85,7 @@ const STATUS_LABELS = {
   card: 'Card',
   upi: 'UPI',
   draft: 'Draft',
-  active: 'Active',
+  active: 'Published',
   archived: 'Archived',
   partial: 'Part received',
   received: 'Received',
@@ -262,16 +266,22 @@ async function init() {
     return;
   }
   view = TABS.some(([k]) => k === view) ? view : 'dashboard';
-  root.innerHTML = `<div class="tabs" id="admTabs">${TABS.map(
-    ([k, l]) => `<button class="tab${k === view ? ' active' : ''}" data-view="${k}">${l}</button>`
-  ).join('')}</div><div id="admPane"></div>`;
+  root.innerHTML = `<div class="adm-shell">
+    <aside class="adm-side">
+      <div class="adm-brand"><strong>Astro Vetro</strong><span>Studio</span></div>
+      <nav id="admTabs" aria-label="Studio sections">${TABS.map(
+        ([k, l]) => `<button class="adm-tab${k === view ? ' active' : ''}" data-view="${k}">${l}</button>`
+      ).join('')}</nav>
+    </aside>
+    <div class="adm-main" id="admPane"></div>
+  </div>`;
   const pane = AV.qs('#admPane');
   AV.qs('#admTabs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-view]');
     if (!b) return;
     view = b.dataset.view;
     history.replaceState(null, '', `/admin.html?view=${view}`);
-    AV.qsa('.tab').forEach((x) => x.classList.toggle('active', x === b));
+    AV.qsa('.adm-tab').forEach((x) => x.classList.toggle('active', x === b));
     route(pane);
   });
   route(pane);
@@ -284,9 +294,13 @@ const VIEWS = {
   inventory,
   movements,
   categories: categoriesView,
+  collections,
+  rituals,
   suppliers,
   purchaseOrders,
   images: imageLibrary,
+  blog,
+  content,
   reports,
   users,
   audit,
@@ -630,6 +644,7 @@ async function products(pane) {
                   <button class="btn btn-ghost btn-sm" data-edit="${AV.esc(p.id)}">Edit</button>
                   <button class="btn btn-ghost btn-sm" data-images="${AV.esc(p.id)}">Images</button>
                   <button class="btn btn-ghost btn-sm" data-archive="${AV.esc(p.id)}" data-name="${AV.esc(p.name)}" data-state="${p.status}">${p.status === 'archived' ? 'Restore' : 'Archive'}</button>
+                  <button class="btn btn-ghost btn-sm" data-delete="${AV.esc(p.id)}" data-name="${AV.esc(p.name)}">Delete</button>
                 </td>
               </tr>`
             )
@@ -659,9 +674,27 @@ async function products(pane) {
       if (imgs) return imagesDialog(imgs.dataset.images, pane);
       const arch = e.target.closest('[data-archive]');
       if (arch) return archiveProduct(arch, pane);
+      const del = e.target.closest('[data-delete]');
+      if (del) return deleteProduct(del, pane);
     });
   } catch (e) {
     fail(pane, e);
+  }
+}
+
+async function deleteProduct(btn, pane) {
+  const sure = confirm(
+    `Permanently delete “${btn.dataset.name}”? This cannot be undone. Products that appear in an order are protected and must be archived instead.`
+  );
+  if (!sure) return;
+  AV.setBusy(btn, true);
+  try {
+    await AV.api.del(`/api/admin/products/${encodeURIComponent(btn.dataset.delete)}`);
+    AV.toast('Product deleted.', 'ok');
+    products(pane);
+  } catch (err) {
+    AV.toast(AV.firstErr(err), 'err');
+    AV.setBusy(btn, false);
   }
 }
 
@@ -718,7 +751,10 @@ async function productForm(productId, pane) {
       ).join('')}</select>`)}
       ${field('Stone', input('stone', `maxlength="120" value="${AV.esc(p?.stone || '')}"`))}
       ${field('Metal', input('metal', `maxlength="120" value="${AV.esc(p?.metal || '')}"`))}
+      ${field('Product type', `<select name="productType">${[['crystal', 'Crystal'], ['jewellery', 'Jewellery'], ['tarot', 'Tarot'], ['object', 'Object'], ['other', 'Other']].map(([v, l]) => `<option value="${v}"${(p?.productType || 'other') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`)}
       ${field('Tags', input('tags', `maxlength="300" placeholder="comma separated" value="${AV.esc((p?.tags || []).join(', '))}"`))}
+      ${field('SEO title', input('seoTitle', `maxlength="70" placeholder="defaults to the product name" value="${AV.esc(p?.seoTitle || '')}"`))}
+      ${field('SEO description', `<textarea name="seoDescription" rows="2" maxlength="170" placeholder="defaults to the short description">${AV.esc(p?.seoDescription || '')}</textarea>`, { wide: true })}
       ${field('Low-stock threshold', input('reorderThreshold', `type="number" min="0" step="1" placeholder="default 3" value="${p?.reorderThreshold ?? ''}"`))}
       ${field('Reorder quantity', input('reorderQuantity', `type="number" min="0" step="1" placeholder="not used yet" value="${p?.reorderQuantity ?? ''}"`))}
       ${field('Short description', `<textarea name="shortDescription" rows="2" maxlength="500">${AV.esc(p?.shortDescription || '')}</textarea>`, { wide: true })}
@@ -748,7 +784,10 @@ async function productForm(productId, pane) {
       costPrice: num(el.costPrice.value),
       stone: el.stone.value.trim(),
       metal: el.metal.value.trim(),
+      productType: el.productType.value,
       tags: el.tags.value.split(',').map((t) => t.trim()).filter(Boolean),
+      seoTitle: el.seoTitle.value.trim(),
+      seoDescription: el.seoDescription.value.trim(),
       featured: el.featured.checked,
       availability: el.availability.checked,
       status: el.status.value,
@@ -1235,6 +1274,10 @@ async function categoryForm(slug, pane) {
       ${field('Name', input('name', `required maxlength="60" value="${AV.esc(c?.name || '')}"`))}
       ${field('Slug', input('slug', `maxlength="80" placeholder="derived from the name"${editing ? ' readonly' : ''}`))}
       ${field('Sort order', input('sortOrder', `type="number" step="1" value="${c?.sortOrder ?? 0}"`))}
+      ${field('Image path', input('image', `maxlength="300" placeholder="/assets/img/library/…" value="${AV.esc(c?.image || '')}"`))}
+      ${field('Description', `<textarea name="description" rows="3" maxlength="1200">${AV.esc(c?.description || '')}</textarea>`, { wide: true })}
+      ${field('SEO title', input('seoTitle', `maxlength="70" value="${AV.esc(c?.seoTitle || '')}"`))}
+      ${field('SEO description', `<textarea name="seoDescription" rows="2" maxlength="170">${AV.esc(c?.seoDescription || '')}</textarea>`, { wide: true })}
       <label class="adm-check"><input type="checkbox" name="active"${c ? (c.active ? ' checked' : '') : ' checked'}> Visible in navigation</label>
       <button class="btn btn-light" type="submit">${editing ? 'Save' : 'Create category'}</button>
       <p class="form-msg"></p>
@@ -1244,6 +1287,10 @@ async function categoryForm(slug, pane) {
     const payload = {
       name: el.name.value.trim(),
       sortOrder: Number(el.sortOrder.value || 0),
+      image: el.image.value.trim(),
+      description: el.description.value.trim(),
+      seoTitle: el.seoTitle.value.trim(),
+      seoDescription: el.seoDescription.value.trim(),
       active: el.active.checked,
     };
     if (editing) {
@@ -2014,6 +2061,530 @@ async function settings(pane) {
           <p class="note">Prices are stored as plain numbers and formatted ₹ en-IN on the way out.</p>
         </section>
       </div>`;
+  } catch (e) {
+    fail(pane, e);
+  }
+}
+
+/* ── Collections ──────────────────────────────────────────────── */
+/* Merchandising groups. Membership is edited here and stored on the collection
+   itself (the server is the only writer), so the product form does not carry a
+   second, divergent list. */
+async function collections(pane) {
+  C.skeleton(pane, 4);
+  try {
+    const env = await AV.api.get('/api/admin/collections?includeArchived=true');
+    const items = env.data.items || [];
+    pane.innerHTML = `
+      <div class="adm-toolbar">
+        <p class="note" style="margin:0">Collections are shelves, not categories. A product can sit in several.</p>
+        <span class="spacer"></span>
+        <button class="btn btn-light btn-sm" type="button" data-new>+ New collection</button>
+      </div>
+      ${items.length
+        ? `<div class="table-wrap"><table>
+          <thead><tr><th>Collection</th><th>Link</th><th>Products</th><th>Status</th><th>Featured</th><th></th></tr></thead>
+          <tbody>${items.map((c) => `<tr>
+            <td>${AV.esc(c.name)}<div class="muted">${AV.esc(c.description || '')}</div></td>
+            <td>${AV.esc(c.slug)}</td>
+            <td>${c.productCount}</td>
+            <td>${statusPill(c.active ? 'active' : 'archived')}</td>
+            <td>${c.featured ? '<span class="pill pill-ok">Featured</span>' : '<span class="muted">—</span>'}</td>
+            <td class="adm-actions">
+              <button class="btn btn-ghost btn-sm" data-edit="${AV.esc(c.id)}">Edit</button>
+              <button class="btn btn-ghost btn-sm" data-members="${AV.esc(c.id)}">Products</button>
+              <button class="btn btn-ghost btn-sm" data-toggle="${AV.esc(c.id)}" data-on="${c.active}">${c.active ? 'Archive' : 'Restore'}</button>
+              <button class="btn btn-ghost btn-sm" data-delete="${AV.esc(c.id)}" data-name="${AV.esc(c.name)}">Delete</button>
+            </td>
+          </tr>`).join('')}</tbody></table></div>`
+        : '<div class="empty">No collections yet.</div>'}`;
+
+    AV.qs('[data-new]', pane)?.addEventListener('click', () => collectionForm(null, pane));
+    pane.querySelector('tbody')?.addEventListener('click', async (e) => {
+      const edit = e.target.closest('[data-edit]');
+      if (edit) return collectionForm(edit.dataset.edit, pane);
+      const members = e.target.closest('[data-members]');
+      if (members) return collectionProducts(members.dataset.members, pane);
+      const toggle = e.target.closest('[data-toggle]');
+      if (toggle) {
+        const on = toggle.dataset.on === 'true';
+        toggle.disabled = true;
+        try {
+          await AV.api.post(`/api/admin/collections/${encodeURIComponent(toggle.dataset.toggle)}/${on ? 'archive' : 'restore'}`);
+          AV.toast(on ? 'Collection archived.' : 'Collection restored.', 'ok');
+          collections(pane);
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+          toggle.disabled = false;
+        }
+        return;
+      }
+      const del = e.target.closest('[data-delete]');
+      if (del) {
+        if (!confirm(`Delete “${del.dataset.name}”? A collection holding products cannot be deleted — archive it instead.`)) return;
+        del.disabled = true;
+        try {
+          await AV.api.del(`/api/admin/collections/${encodeURIComponent(del.dataset.delete)}`);
+          AV.toast('Collection deleted.', 'ok');
+          collections(pane);
+        } catch (err) {
+          if (err.status === 409) return reassignCollection(del.dataset.delete, del.dataset.name, pane);
+          AV.toast(AV.firstErr(err), 'err');
+          del.disabled = false;
+        }
+      }
+    });
+  } catch (e) {
+    fail(pane, e);
+  }
+}
+
+/* Deleting a collection that still holds products is refused by the server
+   unless a destination is named. This dialog is that destination: the products
+   move (union, never duplicated) and then the empty collection is deleted. */
+async function reassignCollection(id, name, pane) {
+  const { body } = dialog('Move products, then delete');
+  C.loading(body, 'Loading…');
+  let items;
+  try {
+    items = (await AV.api.get('/api/admin/collections?includeArchived=true')).data.items.filter((c) => c.id !== id);
+  } catch (err) {
+    C.error(body, err, { retry: () => reassignCollection(id, name, pane), level: 'h2' });
+    return;
+  }
+  if (!items.length) {
+    body.innerHTML = `<p class="note">“${AV.esc(name)}” still holds products, and there is no other collection to move them into. Archive it instead.</p>
+      <button class="btn btn-light" type="button" data-close>Close</button>`;
+    AV.qs('[data-close]', body)?.addEventListener('click', () => AV.qs('#admDialog').close());
+    return;
+  }
+  body.innerHTML = `
+    <p class="note">“${AV.esc(name)}” still holds products. Choose the collection they should move into; existing memberships there are kept.</p>
+    <form id="reassignForm" class="adm-form">
+      ${field('Move products to', `<select name="target">${items.map((c) => `<option value="${AV.esc(c.id)}">${AV.esc(c.name)}${c.active ? '' : ' (archived)'}</option>`).join('')}</select>`)}
+      <button class="btn btn-light" type="submit">Move products and delete</button>
+      <p class="form-msg"></p>
+    </form>`;
+  onSubmit(AV.qs('#reassignForm', body), async (f) => {
+    const target = f.elements.target.value;
+    await AV.api.del(`/api/admin/collections/${encodeURIComponent(id)}?reassignTo=${encodeURIComponent(target)}`);
+    AV.toast('Products moved and collection deleted.', 'ok');
+    AV.qs('#admDialog').close();
+    collections(pane);
+  });
+}
+
+async function collectionForm(id, pane) {
+  const editing = Boolean(id);
+  const { body } = dialog(editing ? 'Edit collection' : 'New collection');
+  C.loading(body, 'Loading…');
+  let c = null;
+  try {
+    if (editing) c = (await AV.api.get(`/api/admin/collections/${encodeURIComponent(id)}`)).data.collection;
+  } catch (err) {
+    C.error(body, err, { retry: () => collectionForm(id, pane), level: 'h2' });
+    return;
+  }
+  body.innerHTML = `
+    <form id="collectionForm" class="adm-form">
+      ${field('Name', input('name', `required maxlength="120" value="${AV.esc(c?.name || '')}"`))}
+      ${field('Link', input('slug', `maxlength="120" placeholder="derived from the name" value="${AV.esc(c?.slug || '')}"`))}
+      ${field('Cover image path', input('image', `maxlength="300" placeholder="/assets/img/library/…" value="${AV.esc(c?.image || '')}"`))}
+      ${field('Sort order', input('sortOrder', `type="number" step="1" value="${c?.sortOrder ?? 0}"`))}
+      ${field('Description', `<textarea name="description" rows="3" maxlength="2000">${AV.esc(c?.description || '')}</textarea>`, { wide: true })}
+      ${field('SEO title', input('seoTitle', `maxlength="70" value="${AV.esc(c?.seoTitle || '')}"`))}
+      ${field('SEO description', input('seoDescription', `maxlength="170" value="${AV.esc(c?.seoDescription || '')}"`))}
+      <label class="adm-check"><input type="checkbox" name="active"${!c || c.active ? ' checked' : ''}> Visible on the storefront</label>
+      <label class="adm-check"><input type="checkbox" name="featured"${c?.featured ? ' checked' : ''}> Featured</label>
+      <button class="btn btn-light" type="submit">${editing ? 'Save collection' : 'Create collection'}</button>
+      <p class="form-msg"></p>
+    </form>`;
+  onSubmit(AV.qs('#collectionForm', body), async (f) => {
+    const el = f.elements;
+    const payload = {
+      name: el.name.value.trim(),
+      slug: el.slug.value.trim() || undefined,
+      image: el.image.value.trim(),
+      sortOrder: Number(el.sortOrder.value || 0),
+      description: el.description.value.trim(),
+      seoTitle: el.seoTitle.value.trim(),
+      seoDescription: el.seoDescription.value.trim(),
+      active: el.active.checked,
+      featured: el.featured.checked,
+    };
+    if (editing) await AV.api.patch(`/api/admin/collections/${encodeURIComponent(id)}`, payload);
+    else await AV.api.post('/api/admin/collections', payload);
+    AV.toast(editing ? 'Collection updated.' : 'Collection created.', 'ok');
+    AV.qs('#admDialog').close();
+    collections(pane);
+  });
+}
+
+async function collectionProducts(id, pane) {
+  const { body } = dialog('Collection products');
+  C.loading(body, 'Loading…');
+  let detail;
+  let products;
+  try {
+    [detail, products] = await Promise.all([
+      AV.api.get(`/api/admin/collections/${encodeURIComponent(id)}`),
+      AV.api.get('/api/admin/products?limit=200&sort=name&order=asc'),
+    ]);
+  } catch (err) {
+    C.error(body, err, { retry: () => collectionProducts(id, pane), level: 'h2' });
+    return;
+  }
+  const chosen = new Set(detail.data.collection.products || []);
+  body.innerHTML = `
+    <p class="note">Tick the products that belong in “${AV.esc(detail.data.collection.name)}”. A product can be in more than one collection.</p>
+    <form id="membersForm" class="adm-form">
+      <div class="wide" style="display:grid;gap:8px;max-height:50vh;overflow:auto">
+        ${(products.data.items || []).map((p) => `<label class="adm-check"><input type="checkbox" name="product" value="${AV.esc(p.id)}"${chosen.has(p.id) ? ' checked' : ''}> ${AV.esc(p.name)} <span class="muted">${AV.esc(p.status)}</span></label>`).join('') || '<div class="empty">No products.</div>'}
+      </div>
+      <button class="btn btn-light" type="submit">Save membership</button>
+      <p class="form-msg"></p>
+    </form>`;
+  onSubmit(AV.qs('#membersForm', body), async (f) => {
+    const ids = [...f.querySelectorAll('input[name="product"]:checked')].map((x) => x.value);
+    await AV.api.put(`/api/admin/collections/${encodeURIComponent(id)}/products`, { products: ids });
+    AV.toast('Membership saved.', 'ok');
+    AV.qs('#admDialog').close();
+    collections(pane);
+  });
+}
+
+/* ── Rituals ──────────────────────────────────────────────────── */
+async function rituals(pane) {
+  C.skeleton(pane, 4);
+  try {
+    const env = await AV.api.get('/api/admin/rituals?limit=100');
+    const items = env.data.items || [];
+    pane.innerHTML = `
+      <div class="adm-toolbar">
+        <p class="note" style="margin:0">Plain-text rituals: title, materials and numbered steps. Drafts never reach the storefront.</p>
+        <span class="spacer"></span>
+        <button class="btn btn-light btn-sm" type="button" data-new>+ New ritual</button>
+      </div>
+      ${items.length
+        ? `<div class="table-wrap"><table>
+          <thead><tr><th>Ritual</th><th>Purpose</th><th>Duration</th><th>Steps</th><th>Status</th><th></th></tr></thead>
+          <tbody>${items.map((r) => `<tr>
+            <td><a href="/rituals/${encodeURIComponent(r.slug)}" target="_blank" rel="noopener">${AV.esc(r.title)}</a><div class="muted">${AV.esc(r.slug)}</div></td>
+            <td>${AV.esc(fmt(r.purpose))}</td>
+            <td>${AV.esc(fmt(r.duration))}</td>
+            <td>${(r.steps || []).length}</td>
+            <td>${statusPill(r.status)}</td>
+            <td class="adm-actions">
+              <button class="btn btn-ghost btn-sm" data-edit="${AV.esc(r.id)}">Edit</button>
+              <button class="btn btn-ghost btn-sm" data-toggle="${AV.esc(r.id)}" data-state="${r.status}">${r.status === 'archived' ? 'Restore' : 'Archive'}</button>
+              <button class="btn btn-ghost btn-sm" data-delete="${AV.esc(r.id)}" data-name="${AV.esc(r.title)}">Delete</button>
+            </td>
+          </tr>`).join('')}</tbody></table></div>`
+        : '<div class="empty">No rituals yet. Create the first one.</div>'}`;
+    AV.qs('[data-new]', pane)?.addEventListener('click', () => ritualForm(null, pane));
+    pane.querySelector('tbody')?.addEventListener('click', async (e) => {
+      const edit = e.target.closest('[data-edit]');
+      if (edit) return ritualForm(edit.dataset.edit, pane);
+      const toggle = e.target.closest('[data-toggle]');
+      if (toggle) {
+        const archived = toggle.dataset.state === 'archived';
+        toggle.disabled = true;
+        try {
+          await AV.api.post(`/api/admin/rituals/${encodeURIComponent(toggle.dataset.toggle)}/${archived ? 'restore' : 'archive'}`);
+          AV.toast(archived ? 'Ritual restored to draft.' : 'Ritual archived.', 'ok');
+          rituals(pane);
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+          toggle.disabled = false;
+        }
+        return;
+      }
+      const del = e.target.closest('[data-delete]');
+      if (del) {
+        if (!confirm(`Permanently delete “${del.dataset.name}”? Archive it instead if you may want it later.`)) return;
+        del.disabled = true;
+        try {
+          await AV.api.del(`/api/admin/rituals/${encodeURIComponent(del.dataset.delete)}`);
+          AV.toast('Ritual deleted.', 'ok');
+          rituals(pane);
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+          del.disabled = false;
+        }
+      }
+    });
+  } catch (e) {
+    fail(pane, e);
+  }
+}
+
+async function ritualForm(id, pane) {
+  const editing = Boolean(id);
+  const { body } = dialog(editing ? 'Edit ritual' : 'New ritual');
+  C.loading(body, 'Loading…');
+  let r = null;
+  let products = [];
+  try {
+    if (editing) r = (await AV.api.get(`/api/admin/rituals/${encodeURIComponent(id)}`)).data.ritual;
+    products = (await AV.api.get('/api/admin/products?limit=200&sort=name&order=asc')).data.items || [];
+  } catch (err) {
+    C.error(body, err, { retry: () => ritualForm(id, pane), level: 'h2' });
+    return;
+  }
+  const related = new Set((r?.relatedProducts || []).map((p) => p.id));
+  const steps = (r?.steps || []).map((s) => `${s.title ? s.title + ' | ' : ''}${s.body}`).join('\n');
+
+  body.innerHTML = `
+    <p class="note">Plain text only — HTML is refused by the server. Materials go one per line. Steps go one per line as <code>Title | Body</code>. Do not promise medical results or guaranteed outcomes; the server refuses those claims.</p>
+    <form id="ritualForm" class="adm-form">
+      ${field('Title', input('title', `required maxlength="160" value="${AV.esc(r?.title || '')}"`))}
+      ${field('Link', input('slug', `maxlength="160" placeholder="derived from the title" value="${AV.esc(r?.slug || '')}"`))}
+      ${field('Purpose', input('purpose', `maxlength="160" placeholder="Grounding, clarity, rest…" value="${AV.esc(r?.purpose || '')}"`))}
+      ${field('Duration', input('duration', `maxlength="80" placeholder="10 minutes" value="${AV.esc(r?.duration || '')}"`))}
+      ${field('Status', `<select name="status">${['draft', 'active', 'archived'].map((v) => `<option value="${v}"${(r?.status || 'draft') === v ? ' selected' : ''}>${label(v)}</option>`).join('')}</select>`)}
+      ${field('Intro', `<textarea name="intro" rows="2" maxlength="500" class="wide">${AV.esc(r?.intro || '')}</textarea>`, { wide: true })}
+      ${field('Description', `<textarea name="description" rows="5" maxlength="6000">${AV.esc(r?.description || '')}</textarea>`, { wide: true })}
+      ${field('Preparation', `<textarea name="preparation" rows="3" maxlength="2000">${AV.esc(r?.preparation || '')}</textarea>`, { wide: true })}
+      ${field('Materials (one per line)', `<textarea name="materials" rows="4">${AV.esc((r?.materials || []).join('\n'))}</textarea>`)}
+      ${field('Tags (one per line)', `<textarea name="tags" rows="4">${AV.esc((r?.tags || []).join('\n'))}</textarea>`)}
+      ${field('Steps (Title | Body, one per line)', `<textarea name="steps" rows="7">${AV.esc(steps)}</textarea>`, { wide: true })}
+      ${field('Image paths (one per line)', `<textarea name="images" rows="3" placeholder="/assets/img/library/…">${AV.esc((r?.images || []).join('\n'))}</textarea>`, { wide: true })}
+      ${field('Image alt text (one per line)', `<textarea name="imageAlts" rows="2">${AV.esc((r?.imageAlts || []).join('\n'))}</textarea>`, { wide: true })}
+      ${field('Related collections (slugs, comma separated)', input('relatedCollections', `maxlength="300" value="${AV.esc((r?.relatedCollections || []).join(', '))}"`), { wide: true })}
+      ${field('Linked product', `<select name="linkedProduct"><option value="">None</option>${products.map((p) => `<option value="${AV.esc(p.id)}"${r?.linkedProduct?.id === p.id ? ' selected' : ''}>${AV.esc(p.name)}</option>`).join('')}</select>`)}
+      ${field('Related products', `<div style="display:grid;gap:6px;max-height:160px;overflow:auto">${products.map((p) => `<label class="adm-check"><input type="checkbox" name="related" value="${AV.esc(p.id)}"${related.has(p.id) ? ' checked' : ''}> ${AV.esc(p.name)}</label>`).join('') || '<span class="muted">No products.</span>'}</div>`)}
+      ${field('SEO title', input('seoTitle', `maxlength="70" value="${AV.esc(r?.seoTitle || '')}"`))}
+      ${field('SEO description', input('seoDescription', `maxlength="170" value="${AV.esc(r?.seoDescription || '')}"`))}
+      <label class="adm-check"><input type="checkbox" name="featured"${r?.featured ? ' checked' : ''}> Featured</label>
+      <button class="btn btn-light" type="submit">${editing ? 'Save ritual' : 'Create ritual'}</button>
+      <p class="form-msg"></p>
+    </form>`;
+
+  onSubmit(AV.qs('#ritualForm', body), async (f) => {
+    const el = f.elements;
+    const lines = (v) => v.split('\n').map((x) => x.trim()).filter(Boolean);
+    const payload = {
+      title: el.title.value.trim(),
+      slug: el.slug.value.trim() || undefined,
+      purpose: el.purpose.value.trim(),
+      duration: el.duration.value.trim(),
+      status: el.status.value,
+      intro: el.intro.value.trim(),
+      description: el.description.value.trim(),
+      preparation: el.preparation.value.trim(),
+      materials: lines(el.materials.value),
+      tags: lines(el.tags.value),
+      steps: lines(el.steps.value).map((line) => {
+        const [title, ...rest] = line.split('|');
+        return rest.length ? { title: title.trim(), body: rest.join('|').trim() } : { title: '', body: line };
+      }),
+      images: lines(el.images.value),
+      imageAlts: lines(el.imageAlts.value),
+      relatedCollections: el.relatedCollections.value.split(',').map((x) => x.trim()).filter(Boolean),
+      relatedProducts: [...f.querySelectorAll('input[name="related"]:checked')].map((x) => x.value),
+      linkedProduct: el.linkedProduct.value || null,
+      seoTitle: el.seoTitle.value.trim(),
+      seoDescription: el.seoDescription.value.trim(),
+      featured: el.featured.checked,
+    };
+    if (editing) await AV.api.patch(`/api/admin/rituals/${encodeURIComponent(id)}`, payload);
+    else await AV.api.post('/api/admin/rituals', payload);
+    AV.toast(editing ? 'Ritual updated.' : 'Ritual created.', 'ok');
+    AV.qs('#admDialog').close();
+    rituals(pane);
+  });
+}
+
+/* ── Blog ─────────────────────────────────────────────────────── */
+async function blog(pane) {
+  C.skeleton(pane, 4);
+  try {
+    const env = await AV.api.get('/api/admin/blog?limit=100');
+    const items = env.data.items || [];
+    pane.innerHTML = `
+      <div class="adm-toolbar">
+        <p class="note" style="margin:0">Journal posts. Drafts are private; published posts drive /journal and /article.</p>
+        <span class="spacer"></span>
+        <button class="btn btn-light btn-sm" type="button" data-new>+ New post</button>
+      </div>
+      ${items.length
+        ? `<div class="table-wrap"><table>
+          <thead><tr><th>Post</th><th>Category</th><th>Published</th><th>Status</th><th></th></tr></thead>
+          <tbody>${items.map((p) => `<tr>
+            <td>${AV.esc(p.title)}<div class="muted">${AV.esc(p.slug)}</div></td>
+            <td>${AV.esc(fmt(p.category))}</td>
+            <td>${p.publishedAt ? AV.formatDate(p.publishedAt) : '<span class="muted">Unpublished</span>'}</td>
+            <td>${statusPill(p.status)}</td>
+            <td class="adm-actions">
+              <button class="btn btn-ghost btn-sm" data-edit="${AV.esc(p.id)}">Edit</button>
+              <button class="btn btn-ghost btn-sm" data-toggle="${AV.esc(p.id)}" data-state="${p.status}">${p.status === 'archived' ? 'Restore' : 'Archive'}</button>
+              <button class="btn btn-ghost btn-sm" data-delete="${AV.esc(p.id)}" data-name="${AV.esc(p.title)}">Delete</button>
+            </td>
+          </tr>`).join('')}</tbody></table></div>`
+        : '<div class="empty">No journal posts yet.</div>'}`;
+    AV.qs('[data-new]', pane)?.addEventListener('click', () => blogForm(null, pane));
+    pane.querySelector('tbody')?.addEventListener('click', async (e) => {
+      const edit = e.target.closest('[data-edit]');
+      if (edit) return blogForm(edit.dataset.edit, pane);
+      const toggle = e.target.closest('[data-toggle]');
+      if (toggle) {
+        const archived = toggle.dataset.state === 'archived';
+        toggle.disabled = true;
+        try {
+          await AV.api.post(`/api/admin/blog/${encodeURIComponent(toggle.dataset.toggle)}/${archived ? 'restore' : 'archive'}`);
+          AV.toast(archived ? 'Post restored to draft.' : 'Post archived.', 'ok');
+          blog(pane);
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+          toggle.disabled = false;
+        }
+        return;
+      }
+      const del = e.target.closest('[data-delete]');
+      if (del) {
+        if (!confirm(`Permanently delete “${del.dataset.name}”?`)) return;
+        del.disabled = true;
+        try {
+          await AV.api.del(`/api/admin/blog/${encodeURIComponent(del.dataset.delete)}`);
+          AV.toast('Post deleted.', 'ok');
+          blog(pane);
+        } catch (err) {
+          AV.toast(AV.firstErr(err), 'err');
+          del.disabled = false;
+        }
+      }
+    });
+  } catch (e) {
+    fail(pane, e);
+  }
+}
+
+async function blogForm(id, pane) {
+  const editing = Boolean(id);
+  const { body } = dialog(editing ? 'Edit journal post' : 'New journal post');
+  C.loading(body, 'Loading…');
+  let p = null;
+  try {
+    if (editing) p = (await AV.api.get(`/api/admin/blog/${encodeURIComponent(id)}`)).data.post;
+  } catch (err) {
+    C.error(body, err, { retry: () => blogForm(id, pane), level: 'h2' });
+    return;
+  }
+  body.innerHTML = `
+    <p class="note">Plain text only. Separate paragraphs with a blank line.</p>
+    <form id="blogForm" class="adm-form">
+      ${field('Title', input('title', `required maxlength="200" value="${AV.esc(p?.title || '')}"`))}
+      ${field('Link', input('slug', `maxlength="200" placeholder="derived from the title" value="${AV.esc(p?.slug || '')}"`))}
+      ${field('Category', input('category', `maxlength="80" value="${AV.esc(p?.category || 'journal')}"`))}
+      ${field('Status', `<select name="status">${['draft', 'active', 'archived'].map((v) => `<option value="${v}"${(p?.status || 'draft') === v ? ' selected' : ''}>${label(v)}</option>`).join('')}</select>`)}
+      ${field('Author', input('author', `maxlength="120" value="${AV.esc(p?.author || 'Astro Vetro')}"`))}
+      ${field('Cover image path', input('image', `maxlength="300" placeholder="/assets/img/library/…" value="${AV.esc(p?.image || '')}"`))}
+      ${field('Cover alt text', input('imageAlt', `maxlength="300" value="${AV.esc(p?.imageAlt || '')}"`))}
+      ${field('Tags (comma separated)', input('tags', `maxlength="300" value="${AV.esc((p?.tags || []).join(', '))}"`))}
+      ${field('Excerpt', `<textarea name="excerpt" rows="3" maxlength="500">${AV.esc(p?.excerpt || '')}</textarea>`, { wide: true })}
+      ${field('Content', `<textarea name="content" rows="12" maxlength="40000">${AV.esc(p?.content || '')}</textarea>`, { wide: true })}
+      ${field('SEO title', input('seoTitle', `maxlength="70" value="${AV.esc(p?.seoTitle || '')}"`))}
+      ${field('SEO description', input('seoDescription', `maxlength="170" value="${AV.esc(p?.seoDescription || '')}"`))}
+      <label class="adm-check"><input type="checkbox" name="featured"${p?.featured ? ' checked' : ''}> Featured</label>
+      <button class="btn btn-light" type="submit">${editing ? 'Save post' : 'Create post'}</button>
+      <p class="form-msg"></p>
+    </form>`;
+  onSubmit(AV.qs('#blogForm', body), async (f) => {
+    const el = f.elements;
+    const payload = {
+      title: el.title.value.trim(),
+      slug: el.slug.value.trim() || undefined,
+      category: el.category.value.trim(),
+      status: el.status.value,
+      author: el.author.value.trim(),
+      image: el.image.value.trim(),
+      imageAlt: el.imageAlt.value.trim(),
+      tags: el.tags.value.split(',').map((x) => x.trim()).filter(Boolean),
+      excerpt: el.excerpt.value.trim(),
+      content: el.content.value.trim(),
+      seoTitle: el.seoTitle.value.trim(),
+      seoDescription: el.seoDescription.value.trim(),
+      featured: el.featured.checked,
+    };
+    if (editing) await AV.api.patch(`/api/admin/blog/${encodeURIComponent(id)}`, payload);
+    else await AV.api.post('/api/admin/blog', payload);
+    AV.toast(editing ? 'Post updated.' : 'Post created.', 'ok');
+    AV.qs('#admDialog').close();
+    blog(pane);
+  });
+}
+
+/* ── Website content ──────────────────────────────────────────── */
+async function content(pane) {
+  C.skeleton(pane, 4);
+  try {
+    const c = (await AV.api.get('/api/admin/content/homepage')).data.content;
+    const h = c.homepage || {};
+    const contact = c.contact || {};
+    pane.innerHTML = `
+      <p class="note" style="margin-bottom:16px">Fixed homepage placements. Plain text only; changes appear on <a href="/home.html" target="_blank" rel="noopener">the home page</a> immediately.</p>
+      <form id="contentForm" class="adm-form">
+        <h3 class="wide">Hero</h3>
+        ${field('Eyebrow', input('heroEyebrow', `maxlength="80" value="${AV.esc(h.heroEyebrow || '')}"`))}
+        ${field('Title', input('heroTitle', `maxlength="160" value="${AV.esc(h.heroTitle || '')}"`))}
+        ${field('Intro', `<textarea name="heroIntro" rows="4" maxlength="1200">${AV.esc(h.heroIntro || '')}</textarea>`, { wide: true })}
+        <h3 class="wide">Collection section</h3>
+        ${field('Eyebrow', input('productsEyebrow', `maxlength="80" value="${AV.esc(h.productsEyebrow || '')}"`))}
+        ${field('Title', input('productsTitle', `maxlength="160" value="${AV.esc(h.productsTitle || '')}"`))}
+        <h3 class="wide">Rituals section</h3>
+        ${field('Eyebrow', input('ritualsEyebrow', `maxlength="80" value="${AV.esc(h.ritualsEyebrow || '')}"`))}
+        ${field('Title', input('ritualsTitle', `maxlength="160" value="${AV.esc(h.ritualsTitle || '')}"`))}
+        ${field('Body', `<textarea name="ritualsBody" rows="4" maxlength="1200">${AV.esc(h.ritualsBody || '')}</textarea>`, { wide: true })}
+        ${field('Button label', input('ritualsCtaLabel', `maxlength="60" value="${AV.esc(h.ritualsCtaLabel || '')}"`))}
+        ${field('Button link', input('ritualsCtaHref', `maxlength="300" placeholder="/rituals" value="${AV.esc(h.ritualsCtaHref || '')}"`))}
+        <h3 class="wide">Journal section</h3>
+        ${field('Eyebrow', input('journalEyebrow', `maxlength="80" value="${AV.esc(h.journalEyebrow || '')}"`))}
+        ${field('Title', input('journalTitle', `maxlength="160" value="${AV.esc(h.journalTitle || '')}"`))}
+        <h3 class="wide">Announcement & SEO</h3>
+        ${field('Announcement', input('announcement', `maxlength="200" value="${AV.esc(h.announcement || '')}"`))}
+        ${field('SEO title', input('seoTitle', `maxlength="70" value="${AV.esc(h.seoTitle || '')}"`))}
+        ${field('SEO description', `<textarea name="seoDescription" rows="2" maxlength="170">${AV.esc(h.seoDescription || '')}</textarea>`, { wide: true })}
+        <label class="adm-check"><input type="checkbox" name="announcementActive"${h.announcementActive ? ' checked' : ''}> Show announcement bar</label>
+        <h3 class="wide">Contact details</h3>
+        ${field('Email', input('contactEmail', `type="email" maxlength="160" value="${AV.esc(contact.email || '')}"`))}
+        ${field('Phone', input('contactPhone', `maxlength="40" value="${AV.esc(contact.phone || '')}"`))}
+        ${field('Address', input('contactAddress', `maxlength="300" value="${AV.esc(contact.address || '')}"`))}
+        ${field('Hours', input('contactHours', `maxlength="160" value="${AV.esc(contact.hours || '')}"`))}
+        <button class="btn btn-light" type="submit">Save homepage content</button>
+        <p class="form-msg"></p>
+      </form>`;
+    onSubmit(AV.qs('#contentForm', pane), async (f) => {
+      const el = f.elements;
+      const payload = {
+        homepage: {
+          heroEyebrow: el.heroEyebrow.value.trim(),
+          heroTitle: el.heroTitle.value.trim(),
+          heroIntro: el.heroIntro.value.trim(),
+          productsEyebrow: el.productsEyebrow.value.trim(),
+          productsTitle: el.productsTitle.value.trim(),
+          ritualsEyebrow: el.ritualsEyebrow.value.trim(),
+          ritualsTitle: el.ritualsTitle.value.trim(),
+          ritualsBody: el.ritualsBody.value.trim(),
+          ritualsCtaLabel: el.ritualsCtaLabel.value.trim(),
+          ritualsCtaHref: el.ritualsCtaHref.value.trim(),
+          journalEyebrow: el.journalEyebrow.value.trim(),
+          journalTitle: el.journalTitle.value.trim(),
+          announcement: el.announcement.value.trim(),
+          announcementActive: el.announcementActive.checked,
+          seoTitle: el.seoTitle.value.trim(),
+          seoDescription: el.seoDescription.value.trim(),
+        },
+        contact: {
+          email: el.contactEmail.value.trim(),
+          phone: el.contactPhone.value.trim(),
+          address: el.contactAddress.value.trim(),
+          hours: el.contactHours.value.trim(),
+        },
+      };
+      await AV.api.put('/api/admin/content/homepage', payload);
+      AV.toast('Homepage content saved.', 'ok');
+      content(pane);
+    });
   } catch (e) {
     fail(pane, e);
   }

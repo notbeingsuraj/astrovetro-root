@@ -98,8 +98,8 @@ async function load() {
     const p = env.data;
     if (!p) throw new Error('Product not found');
     AV.seo({
-      title: p.name,
-      description: p.description ||
+      title: p.seoTitle || p.name,
+      description: p.seoDescription || p.description ||
         `${p.name}${p.stone ? ' in ' + p.stone : ''} — ${p.category || 'crystal'}.`,
       url: `/product.html?slug=${encodeURIComponent(p.slug)}`,
       type: 'product',

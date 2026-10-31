@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/favicon.svg">
+<meta name="robots" content="index, follow">
+<meta name="description" content="Rituals for slow mornings and small intentions — materials, steps and the pieces that go with them.">
+<title>Rituals — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="canonical" href="/rituals">
+<meta property="og:site_name" content="Astro Vetro">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Rituals — Astro Vetro">
+<meta property="og:description" content="Rituals for slow mornings and small intentions.">
+<meta property="og:url" content="/rituals">
+<meta property="og:image" content="/assets/img/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Rituals — Astro Vetro">
+<meta name="twitter:description" content="Rituals for slow mornings and small intentions.">
+<meta name="twitter:image" content="/assets/img/og-card.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a class="back" href="/home.html">← Home</a>
+    <div class="eyebrow">Practice</div>
+    <h1>Small rituals.</h1>
+    <p class="sub">Materials, steps and a little quiet — written to be followed, not performed.</p>
+    <p class="sub"><a href="/readings.html">Looking for a tarot reading instead? Book one →</a></p>
+  </div>
+</header>
+
+<main id="main">
+  <div class="page">
+    <div class="wrap">
+      <h2 class="sr-only">Rituals</h2>
+      <div class="journal-grid js-load" id="ritualGrid"></div>
+    </div>
+  </div>
+</main>
+
+<footer id="siteFooter"></footer>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script>
+AV.boot();
+const grid = AV.qs('#ritualGrid');
+
+(async () => {
+  grid.innerHTML = AV.skeletonCards(3);
+  try {
+    const env = await AV.api.get('/api/rituals?limit=24');
+    const items = env.data || [];
+    if (!items.length) {
+      grid.innerHTML = '<div class="empty">Rituals are being written. <a class="btn btn-ghost" href="/readings.html">Explore readings</a></div>';
+      return;
+    }
+    grid.innerHTML = items.map((r, i) => `
+      <article class="journal-card">
+        <a href="/rituals/${encodeURIComponent(r.slug)}">
+          <div class="journal-img ${i % 2 === 0 ? 'j1' : 'j2'}" role="img" aria-label="${AV.esc(r.title)}"></div>
+        </a>
+        <small>${AV.esc(r.duration || 'A quiet practice')}${r.purpose ? ' · ' + AV.esc(r.purpose) : ''}</small>
+        <h3><a href="/rituals/${encodeURIComponent(r.slug)}">${AV.esc(r.title)}</a></h3>
+        <p class="muted">${AV.esc(r.intro || '')}</p>
+      </article>`).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="empty">${AV.esc(AV.firstErr(e))}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

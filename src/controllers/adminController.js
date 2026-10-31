@@ -26,7 +26,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { pageMeta } from '../utils/responses.js';
 /* Legacy PATCH /products/:id/inventory used to write stock directly. It now
    delegates here so a balance change can never bypass the ledger. */
-import { setStockAbsolute, clearTracking } from '../services/inventoryService.js';
+import { setStockAbsolute, clearTracking, restoreInventoryForCancelledOrder } from '../services/inventoryService.js';
 
 const listSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
@@ -100,7 +100,15 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     throw ApiError.conflict(`An order that is ${order.status.replace('_', ' ')} cannot become ${status.replace('_', ' ')}.`);
   }
 
+  const previousStatus = order.status;
   order.status = status;
+
+  /* If order is being cancelled and inventory was committed, restore it.
+     This is idempotent: safe to call multiple times. */
+  if (status === ORDER_STATUS.CANCELLED && previousStatus !== ORDER_STATUS.CANCELLED) {
+    await restoreInventoryForCancelledOrder({ order, actor: req.user });
+  }
+
   /* Marking an order cancelled after payment does not refund it. Money moves
      back through the provider, deliberately as a separate, audited step. */
   if (status === ORDER_STATUS.DELIVERED) {

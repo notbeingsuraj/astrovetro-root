@@ -12,7 +12,9 @@
     "smoke:admin": "node scripts/smoke-admin.mjs",
     "review:images": "node scripts/generate-image-review.mjs",
     "migrate:catalogue": "node scripts/migrate-catalogue.mjs",
-    "migrate:users": "node scripts/migrate-users.mjs"
+    "migrate:users": "node scripts/migrate-users.mjs",
+    "backup:db": "node scripts/backup-db.mjs",
+    "backup:media": "node scripts/backup-media.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -26,6 +28,8 @@
     "mongoose": "^9.10.4",
     "razorpay": "^2.9.8",
     "sharp": "^0.35.5",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@aws-sdk/client-s3": "^3.450.0",
+    "@aws-sdk/s3-request-presigner": "^3.450.0"
   }
 }

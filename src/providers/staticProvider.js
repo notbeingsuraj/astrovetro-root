@@ -12,6 +12,7 @@
    ------------------------------------------------------------------------- */
 
 import catalogue from '../data/catalogue.js';
+import { HOMEPAGE_DEFAULTS, CONTACT_DEFAULTS } from '../data/siteContent.js';
 
 const { products, services, testimonials, articles } = catalogue;
 
@@ -124,6 +125,36 @@ export const staticProvider = {
 
   async listTestimonials() {
     return testimonials.slice();
+  },
+
+  /* Editorial modules exist only with a database: there is nowhere to store an
+     administrator's edit in static mode, so these return honest empty shapes
+     rather than invented content. The storefront falls back to its own copy. */
+  async listCollections() {
+    return { data: [], meta: { provider: 'static', database: false } };
+  },
+
+  async getCollection() {
+    return null;
+  },
+
+  async listRituals() {
+    return {
+      data: [],
+      meta: { page: 1, limit: 12, total: 0, totalPages: 1, hasMore: false, provider: 'static', database: false },
+    };
+  },
+
+  async getRitual() {
+    return null;
+  },
+
+  async getHomepageContent() {
+    return {
+      homepage: { ...HOMEPAGE_DEFAULTS },
+      contact: { ...CONTACT_DEFAULTS },
+      updatedAt: null,
+    };
   },
 };
 

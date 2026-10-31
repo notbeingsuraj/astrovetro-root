@@ -88,8 +88,8 @@ function escLine(t) {
     const a = env.data;
     if (!a) throw new Error('Article not found');
     AV.seo({
-      title: `${a.title} — Journal`,
-      description: a.excerpt || 'Notes on stones, rituals and the quiet work of paying attention.',
+      title: a.seoTitle || `${a.title} — Journal`,
+      description: a.seoDescription || a.excerpt || 'Notes on stones, rituals and the quiet work of paying attention.',
       url: `/article.html?slug=${encodeURIComponent(a.slug)}`,
       type: 'article',
     });

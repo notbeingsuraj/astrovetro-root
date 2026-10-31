@@ -101,13 +101,14 @@ function state() {
     search: params.get('search') || '',
     intention: params.get('intention') || '',
     category: params.get('category') || '',
+    collection: params.get('collection') || '',
     sort: params.get('sort') || 'createdAt',
     order: params.get('order') || 'desc',
   };
 }
 function syncUrl() {
   const s = state();
-  for (const k of ['search', 'intention', 'category', 'sort', 'order']) {
+  for (const k of ['search', 'intention', 'category', 'collection', 'sort', 'order']) {
     if (s[k]) params.set(k, s[k]);
     else params.delete(k);
   }
@@ -120,7 +121,7 @@ let loadToken = 0;
 
 function isFiltered() {
   const s = state();
-  return Boolean(s.search || s.intention || s.category);
+  return Boolean(s.search || s.intention || s.category || s.collection);
 }
 
 /* Featured rail only when the visitor has not narrowed anything yet. */
@@ -155,6 +156,7 @@ async function load() {
   if (s.search) q.set('search', s.search);
   if (s.intention) q.set('intention', s.intention);
   if (s.category) q.set('category', s.category);
+  if (s.collection) q.set('collection', s.collection);
 
   /* Keep the previous results on screen while refetching; only show
      skeletons on a cold first paint. */
@@ -221,7 +223,7 @@ function refetch({ resetPage = true, scroll = false } = {}) {
 grid.addEventListener('click', (e) => {
   const reset = e.target.closest('[data-reset-filters]');
   if (reset) {
-    for (const k of ['search', 'intention', 'category']) params.delete(k);
+    for (const k of ['search', 'intention', 'category', 'collection']) params.delete(k);
     AV.qs('#searchInput').value = '';
     AV.qs('#catSelect').value = '';
     AV.qsa('#intentionChips .chip').forEach((c) => c.classList.remove('on'));

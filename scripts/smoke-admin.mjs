@@ -221,8 +221,27 @@ async function main() {
   const settings = await call('GET', '/api/admin/settings');
   check('GET /api/admin/settings', settings);
 
-  /* 7. Storefront still serves the pages the desk links to ---------------- */
-  for (const page of ['/', '/shop.html', '/product.html', '/cart.html', '/account.html', '/orders.html']) {
+  /* 7. Studio editorial modules ------------------------------------------- */
+  const collections = await call('GET', '/api/admin/collections');
+  check('GET /api/admin/collections', collections, { dataPath: 'data.items', min: 0 });
+
+  const rituals = await call('GET', '/api/admin/rituals');
+  check('GET /api/admin/rituals', rituals, { dataPath: 'data.items', min: 0 });
+
+  const blog = await call('GET', '/api/admin/blog');
+  check('GET /api/admin/blog', blog, { dataPath: 'data.items' });
+
+  const content = await call('GET', '/api/admin/content/homepage');
+  check('GET /api/admin/content/homepage', content, { dataPath: 'data.content.homepage' });
+
+  for (const path of ['/api/collections', '/api/rituals', '/api/content/homepage']) {
+    const res = await fetch(BASE + path);
+    if (!res.ok) failures.push(`public ${path} returned ${res.status}`);
+  }
+  console.log('  ✔ public collections, rituals and homepage content answer 200');
+
+  /* 8. Storefront still serves the pages the desk links to ---------------- */
+  for (const page of ['/', '/shop.html', '/product.html', '/cart.html', '/account.html', '/orders.html', '/rituals', '/rituals.html']) {
     const res = await fetch(BASE + page);
     if (!res.ok) failures.push(`page ${page} returned ${res.status}`);
   }

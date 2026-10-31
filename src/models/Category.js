@@ -19,11 +19,42 @@ const categorySchema = new mongoose.Schema(
   {
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     name: { type: String, required: true, trim: true, maxlength: 60 },
+    description: { type: String, default: '', maxlength: 1200 },
+    image: { type: String, default: '' },
+    seoTitle: { type: String, default: '', maxlength: 70 },
+    seoDescription: { type: String, default: '', maxlength: 170 },
     active: { type: Boolean, default: true, index: true },
     sortOrder: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
+
+categorySchema.methods.toPublic = function toPublic(productCount = null) {
+  return {
+    slug: this.slug,
+    name: this.name,
+    description: this.description,
+    image: this.image || null,
+    seoTitle: this.seoTitle,
+    seoDescription: this.seoDescription,
+    productCount,
+  };
+};
+
+categorySchema.methods.toAdmin = function toAdmin(productCount = 0) {
+  return {
+    slug: this.slug,
+    name: this.name,
+    description: this.description,
+    image: this.image || '',
+    seoTitle: this.seoTitle,
+    seoDescription: this.seoDescription,
+    active: this.active,
+    sortOrder: this.sortOrder,
+    productCount,
+    updatedAt: this.updatedAt,
+  };
+};
 
 export const Category = mongoose.model('Category', categorySchema);
 export default Category;

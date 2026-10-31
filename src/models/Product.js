@@ -83,6 +83,19 @@ const productSchema = new mongoose.Schema(
        never substituted with the selling price in any valuation. */
     costPrice: { type: Number, default: null, min: 0 },
 
+    /* Editorial classification used by the storefront and the admin filters.
+       `category` remains the taxonomy (ring, tower, bracelet); productType says
+       what kind of object it is. Kept separate so neither has to be overloaded. */
+    productType: {
+      type: String,
+      enum: ['crystal', 'jewellery', 'tarot', 'object', 'other'],
+      default: 'other',
+      index: true,
+    },
+    /* ISO 4217 code. The storefront currently formats INR; the field exists so
+       a product cannot silently inherit the wrong symbol when that changes. */
+    currency: { type: String, enum: ['INR'], default: 'INR' },
+
     images: { type: [String], default: [] },
     /* Parallel to `images`; readers fall back to a generated alt when the
        entry is missing (legacy documents). */
@@ -108,6 +121,18 @@ const productSchema = new mongoose.Schema(
 
     status: { type: String, enum: ['draft', 'active', 'archived'], default: 'active', index: true },
     tags: { type: [String], default: [] },
+
+    /* Search/social copy. Empty falls back to the product's own name and
+       short description on the storefront. */
+    seoTitle: { type: String, default: '', maxlength: 70 },
+    seoDescription: { type: String, default: '', maxlength: 170 },
+
+    /* Set once when a product first becomes public, so "newest" can mean
+       "newly published" rather than "recently edited". */
+    publishedAt: { type: Date, default: null, index: true },
+    /* Old slugs are kept so a renamed product can still be reached — the
+       provider looks them up when the current slug misses. */
+    previousSlugs: { type: [String], default: [] },
 
     /* True while the product's identity/photography needs a human check
        (e.g. an uncertain image mapping). Surfaces on the admin dashboard. */
@@ -159,6 +184,11 @@ productSchema.methods.toPublic = function toPublic() {
     featured: this.featured,
     stone: this.stone,
     metal: this.metal,
+    productType: this.productType || 'other',
+    currency: this.currency || 'INR',
+    seoTitle: this.seoTitle,
+    seoDescription: this.seoDescription,
+    publishedAt: this.publishedAt,
     /* Exposed as a boolean, not the raw number: the storefront needs to know
        whether an item is available, not how many are on the shelf. */
     inStock: this.availability && (this.stock == null || this.stock > 0),
@@ -189,6 +219,12 @@ productSchema.methods.toAdmin = function toAdmin() {
     stone: this.stone,
     metal: this.metal,
     tags: this.tags,
+    productType: this.productType || 'other',
+    currency: this.currency || 'INR',
+    seoTitle: this.seoTitle,
+    seoDescription: this.seoDescription,
+    publishedAt: this.publishedAt,
+    previousSlugs: this.previousSlugs,
     featured: this.featured,
     availability: this.availability,
     rating: this.rating,
