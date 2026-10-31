@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<meta name="description" content="Create an Astro Vetro account for saved pieces, addresses and order history.">
+<meta name="robots" content="noindex, nofollow">
+<title>Create an account — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+<header class="page-hero page-hero--bare">
+  <div class="wrap">
+    <a class="back" href="/home.html">← Home</a>
+    <div class="eyebrow">A place of your own</div>
+    <h1>Make it yours.</h1>
+    <p class="sub">Save the pieces that speak to you and keep every order and address in one considered space.</p>
+  </div>
+</header>
+<main id="main">
+  <section class="page auth-page">
+    <div class="auth-card" id="authRoot" aria-live="polite" aria-busy="true">
+      <div class="eyebrow">Begin here</div>
+      <h2>Create your account.</h2>
+      <p class="auth-intro">A few details are all it takes to keep your Astro Vetro experience together.</p>
+      <div class="av-skeleton" aria-hidden="true"><div class="line-lg"></div><div class="line-xl"></div></div>
+    </div>
+  </section>
+</main>
+<footer id="siteFooter"></footer>
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
+<script>
+const C = AV.customer;
+const root = AV.qs('#authRoot');
+const next = C.safeNext(C.readParam('next'), '/account.html');
+
+C.start('#authRoot', async () => {
+  if (await C.needsDatabase()) return C.databaseUnavailable(root);
+  const user = await AV.me();
+  if (user) {
+    location.replace(next);
+    return;
+  }
+  renderSignUp();
+});
+
+function renderSignUp() {
+  AV.seo({
+    title: 'Create an account',
+    description: 'Create an account for saved pieces, addresses and order history.',
+    noindex: true,
+  });
+  root.removeAttribute('aria-busy');
+  root.innerHTML = `
+    <div class="eyebrow">Begin here</div>
+    <h2>Create your account.</h2>
+    <p class="auth-intro">A few details are all it takes to keep your Astro Vetro experience together.</p>
+    <form class="auth-form" id="signUpForm" novalidate>
+      <p class="form-msg" aria-live="polite"></p>
+      <label>Full name
+        <input name="name" required minlength="2" maxlength="120" autocomplete="name" autofocus>
+      </label>
+      <label>Email address
+        <input type="email" name="email" required maxlength="160" autocomplete="email">
+      </label>
+      <label>Phone number <span style="color:var(--text-muted);font-weight:400;letter-spacing:0;text-transform:none">(optional)</span>
+        <input name="phone" autocomplete="tel" inputmode="tel" placeholder="+91 …">
+      </label>
+      <label>Password
+        <input type="password" name="password" required minlength="8" maxlength="200" autocomplete="new-password">
+      </label>
+      <p class="hint">Use at least 8 characters.</p>
+      <button class="btn btn-light btn-block" type="submit">Create your account</button>
+    </form>
+    <p class="auth-switch">Already have an account? <a href="/signin.html?next=${encodeURIComponent(next)}">Sign in</a>.</p>
+    <a class="auth-back" href="/shop.html">← Continue browsing</a>`;
+
+  C.onSubmit(AV.qs('#signUpForm', root), async (body) => {
+    await AV.auth.register(body.name, body.email, body.password, body.phone);
+    await C.afterSignIn();
+    AV.toast('Welcome to Astro Vetro.', 'ok');
+    history.replaceState(null, '', next);
+    location.assign(next);
+  });
+}
+</script>
+</body>
+</html>
