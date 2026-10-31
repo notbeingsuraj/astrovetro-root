@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17221d">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<meta name="description" content="Sign in to your Astro Vetro account to see your orders, saved pieces and addresses.">
+<meta name="robots" content="noindex, nofollow">
+<title>Sign in — Astro Vetro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="siteHeader"></div>
+<header class="page-hero page-hero--bare">
+  <div class="wrap">
+    <a class="back" href="/home.html">← Home</a>
+    <div class="eyebrow">Your space</div>
+    <h1>Welcome back.</h1>
+    <p class="sub">Return to the pieces you have saved, your orders and the details that make them yours.</p>
+  </div>
+</header>
+<main id="main">
+  <section class="page auth-page">
+    <div class="auth-card" id="authRoot" aria-live="polite" aria-busy="true">
+      <div class="eyebrow">Astro Vetro account</div>
+      <h2>Sign in.</h2>
+      <p class="auth-intro">A quieter place to keep your saved pieces, addresses and order history together.</p>
+      <div class="av-skeleton" aria-hidden="true"><div class="line-lg"></div><div class="line-xl"></div></div>
+    </div>
+  </section>
+</main>
+<footer id="siteFooter"></footer>
+<script src="/assets/api.js"></script>
+<script src="/assets/store.js"></script>
+<script src="/assets/customer.js"></script>
+<script>
+const C = AV.customer;
+const root = AV.qs('#authRoot');
+const next = C.safeNext(C.readParam('next'), '/account.html');
+
+C.start('#authRoot', async () => {
+  if (await C.needsDatabase()) return C.databaseUnavailable(root);
+  const user = await AV.me();
+  if (user) {
+    location.replace(next);
+    return;
+  }
+  renderSignIn();
+});
+
+function renderSignIn() {
+  AV.seo({
+    title: 'Sign in',
+    description: 'Sign in to see your orders, saved pieces and addresses.',
+    noindex: true,
+  });
+  root.removeAttribute('aria-busy');
+  root.innerHTML = `
+    <div class="eyebrow">Astro Vetro account</div>
+    <h2>Sign in.</h2>
+    <p class="auth-intro">A quieter place to keep your saved pieces, addresses and order history together.</p>
+    <form class="auth-form" id="signInForm" novalidate>
+      <p class="form-msg" aria-live="polite"></p>
+      <label>Email address
+        <input type="email" name="email" required autocomplete="email" autofocus>
+      </label>
+      <label>Password
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      <button class="btn btn-light btn-block" type="submit">Sign in to your account</button>
+    </form>
+    <p class="auth-switch">New to Astro Vetro? <a href="/signup.html?next=${encodeURIComponent(next)}">Create an account</a>.</p>
+    <a class="auth-back" href="/shop.html">← Continue browsing</a>`;
+
+  C.onSubmit(AV.qs('#signInForm', root), async (body) => {
+    await AV.auth.login(body.email, body.password);
+    await C.afterSignIn();
+    AV.toast('Welcome back.', 'ok');
+    history.replaceState(null, '', next);
+    location.assign(next);
+  });
+}
+</script>
+</body>
+</html>
