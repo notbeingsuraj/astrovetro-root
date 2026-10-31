@@ -95,7 +95,7 @@ AV.customer = (() => {
      visitor is sent to sign in and returned to this page afterwards. */
   function authLost(next) {
     const target = next || (location.pathname + location.search);
-    location.href = `/account.html?view=login&next=${encodeURIComponent(target)}`;
+    location.href = `/signin.html?next=${encodeURIComponent(target)}`;
   }
 
   /* ── Sign-in gate ────────────────────────────────────────────────
@@ -108,8 +108,8 @@ AV.customer = (() => {
       <div class="av-gate">
         <h2>Sign in to continue.</h2>
         <p>${reason ? `${html(reason)} ` : ''}Your bag, wishlist and orders stay with your account, so nothing is lost between visits.</p>
-        <a class="btn btn-light" href="/account.html?view=login&next=${encodeURIComponent(back)}">Sign in</a>
-        <a class="btn btn-outline" href="/account.html?view=register&next=${encodeURIComponent(back)}">Create an account</a>
+        <a class="btn btn-light" href="/signin.html?next=${encodeURIComponent(back)}">Sign in</a>
+        <a class="btn btn-outline" href="/signup.html?next=${encodeURIComponent(back)}">Create an account</a>
         ${actions.length ? `<p style="margin:22px 0 0">${actions.map((a) => `<a href="${html(a.href)}">${html(a.label)}</a>`).join(' · ')}</p>` : ''}
       </div>`;
     return target;
