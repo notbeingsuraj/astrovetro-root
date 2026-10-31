@@ -331,6 +331,24 @@ app.use((req, res) => {
   });
 });
 
+/* Global error handler — must be after all routes */
+app.use((err, _req, res, _next) => {
+  console.error('[error]', err?.stack || err);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+  });
+});
+
+/* Capture unhandled promise rejections and uncaught exceptions */
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason?.stack || reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err?.stack || err);
+});
+
 /* Locally this file is the process: run it and it listens. On Vercel it is a
    serverless function, where binding a port is wrong — the platform invokes
    the exported handler and manages the socket itself. Calling listen() there
