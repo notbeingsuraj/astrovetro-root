@@ -118,8 +118,8 @@ AV.customer = (() => {
   /* True when this deployment can persist anything at all. Checked before
      rendering a form that would be refused, rather than after. */
   async function needsDatabase() {
-    const caps = await AV.capabilities().catch(() => null);
-    return !caps || caps.database === false;
+    const caps = await AV.capabilities().catch(() => ({ database: null }));
+    return caps && caps.database === false;
   }
 
   /* Explains a no-database deployment instead of showing controls that
