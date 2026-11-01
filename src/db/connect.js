@@ -26,7 +26,7 @@ let connected = false;
 mongoose.set('bufferCommands', false);
 mongoose.set('strictQuery', true);
 
-export async function connectDB() {
+async function connectDB() {
   if (!env.databaseConfigured) {
     console.log('[db] DATABASE_URL not set - staying on the static catalogue (no database)');
     return false;
@@ -85,15 +85,40 @@ export async function connectDB() {
   }
 }
 
-export function isConnected() {
+function isConnected() {
   return connected && mongoose.connection.readyState === 1;
 }
 
-export async function disconnectDB() {
+async function disconnectDB() {
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect();
   }
   connected = false;
 }
 
-export default { connectDB, isConnected, disconnectDB };
+// Shared connection promise so all callers await the same attempt
+let connectionPromise = null;
+
+function dbReady() {
+  if (!connectionPromise) {
+    connectionPromise = connectDB();
+  }
+  return connectionPromise;
+}
+
+function isDbConnected() {
+  return mongoose.connection.readyState === 1;
+}
+
+function getDbStatus() {
+  const state = mongoose.connection.readyState;
+  switch (state) {
+    case 0: return 'disconnected';
+    case 1: return 'connected';
+    case 2: return 'connecting';
+    case 3: return 'disconnecting';
+    default: return 'unknown';
+  }
+}
+
+export { connectDB, isConnected, disconnectDB, dbReady, isDbConnected, getDbStatus };

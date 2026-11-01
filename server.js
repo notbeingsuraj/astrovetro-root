@@ -4,10 +4,11 @@ import { fileURLToPath } from 'node:url';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import cors from 'cors';
+import mongoose from 'mongoose';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import staticApi from './src/api/staticApi.js';
 import commerceApi from './src/api/commerceApi.js';
-import { connectDB, isConnected, disconnectDB } from './src/db/connect.js';
+import { connectDB, isConnected, disconnectDB, dbReady } from './src/db/connect.js';
 import { env, assertProductionSecrets } from './src/config/env.js';
 import { seedIfEmpty } from './src/db/seed.js';
 import { setStorageAdapter, getAvailableAdapters, getStorageAdapter } from './src/utils/storage.js';
@@ -222,13 +223,33 @@ if (apiDisabled) {
 /* Health check endpoint — for load balancers, orchestrators, and monitoring.
    Returns 200 if the server is running, with database status if connected. */
 app.get('/health', async (_req, res) => {
-  const dbStatus = isConnected() ? 'connected' : 'disconnected';
+  // Wait for the database initialization promise to settle
+  await dbReady();
+  const readyState = mongoose.connection.readyState;
+  let dbStatus;
+  switch (mongoose.connection.readyState) {
+    case 0:
+      dbStatus = 'disconnected';
+      break;
+    case 1:
+      dbStatus = 'connected';
+      break;
+    case 2:
+      dbStatus = 'connecting';
+      break;
+    case 3:
+      dbStatus = 'disconnecting';
+      break;
+    default:
+      dbStatus = 'unknown';
+  }
   const checks = {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     database: dbStatus,
     environment: env.nodeEnv,
+    mongooseReadyState: mongoose.connection.readyState,
   };
   res.json(checks);
 });
