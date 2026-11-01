@@ -34,22 +34,53 @@ export async function connectDB() {
 
   if (connected) return true;
 
+  console.time('[db] connection attempt');
+  const start = Date.now();
   try {
+    // Log sanitized host for diagnostics (no credentials)
+    let sanitizedHost = 'unknown';
+    try {
+      const url = new URL(env.databaseUrl);
+      sanitizedHost = url.hostname;
+    } catch (_) { /* ignore */ }
+    console.log(`[db] attempting connection to ${sanitizedHost}`);
+
     await mongoose.connect(env.databaseUrl, {
       serverSelectionTimeoutMS: 5000,
       maxPoolSize: 10,
     });
     await mongoose.connection.db.admin().ping();
     connected = true;
-    console.log(`[db] connected to MongoDB (${mongoose.connection.name})`);
+    const duration = Date.now() - start;
+    console.log(`[db] connected to MongoDB (${mongoose.connection.name}) in ${duration}ms, readyState=${mongoose.connection.readyState}`);
+    console.timeEnd('[db] connection attempt');
     return true;
   } catch (err) {
     connected = false;
-    /* The message names the cause but never the credentials, which routinely
-       contain a password in the connection string. */
-    console.warn(`[db] connection failed (${err.name}): ${err.message.split('?')[0]}`);
+    const duration = Date.now() - start;
+    console.warn(`[db] connection failed after ${duration}ms (${err.name}): ${err.message.split('?')[0]}`);
     if (err.code) console.warn(`[db] error code: ${err.code}`);
+    if (err.reason) {
+      console.warn('[db] reason:', err.reason);
+      if (err.reason.topologyDescription) {
+        console.warn('[db] topologyDescription:', JSON.stringify(err.reason.topologyDescription));
+      }
+      if (err.reason.servers) {
+        err.reason.servers.forEach((srv, i) => {
+          console.warn(`[db] server[${i}] ${srv.address} type=${srv.type} error=${srv.error?.name}:${srv.error?.message?.split('?')[0]}`);
+        });
+      }
+    }
+    // Nested causes
+    let cause = err.cause;
+    while (cause) {
+      console.warn('[db] nested cause:', cause.name, cause.message?.split('?')[0]);
+      cause = cause.cause;
+    }
+    // Mongoose readyState
+    console.warn(`[db] mongoose readyState after failure: ${mongoose.connection.readyState}`);
     console.warn('[db] falling back to the static catalogue; writes stay disabled');
+    console.timeEnd('[db] connection attempt');
     return false;
   }
 }
