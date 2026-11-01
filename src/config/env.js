@@ -61,6 +61,10 @@ export const env = {
     return Boolean(this.databaseUrl);
   },
 
+  get storageAdapter() {
+    return process.env.STORAGE_ADAPTER || 'local';
+  },
+
   get isProduction() {
     return this.nodeEnv === 'production';
   },

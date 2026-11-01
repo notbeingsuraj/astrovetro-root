@@ -14,7 +14,8 @@
    ------------------------------------------------------------------------- */
 
 import staticProvider from './staticProvider.js';
-import mongoProvider, { ProviderNotConfiguredError } from './mongoProvider.js';
+import dbProvider from './dbProvider.js';
+import { ProviderNotConfiguredError } from './mongoProvider.js';
 
 export { ProviderNotConfiguredError };
 
@@ -26,14 +27,7 @@ export function getDataProvider() {
   const hasDatabase = Boolean(process.env.DATABASE_URL || process.env.MONGODB_URI);
 
   if (hasDatabase) {
-    /* Set, but not wired up yet. Serve the static catalogue rather than
-       pretending the connection succeeded, and let the logs tell the truth
-       about which provider is actually answering. */
-    console.warn(
-      '[data] DATABASE_URL is set but the Mongo provider is not implemented yet; ' +
-        'serving the static catalogue. See src/providers/mongoProvider.js.'
-    );
-    cached = staticProvider;
+    cached = dbProvider;
   } else {
     cached = staticProvider;
   }

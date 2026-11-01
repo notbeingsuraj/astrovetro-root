@@ -18,6 +18,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 import { randomBytes } from 'crypto';
+import { ApiError } from '../utils/ApiError.js';
 
 const PUBLIC_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
 const IMG_ROOT = path.join(PUBLIC_ROOT, 'assets', 'img');
@@ -32,6 +33,13 @@ const MAGIC = [
 ];
 
 function detectImage(buffer) {
+  // AVIF detection: 'ftypavif' at offset 4
+  if (buffer.length >= 12) {
+    const avifSig = buffer.subarray(4, 12).toString('ascii');
+    if (avifSig === 'ftypavif') {
+      return { ext: 'avif', mime: 'image/avif' };
+    }
+  }
   for (const sig of MAGIC) {
     if (sig.bytes.every((b, i) => buffer[i] === b)) {
       if (sig.ext === 'webp' && buffer.toString('ascii', 8, 12) !== 'WEBP') continue;
@@ -62,22 +70,22 @@ const localAdapter = {
   /* Upload raw image bytes, generate derivatives, return public paths. */
   async upload({ buffer, filename }) {
     if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
-      throw new Error('No image data received.');
+      throw ApiError.badRequest('No image data received.');
     }
     if (buffer.length > 12 * 1024 * 1024) {
-      throw new Error('Image exceeds 12MB limit.');
+      throw ApiError.badRequest('Image exceeds 12MB limit.');
     }
 
     const sig = detectImage(buffer);
-    if (!sig) throw new Error('Unrecognised image format. JPEG, PNG and WebP are supported.');
+    if (!sig) throw ApiError.badRequest('Unrecognised image format. JPEG, PNG, WebP and AVIF are supported.');
 
     let meta;
     try {
       meta = await sharp(buffer).metadata();
     } catch {
-      throw new Error('File could not be read as an image.');
+      throw ApiError.badRequest('File could not be read as an image.');
     }
-    if (!meta.width || !meta.height) throw new Error('Image has no readable dimensions.');
+    if (!meta.width || !meta.height) throw ApiError.badRequest('Image has no readable dimensions.');
 
     ensureDir(LIBRARY_DIR);
 
@@ -203,12 +211,19 @@ const localAdapter = {
     const stat = fs.statSync(abs);
     return { size: stat.size, mtime: stat.mtime };
   },
+
+  /* Return a readable stream for the given public path. */
+  getReadStream(publicPath) {
+    const abs = this.resolve(publicPath);
+    if (!abs || !fs.existsSync(abs)) return null;
+    return fs.createReadStream(abs);
+  },
 };
 
 /* ──────────────────────────────────────────────────────────────────────────
    S3-compatible storage adapter (Cloudflare R2, AWS S3, MinIO, etc.)
    ------------------------------------------------------------------------ */
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 function getS3Client() {
@@ -218,7 +233,7 @@ function getS3Client() {
   const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
   const bucket = process.env.S3_BUCKET;
   if (!bucket || !accessKeyId || !secretAccessKey) {
-    throw new Error('S3 adapter requires S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY');
+    throw ApiError.internal('S3 adapter requires S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY');
   }
   const client = new S3Client({
     region,
@@ -254,22 +269,22 @@ const s3Adapter = {
 
   async upload({ buffer, filename }) {
     if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
-      throw new Error('No image data received.');
+      throw ApiError.badRequest('No image data received.');
     }
     if (buffer.length > 12 * 1024 * 1024) {
-      throw new Error('Image exceeds 12MB limit.');
+      throw ApiError.badRequest('Image exceeds 12MB limit.');
     }
 
     const sig = detectImage(buffer);
-    if (!sig) throw new Error('Unrecognised image format. JPEG, PNG and WebP are supported.');
+    if (!sig) throw ApiError.badRequest('Unrecognised image format. JPEG, PNG, WebP and AVIF are supported.');
 
     let meta;
     try {
       meta = await sharp(buffer).metadata();
     } catch {
-      throw new Error('File could not be read as an image.');
+      throw ApiError.badRequest('File could not be read as an image.');
     }
-    if (!meta.width || !meta.height) throw new Error('Image has no readable dimensions.');
+    if (!meta.width || !meta.height) throw ApiError.badRequest('Image has no readable dimensions.');
 
     const { client, bucket } = getS3Client();
     const base = filename || generateBaseName();
@@ -392,6 +407,220 @@ const s3Adapter = {
       throw e;
     }
   },
+
+  /* Return a readable stream for the given public path. */
+  async getReadStream(publicPath) {
+    const { client, bucket } = getS3Client();
+    const key = publicPathToKey(publicPath);
+    if (!key) return null;
+    try {
+      const resp = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      return resp.Body;
+    } catch (e) {
+      if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return null;
+      throw e;
+    }
+  },
+};
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Backblaze B2 storage adapter (S3‑compatible)
+   ------------------------------------------------------------------------ */
+
+function getB2Client() {
+  const endpoint = process.env.B2_ENDPOINT;                 // e.g. https://s3.us-west-004.backblazeb2.com
+  const region = process.env.B2_REGION || 'us-west-004';
+  const accessKeyId = process.env.B2_KEY_ID;
+  const secretAccessKey = process.env.B2_APPLICATION_KEY;
+  const bucket = process.env.B2_BUCKET_NAME;
+  if (!bucket || !accessKeyId || !secretAccessKey) {
+    throw ApiError.internal('B2 adapter requires B2_BUCKET_NAME, B2_KEY_ID, B2_APPLICATION_KEY');
+  }
+  const client = new S3Client({
+    region,
+    endpoint,
+    credentials: { accessKeyId, secretAccessKey },
+    forcePathStyle: true,                // required for B2
+  });
+  return { client, bucket };
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   B2-compatible storage adapter
+   ------------------------------------------------------------------------ */
+const b2Adapter = {
+  name: 'b2',
+
+  /* Upload raw image bytes, generate derivatives, return public paths. */
+  async upload({ buffer, filename }) {
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+      throw ApiError.badRequest('No image data received.');
+    }
+    if (buffer.length > 12 * 1024 * 1024) {
+      throw ApiError.badRequest('Image exceeds 12MB limit.');
+    }
+
+    const sig = detectImage(buffer);
+    if (!sig) throw new Error('Unrecognised image format. JPEG, PNG, WebP and AVIF are supported.');
+
+    let meta;
+    try {
+      meta = await sharp(buffer).metadata();
+    } catch {
+      throw ApiError.badRequest('File could not be read as an image.');
+    }
+    if (!meta.width || !meta.height) throw ApiError.badRequest('Image has no readable dimensions.');
+
+    const { client, bucket } = getB2Client();
+    const base = filename || generateBaseName();
+    const ext = sig.ext === 'jpg' ? 'jpeg' : sig.ext;          // MIME normalisation
+    const originalName = `${base}-original.${sig.ext}`;
+    const largeName = `${base}-large.webp`;
+    const thumbName = `${base}-thumb.webp`;
+
+    const prefix = 'products/';                     // logical folder
+    const originalKey = prefix + originalName;
+    const largeKey = prefix + largeName;
+    const thumbKey = prefix + thumbName;
+
+    const large = await sharp(buffer)
+      .rotate()
+      .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
+    const thumb = await sharp(buffer)
+      .rotate()
+      .resize(480, 480, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 75 })
+      .toBuffer();
+
+    await Promise.all([
+      s3Put({ client, bucket, key: originalKey, buffer, contentType: `image/${sig.ext === 'jpg' ? 'jpeg' : sig.ext}` }),
+      s3Put({ client, bucket, key: largeKey, buffer: large, contentType: 'image/webp' }),
+      s3Put({ client, bucket, key: thumbKey, buffer: thumb, contentType: 'image/webp' }),
+    ]);
+
+    const publicBase = process.env.STORAGE_PUBLIC_URL || `/assets/img`;
+    return {
+      original: `${publicBase}/products/${originalName}`,
+      large: `${publicBase}/products/${largeName}`,
+      thumb: `${publicBase}/products/${thumbName}`,
+      width: meta.width,
+      height: meta.height,
+      size: buffer.length,
+    };
+  },
+
+  /* List all images under assets/img/products, grouped by photograph (base name). */
+  async list({ assignedPaths = new Set() } = {}) {
+    const { client, bucket } = getB2Client();
+    const prefix = 'products/';
+    const resp = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
+    const objects = resp.Contents || [];
+
+    const grouped = new Map();
+    for (const obj of objects) {
+      const key = obj.Key; // e.g., products/abc-large.webp
+      const publicPath = `/assets/img/${key}`;
+      const assigned = assignedPaths.has(publicPath);
+      const m = key.match(/^products\/(.*)-(large|thumb|original)\.[a-z]+$/i);
+      const baseKey = m ? `products/${m[1]}` : key;
+      if (!grouped.has(baseKey)) grouped.set(baseKey, { base: `/assets/img/${baseKey}`, files: [], assigned: false });
+      const g = grouped.get(baseKey);
+      g.files.push(publicPath);
+      if (assigned) g.assigned = true;
+    }
+    return [...grouped.values()];
+  },
+
+  /* Resolve a public path to an absolute file path, ensuring it stays in IMG_ROOT. */
+  resolve(publicPath) {
+    const key = publicPathToKey(publicPath);
+    return key ? { bucket: process.env.B2_BUCKET_NAME, key } : null;
+  },
+
+  /* Check if a file exists. */
+  async exists(publicPath) {
+    const { client, bucket } = getB2Client();
+    const key = publicPathToKey(publicPath);
+    if (!key) return false;
+    try {
+      await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      return true;
+    } catch (e) {
+      if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return false;
+      throw e;
+    }
+  },
+
+  /* Delete a file and its derivative siblings. Returns count of deleted files. */
+  async delete(publicPath) {
+    const { client, bucket } = getB2Client();
+    const key = publicPathToKey(publicPath);
+    if (!key) return 0;
+
+    const m = publicPath.match(/^(.*)-(large|thumb|original)\.[a-z]+$/i);
+    let siblings;
+    if (!m) {
+      siblings = [key];
+    } else {
+      const base = m[1];
+      siblings = ['-large.webp', '-thumb.webp'].map((s) => `${base}${s}`);
+      // The uploaded original keeps the source format (png/jpg/webp), so its
+      // extension must never be assumed — look for whatever is actually there.
+      if (base.startsWith('products/')) {
+        const baseName = path.basename(base);
+        const original = await client.send(new ListObjectsV2Command({
+          Bucket: process.env.B2_BUCKET_NAME,
+          Prefix: `products/${baseName}-original.`
+        }));
+        if (original.Contents?.length) {
+          siblings.push(`/assets/img/${original.Contents[0].Key}`);
+        }
+      }
+    }
+
+    let deleted = 0;
+    for (const sibling of siblings) {
+      const siblingKey = publicPathToKey(sibling);
+      if (!siblingKey) continue;
+      try {
+        await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: siblingKey }));
+        deleted++;
+      } catch (e) {
+        if (e.name !== 'NotFound' && e.$metadata?.httpStatusCode !== 404) throw e;
+      }
+    }
+    return deleted;
+  },
+
+  /* Get file stats (size, etc.) for a public path. */
+  async stat(publicPath) {
+    const { client, bucket } = getB2Client();
+    const key = publicPathToKey(publicPath);
+    if (!key) return null;
+    try {
+      const resp = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      return { size: resp.ContentLength, mtime: resp.LastModified };
+    } catch (e) {
+      if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return null;
+      throw e;
+    }
+  },
+
+  /* Return a readable stream for the given public path. */
+  async getReadStream(publicPath) {
+    const { client, bucket } = getB2Client();
+    const key = publicPathToKey(publicPath);
+    if (!key) return null;
+    try {
+      const resp = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      return resp.Body;
+    } catch (e) {
+      if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return null;
+      throw e;
+    }
+  },
 };
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -400,6 +629,7 @@ const s3Adapter = {
 const adapters = {
   local: localAdapter,
   s3: s3Adapter,
+  b2: b2Adapter,
   // Future adapters can be added here:
   // r2: r2Adapter,
   // supabase: supabaseAdapter,
@@ -409,7 +639,7 @@ let activeAdapter = localAdapter;
 
 export function setStorageAdapter(name) {
   const adapter = adapters[name];
-  if (!adapter) throw new Error(`Unknown storage adapter: ${name}`);
+  if (!adapter) throw ApiError.internal(`Unknown storage adapter: ${name}`);
   activeAdapter = adapter;
   console.log(`[storage] adapter set to: ${name}`);
 }
@@ -423,4 +653,4 @@ export function getAvailableAdapters() {
 }
 
 /* Re-export the local adapter for direct use if needed. */
-export { localAdapter };
+export { localAdapter, b2Adapter };

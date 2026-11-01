@@ -2,25 +2,16 @@
    Admin image controller
    -------------------------------------------------------------------------
 
-   Photographs live on disk under public/assets/img/ and the database only
-   stores their public paths. This controller is the only way files enter
-   that directory, and it validates before it writes:
-
-     - the body must be raw image bytes with a recognised magic number
-       (JPEG, PNG or WebP) — a .exe renamed to .jpg fails here
-     - derivatives are generated with sharp (canonical WebP + a small
-       thumbnail); the uploaded original is preserved as-is alongside them
-     - every path this controller accepts or returns is proved to resolve
-       inside public/ before it is used, so no request can point the site at
-       /etc/passwd or write outside the image root
+   Photographs are stored using the configured storage adapter (local, S3,
+   Backblaze B2, …). The database only stores their public paths. This
+   controller is the only way files enter that storage, and it validates
+   before it writes.
 
    Assigning a photo to a product is a database edit (images[] order decides
-   which is primary); deleting a file from disk is a separate, explicitly
+   which is primary); deleting a file from storage is a separate, explicitly
    destructive call that refuses to run while any product still references it. */
 
-import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 import { z } from 'zod';
 import { Product } from '../models/Product.js';
@@ -30,35 +21,6 @@ import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { recordAudit } from '../services/auditService.js';
 import { getStorageAdapter } from '../utils/storage.js';
-
-const PUBLIC_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
-const IMG_ROOT = path.join(PUBLIC_ROOT, 'assets', 'img');
-const LIBRARY_DIR = path.join(IMG_ROOT, 'library');
-
-/* Magic numbers we accept. The content-type header alone proves nothing —
-   it is whatever the client claims. */
-const MAGIC = [
-  { bytes: [0xff, 0xd8, 0xff], ext: 'jpg', mime: 'image/jpeg' },
-  { bytes: [0x89, 0x50, 0x4e, 0x47], ext: 'png', mime: 'image/png' },
-  { bytes: [0x52, 0x49, 0x46, 0x46], ext: 'webp', mime: 'image/webp' }, // RIFF; WEBP checked below
-];
-
-function detectImage(buffer) {
-  for (const sig of MAGIC) {
-    if (sig.bytes.every((b, i) => buffer[i] === b)) {
-      if (sig.ext === 'webp' && buffer.toString('ascii', 8, 12) !== 'WEBP') continue;
-      return sig;
-    }
-  }
-  return null;
-}
-
-/* Resolve a caller-supplied public path to an absolute file, or null when it
-   would escape the image root. Used for every path that crosses the API. */
-function safeResolve(publicPath) {
-  const adapter = getStorageAdapter();
-  return adapter.resolve(publicPath);
-}
 
 /* ── Upload ──────────────────────────────────────────────────────────────── */
 
@@ -70,16 +32,6 @@ export const uploadImage = asyncHandler(async (req, res) => {
   if (buffer.length > 12 * 1024 * 1024) {
     throw ApiError.badRequest('That image is over 12MB. Resize it and try again.');
   }
-  const sig = detectImage(buffer);
-  if (!sig) throw ApiError.badRequest('Unrecognised image format. JPEG, PNG and WebP are supported.');
-
-  let meta;
-  try {
-    meta = await sharp(buffer).metadata();
-  } catch {
-    throw ApiError.badRequest('That file could not be read as an image.');
-  }
-  if (!meta.width || !meta.height) throw ApiError.badRequest('That image has no readable dimensions.');
 
   const adapter = getStorageAdapter();
   const result = await adapter.upload({ buffer });
@@ -88,7 +40,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
     actor: req.user,
     action: 'image.upload',
     entity: { type: 'image', id: result.large, label: path.basename(result.original) },
-    summary: `Uploaded image (${meta.width}×${meta.height}, ${Math.round(buffer.length / 1024)}KB)`,
+    summary: `Uploaded image (${result.width}×${result.height}, ${Math.round(buffer.length / 1024)}KB)`,
   });
 
   return res.status(201).json({
@@ -98,8 +50,8 @@ export const uploadImage = asyncHandler(async (req, res) => {
         original: result.original,
         large: result.large,
         thumb: result.thumb,
-        width: meta.width,
-        height: meta.height,
+        width: result.width,
+        height: result.height,
       },
     },
   });

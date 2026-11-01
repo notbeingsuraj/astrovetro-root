@@ -312,6 +312,39 @@ app.get('/collections/:slug', (req, res) =>
 app.get('/admin', sendPage('admin.html'));
 app.get('/admin/', sendPage('admin.html'));
 
+/* Image delivery from configured storage (local, S3, B2) */
+app.get('/assets/img/:path(*)', async (req, res) => {
+  try {
+    const adapter = getStorageAdapter();
+    const publicPath = '/assets/img/' + req.params.path;
+    const stream = await adapter.getReadStream(publicPath);
+    if (!stream) {
+      return res.status(404).send('Not found');
+    }
+    // Determine content type from file extension
+    const ext = path.extname(req.params.path).toLowerCase();
+    const mimeMap = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+      '.avif': 'image/avif',
+    };
+    const contentType = mimeMap[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    // Handle stream errors
+    stream.on('error', (err) => {
+      console.error('[image stream error]', err);
+      if (!res.headersSent) res.status(500).send('Internal server error');
+    });
+    stream.pipe(res);
+  } catch (err) {
+    console.error('[image route error]', err);
+    res.status(500).send('Internal server error');
+  }
+});
+
 app.use(express.static(PUBLIC_DIR, { index: 'index.html', extensions: ['html'] }));
 
 /* Real 404s. A catch-all that serves index.html for every unknown path makes
