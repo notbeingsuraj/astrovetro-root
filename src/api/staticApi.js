@@ -28,6 +28,7 @@
 
 import { Router } from 'express';
 import { getDataProvider, ProviderNotConfiguredError } from '../providers/index.js';
+import { isDbConnected, getDbStatus } from '../db/connect.js';
 
 const router = Router();
 const provider = getDataProvider();
@@ -60,15 +61,19 @@ function notConfigured(res, req) {
    Not part of the storefront. Lets a deploy be checked without a browser:
    GET /api/status -> 200 { provider, database: false, writable: false } */
 router.get('/status', (_req, res) => {
+  const db = isDbConnected();
+  const status = getDbStatus();
   res.json({
     success: true,
     data: {
       provider: provider.name,
-      database: false,
-      writable: false,
-      note: 'Catalogue browsing only. Orders, bookings, accounts, contact and newsletter are unavailable until a database is configured.',
+      database: isDbConnected(),
+      writable: isDbConnected(),
+      note: db
+        ? 'Commerce is live: accounts, saved addresses, cart, wishlist, orders and tracking are all persistent.'
+        : 'Catalogue browsing only. Orders, bookings, accounts, contact and newsletter are unavailable until a database is configured.',
     },
-    meta: mode,
+    meta: { ...mode, database: isDbConnected() },
   });
 });
 

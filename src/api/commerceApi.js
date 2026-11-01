@@ -21,6 +21,7 @@
    DATABASE_NOT_CONFIGURED, exactly as before.
    ------------------------------------------------------------------------- */
 
+import { isDbConnected, getDbStatus } from '../db/connect.js';
 import express, { Router } from 'express';
 import { env } from '../config/env.js';
 import { dbProvider } from '../providers/dbProvider.js';
@@ -46,23 +47,27 @@ const ok = (res, data, meta = {}) => res.json({ success: true, data, meta });
    The same routes and the same envelope as staticApi.js, answered from the
    database. Nothing in the storefront branches on which one is live.
    ------------------------------------------------------------------------ */
-router.get('/status', (_req, res) =>
+router.get('/status', (_req, res) => {
+  const db = isDbConnected();
+  const status = getDbStatus();
   res.json({
     success: true,
     data: {
       provider: dbProvider.name,
-      database: true,
-      writable: true,
+      database: isDbConnected(),
+      writable: isDbConnected(),
       /* Card/UPI availability, reported rather than discovered by opening a
          payment dialog that cannot complete. Derived from whether Razorpay
          credentials are present, which is the same condition
          razorpay.isPaymentConfigured() enforces. */
       paymentsLive: env.paymentLive,
-      note: 'Commerce is live: accounts, saved addresses, cart, wishlist, orders and tracking are all persistent.',
+      note: db
+        ? 'Commerce is live: accounts, saved addresses, cart, wishlist, orders and tracking are all persistent.'
+        : 'Catalogue browsing only. Orders, bookings, accounts, contact and newsletter are unavailable until a database is configured.',
     },
-    meta: { provider: dbProvider.name, database: true, paymentsLive: env.paymentLive },
-  })
-);
+    meta: { provider: dbProvider.name, database: isDbConnected(), paymentsLive: env.paymentLive },
+  });
+});
 
 router.get('/products', async (req, res, next) => {
   try {
