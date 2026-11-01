@@ -1,6 +1,3 @@
-/* -------------------------------------------------------------------------
-   Unit tests for Backblaze B2 storage adapter (mocked)
-   ------------------------------------------------------------------------- */
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import { S3Client, ListObjectsV2Command, HeadObjectCommand, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -9,7 +6,25 @@ import { b2Adapter } from '../src/utils/storage.js';
 
 const mockS3 = mockClient(S3Client);
 
+// Minimal valid 1x1 PNG (transparent)
+const validPng = Buffer.from([
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+  0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE,
+  0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54,
+  0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F, 0x00, 0x05, 0x00, 0x05,
+  0x9D, 0x5A, 0x4E, 0x2E,
+  0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+]);
+
 describe('B2 storage adapter', () => {
+  // Minimal valid 1x1 transparent PNG (base64)
+  const validPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64'
+  );
+
   beforeEach(() => {
     mockS3.reset();
     process.env.B2_BUCKET_NAME = 'test-bucket';
@@ -28,60 +43,11 @@ describe('B2 storage adapter', () => {
     delete process.env.B2_REGION;
     delete process.env.STORAGE_PUBLIC_URL;
   });
-
-  /* -------------------------------------------------------------------------
-   Unit tests for Backblaze B2 storage adapter (mocked)
-   ------------------------------------------------------------------------- */
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
-import { S3Client, ListObjectsV2Command, HeadObjectCommand, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { mockClient } from 'aws-sdk-client-mock';
-import sharp from 'sharp';
-import { b2Adapter } from '../src/utils/storage.js';
-
-const mockS3 = mockClient(S3Client);
-
-const mockSharp = {
-  metadata: async () => ({ width: 100, height: 100 }),
-  rotate: () => mockSharp,
-  resize: () => mockSharp,
-  webp: () => mockSharp,
-  toBuffer: async () => Buffer.from('mock-image-data'),
-};
-
-describe('B2 storage adapter', () => {
-  beforeEach(() => {
-    mockS3.reset();
-    process.env.B2_BUCKET_NAME = 'test-bucket';
-    process.env.B2_KEY_ID = 'test-key';
-    process.env.B2_APPLICATION_KEY = 'test-secret';
-    process.env.B2_ENDPOINT = 'https://s3.us-west-004.backblazeb2.com';
-    process.env.B2_REGION = 'us-west-004';
-    process.env.STORAGE_PUBLIC_URL = '/assets/img';
-    
-    sharp.mockImplementation(() => ({
-      metadata: async () => ({ width: 100, height: 100 }),
-      rotate: () => sharp,
-      resize: () => sharp,
-      webp: () => sharp,
-      toBuffer: async () => Buffer.from('mock-image-data'),
-    }));
-  });
-
-  afterEach(() => {
-    delete process.env.B2_BUCKET_NAME;
-    delete process.env.B2_KEY_ID;
-    delete process.env.B2_APPLICATION_KEY;
-    delete process.env.B2_ENDPOINT;
-    delete process.env.B2_REGION;
-    delete process.env.STORAGE_PUBLIC_URL;
-    sharp.mockRestore();
-  }
 
   it('uploads image and returns correct public URLs with single prefix', async () => {
     mockS3.on(PutObjectCommand).resolves({});
 
-    const result = await b2Adapter.upload({ buffer: Buffer.from('fake-image-data'), filename: 'test.png' });
+    const result = await b2Adapter.upload({ buffer: validPng, filename: 'test.png' });
 
     assert.ok(result.original.includes('/assets/img/products/'));
     assert.ok(result.large.includes('/assets/img/products/'));
@@ -135,5 +101,4 @@ describe('B2 storage adapter', () => {
     const stat = await b2Adapter.stat('/assets/img/products/missing.webp');
     assert.strictEqual(stat, null);
   });
-});
 });

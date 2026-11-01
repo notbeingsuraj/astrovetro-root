@@ -48,6 +48,7 @@ export async function connectDB() {
     /* The message names the cause but never the credentials, which routinely
        contain a password in the connection string. */
     console.warn(`[db] connection failed (${err.name}): ${err.message.split('?')[0]}`);
+    if (err.code) console.warn(`[db] error code: ${err.code}`);
     console.warn('[db] falling back to the static catalogue; writes stay disabled');
     return false;
   }

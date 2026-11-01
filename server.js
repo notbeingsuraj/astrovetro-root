@@ -10,7 +10,7 @@ import commerceApi from './src/api/commerceApi.js';
 import { connectDB, isConnected, disconnectDB } from './src/db/connect.js';
 import { env, assertProductionSecrets } from './src/config/env.js';
 import { seedIfEmpty } from './src/db/seed.js';
-import { setStorageAdapter, getAvailableAdapters } from './src/utils/storage.js';
+import { setStorageAdapter, getAvailableAdapters, getStorageAdapter } from './src/utils/storage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -47,7 +47,8 @@ if (!getAvailableAdapters().includes(storageAdapter)) {
   throw new Error(`Unknown storage adapter: ${storageAdapter}. Available: ${getAvailableAdapters().join(', ')}`);
 }
 setStorageAdapter(storageAdapter);
-console.log(`[storage] using adapter: ${storageAdapter}`);
+console.log(`[storage] requested adapter: ${process.env.STORAGE_ADAPTER || 'local (default)'}`);
+console.log(`[storage] adapter set to: ${storageAdapter}`);
 
 /* Which provider answers /api. Resolved lazily because connecting is async and
    the app has to be constructed synchronously for both `listen` and the
