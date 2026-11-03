@@ -26,6 +26,10 @@ let connected = false;
 mongoose.set('bufferCommands', false);
 mongoose.set('strictQuery', true);
 
+/* Single shared connection promise — all callers (apiPlan, /health, etc.)
+   await the same connection attempt. */
+let connectionPromise = null;
+
 async function connectDB() {
   if (!env.databaseConfigured) {
     console.log('[db] DATABASE_URL not set - staying on the static catalogue (no database)');
@@ -33,6 +37,9 @@ async function connectDB() {
   }
 
   if (connected) return true;
+
+  // If a connection attempt is already in progress or completed, return it
+  if (connectionPromise) return connectionPromise;
 
   console.time('[db] connection attempt');
   const start = Date.now();
@@ -96,9 +103,8 @@ async function disconnectDB() {
   connected = false;
 }
 
-// Shared connection promise so all callers await the same attempt
-let connectionPromise = null;
-
+/* Returns the single shared connection promise. Callers (apiPlan, /health, etc.)
+   must await this instead of calling connectDB() directly. */
 function dbReady() {
   if (!connectionPromise) {
     connectionPromise = connectDB();
