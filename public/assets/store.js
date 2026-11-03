@@ -669,9 +669,9 @@ window.AV = window.AV || {};
     if (mePromise) return mePromise;
 
     /* Ask what this deployment supports before asking who we are. On a
-       deployment with no database /api/auth/me is guaranteed to 503, so the
-       probe turns a guaranteed failure on every page load into a single
-       cached 200 - and returns "signed out" without the pointless round trip. */
+   deployment with no database /api/auth/me is guaranteed to 503, so the
+   probe turns a guaranteed failure on every page load into a single
+   cached 200 - and returns "signed out" without the pointless round trip. */
     const caps = await AV.capabilities().catch(() => null);
     if (caps && caps.database === false) {
       AV.setUser(null);

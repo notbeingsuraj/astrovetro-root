@@ -131,7 +131,7 @@ window.AV = window.AV || {};
      so the UI can present them as unavailable instead of offering controls
      that are guaranteed to fail.
 
-     A failed probe is treated as "no database": an API we cannot reach can
+     A failed probe is treated as "database unknown": an API we cannot reach can
      certainly not serve accounts, and the catalogue pages degrade on their own
      regardless. */
   AV.capabilities = function () {
@@ -140,7 +140,7 @@ window.AV = window.AV || {};
         return Object.assign({ reachable: true, database: false, writable: false, paymentsLive: false }, env && env.data);
       })
       .catch(() => {
-        return { reachable: false, provider: 'unknown', database: false, writable: false, paymentsLive: false };
+        return { reachable: false, provider: 'unknown', database: null, writable: false, paymentsLive: false };
       });
   };
 
