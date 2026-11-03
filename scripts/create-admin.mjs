@@ -6,8 +6,8 @@
    a hardcoded credential in a seed file ships to production with the code.
    This script is the documented way to get the first administrator:
 
-     node scripts/create-admin.mjs you@example.com
-     node scripts/create-admin.mjs you@example.com --reset   (new password)
+      node scripts/create-admin.mjs you@example.com
+      node scripts/create-admin.mjs you@example.com --reset   (new password)
 
    Without --reset it creates the account if missing and leaves an existing
    one's password untouched. With --reset it sets a fresh password (read
@@ -61,19 +61,19 @@ async function promptPassword() {
       };
       stdin.on('data', onData);
     });
-
-  const a = await muteprompt('New password: ');
-  const b = await muteprompt('Repeat password: ');
-  if (!a || a !== b) {
-    console.error('Passwords did not match. Aborting.');
-    process.exit(1);
+  
+    const a = await muteprompt('New password: ');
+    const b = await muteprompt('Repeat password: ');
+    if (!a || a !== b) {
+      console.error('Passwords did not match. Aborting.');
+      process.exit(1);
+    }
+    if (a.length < 8) {
+      console.error('Password must be at least 8 characters. Aborting.');
+      process.exit(1);
+    }
+    return a;
   }
-  if (a.length < 8) {
-    console.error('Password must be at least 8 characters. Aborting.');
-    process.exit(1);
-  }
-  return a;
-}
 
 async function main() {
   await mongoose.connect(uri);
@@ -94,12 +94,20 @@ async function main() {
   const password = await promptPassword();
 
   if (existing && reset) {
-    existing.passwordHash = password; // hashed by the model's pre-save hook
+    existing.passwordHash = password;
     existing.role = 'admin';
     await existing.save();
     console.log(`Reset the password for admin ${email}.`);
   } else {
-    await User.create({ name: email.split('@')[0], email, passwordHash: password, role: 'admin', emailVerified: true });
+    const user = await User.create({ 
+      name: email.split('@')[0], 
+      email, 
+      phone: '', 
+      passwordHash: password, 
+      role: 'admin', 
+      emailVerified: true 
+    });
+    
     console.log(`Created admin ${email}. Sign in at /admin.html.`);
   }
 
