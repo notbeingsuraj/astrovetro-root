@@ -38,11 +38,17 @@ export function tcpUp(host, port, timeoutMs = 1200) {
  * Returns { base, stop, logs }. Throws with the captured output if the
  * process dies or never becomes ready.
  */
-export async function startServer({ port, databaseUrl = null } = {}) {
+export async function startServer({ port, databaseUrl } = {}) {
   const env = { ...process.env, PORT: String(port), NODE_ENV: 'development' };
   delete env.API_TARGET;
   delete env.AV_DISABLE_API;
-  if (databaseUrl) {
+  // Only prevent dotenv loading when databaseUrl is explicitly null (no database wanted)
+  // When databaseUrl is undefined, allow .env to be loaded for default database
+  if (databaseUrl === null) {
+    delete env.DATABASE_URL;
+    delete env.MONGODB_URI;
+    env.DOTENV_CONFIG_PATH = '/dev/null';
+  } else if (databaseUrl) {
     env.DATABASE_URL = databaseUrl;
     env.MONGODB_URI = databaseUrl;
   }
