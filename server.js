@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import staticApi from './src/api/staticApi.js';
 import commerceApi from './src/api/commerceApi.js';
-import { connectDB, isConnected, disconnectDB, dbReady } from './src/db/connect.js';
+import { connectDB, isConnected, disconnectDB, dbReady, ensureConnected } from './src/db/connect.js';
 import { env, assertProductionSecrets } from './src/config/env.js';
 import { seedIfEmpty } from './src/db/seed.js';
 import { setStorageAdapter, getAvailableAdapters, getStorageAdapter, checkStorageHealth } from './src/utils/storage.js';
@@ -172,6 +172,25 @@ app.use('/api', cors({
   maxAge: 86400,                   // cache preflight for 24h
 }));
 console.log(`[cors] enabled for ${corsOrigin}`);
+
+/* Database connection readiness middleware.
+   Runs before any database-backed routes to ensure the connection is ready.
+   In serverless environments, this handles cold starts gracefully. */
+if (apiPlan.kind === 'database') {
+  app.use('/api', async (req, res, next) => {
+    try {
+      await ensureConnected();
+      next();
+    } catch (err) {
+      console.error('[db] connection not ready:', err.message);
+      return res.status(503).json({
+        success: false,
+        message: 'Database temporarily unavailable',
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database connection not ready' },
+      });
+    }
+  });
+}
 
 if (apiDisabled) {
   app.use('/api', (_req, res) => {
