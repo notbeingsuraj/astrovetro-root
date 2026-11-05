@@ -29,6 +29,7 @@
 import { Router } from 'express';
 import { getDataProvider, ProviderNotConfiguredError } from '../providers/index.js';
 import { isDbConnected, getDbStatus } from '../db/connect.js';
+import { checkStorageHealth } from '../utils/storage.js';
 
 const router = Router();
 const provider = getDataProvider();
@@ -60,9 +61,10 @@ function notConfigured(res, req) {
 /* ── Deployment status ───────────────────────────────────────────────────
    Not part of the storefront. Lets a deploy be checked without a browser:
    GET /api/status -> 200 { provider, database: false, writable: false } */
-router.get('/status', (_req, res) => {
+router.get('/status', async (_req, res) => {
   const db = isDbConnected();
   const status = getDbStatus();
+  const storageHealth = await checkStorageHealth();
   res.json({
     success: true,
     data: {
@@ -72,8 +74,13 @@ router.get('/status', (_req, res) => {
       note: db
         ? 'Commerce is live: accounts, saved addresses, cart, wishlist, orders and tracking are all persistent.'
         : 'Catalogue browsing only. Orders, bookings, accounts, contact and newsletter are unavailable until a database is configured.',
+      storage: {
+        provider: storageHealth.provider,
+        configured: storageHealth.configured,
+        available: storageHealth.available,
+      },
     },
-    meta: { ...mode, database: isDbConnected() },
+    meta: { ...mode, database: isDbConnected(), storage: storageHealth.provider },
   });
 });
 

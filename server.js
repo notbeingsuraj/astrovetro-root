@@ -11,7 +11,7 @@ import commerceApi from './src/api/commerceApi.js';
 import { connectDB, isConnected, disconnectDB, dbReady } from './src/db/connect.js';
 import { env, assertProductionSecrets } from './src/config/env.js';
 import { seedIfEmpty } from './src/db/seed.js';
-import { setStorageAdapter, getAvailableAdapters, getStorageAdapter } from './src/utils/storage.js';
+import { setStorageAdapter, getAvailableAdapters, getStorageAdapter, checkStorageHealth } from './src/utils/storage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -218,37 +218,60 @@ if (apiDisabled) {
 }
 
 /* Health check endpoint — for load balancers, orchestrators, and monitoring.
-   Returns 200 if the server is running, with database status if connected. */
+   Returns 200 if the server is running, with database and storage status if connected. */
 app.get('/health', async (_req, res) => {
-  // Wait for the database initialization promise to settle
-  await dbReady();
-  const readyState = mongoose.connection.readyState;
-  let dbStatus;
-  switch (mongoose.connection.readyState) {
-    case 0:
-      dbStatus = 'disconnected';
-      break;
-    case 1:
-      dbStatus = 'connected';
-      break;
-    case 2:
-      dbStatus = 'connecting';
-      break;
-    case 3:
-      dbStatus = 'disconnecting';
-      break;
-    default:
-      dbStatus = 'unknown';
+  try {
+    // Wait for the database initialization promise to settle
+    await dbReady();
+    const readyState = mongoose.connection.readyState;
+    let dbStatus;
+    switch (mongoose.connection.readyState) {
+      case 0:
+        dbStatus = 'disconnected';
+        break;
+      case 1:
+        dbStatus = 'connected';
+        break;
+      case 2:
+        dbStatus = 'connecting';
+        break;
+      case 3:
+        dbStatus = 'disconnecting';
+        break;
+      default:
+        dbStatus = 'unknown';
+    }
+    
+    // Check storage health
+    const storageHealth = await checkStorageHealth();
+    
+    const checks = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      database: dbStatus,
+      storage: {
+        provider: storageHealth.provider,
+        configured: storageHealth.configured,
+        available: storageHealth.available,
+      },
+      environment: env.nodeEnv,
+      mongooseReadyState: mongoose.connection.readyState,
+    };
+    res.json(checks);
+  } catch (err) {
+    console.error('[health] error:', err);
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      database: 'unknown',
+      storage: { provider: 'unknown', configured: false, available: false },
+      environment: env.nodeEnv,
+      mongooseReadyState: mongoose.connection.readyState,
+      error: 'Health check failed',
+    });
   }
-  const checks = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    database: dbStatus,
-    environment: env.nodeEnv,
-    mongooseReadyState: mongoose.connection.readyState,
-  };
-  res.json(checks);
 });
 
 /* "/": the gateway — the isolated Crystals | Rituals entry screen — so the home

@@ -252,13 +252,17 @@ function publicPathToKey(publicPath) {
 
 /* Upload helper: put buffer to S3 with content-type. */
 async function s3Put({ client, bucket, key, buffer, contentType }) {
-  await client.send(new PutObjectCommand({
-    Bucket: bucket,
-    Key: key,
-    Body: buffer,
-    ContentType: contentType,
-    CacheControl: 'public, max-age=31536000, immutable',
-  }));
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
+    }));
+  } catch (err) {
+    throw normalizeS3Error(err, 's3Put');
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -308,11 +312,15 @@ const s3Adapter = {
       .webp({ quality: 75 })
       .toBuffer();
 
-    await Promise.all([
-      s3Put({ client, bucket, key: originalKey, buffer, contentType: `image/${sig.ext === 'jpg' ? 'jpeg' : sig.ext}` }),
-      s3Put({ client, bucket, key: largeKey, buffer: large, contentType: 'image/webp' }),
-      s3Put({ client, bucket, key: thumbKey, buffer: thumb, contentType: 'image/webp' }),
-    ]);
+    try {
+      await Promise.all([
+        s3Put({ client, bucket, key: originalKey, buffer, contentType: `image/${sig.ext === 'jpg' ? 'jpeg' : sig.ext}` }),
+        s3Put({ client, bucket, key: largeKey, buffer: large, contentType: 'image/webp' }),
+        s3Put({ client, bucket, key: thumbKey, buffer: thumb, contentType: 'image/webp' }),
+      ]);
+    } catch (err) {
+      throw normalizeS3Error(err, 'upload');
+    }
 
     const publicBase = process.env.STORAGE_PUBLIC_URL || `/assets/img`;
     return {
@@ -323,27 +331,31 @@ const s3Adapter = {
       height: meta.height,
       size: buffer.length,
     };
-  },
+},
 
   async list({ assignedPaths = new Set() } = {}) {
     const { client, bucket } = getS3Client();
     const prefix = 'library/';
-    const resp = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
-    const objects = resp.Contents || [];
+    try {
+      const resp = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
+      const objects = resp.Contents || [];
 
-    const grouped = new Map();
-    for (const obj of objects) {
-      const key = obj.Key; // e.g., library/abc-large.webp
-      const publicPath = `/assets/img/${key}`;
-      const assigned = assignedPaths.has(publicPath);
-      const m = key.match(/^library\/(.*)-(large|thumb|original)\.[a-z]+$/i);
-      const baseKey = m ? `library/${m[1]}` : key;
-      if (!grouped.has(baseKey)) grouped.set(baseKey, { base: `/assets/img/${baseKey}`, files: [], assigned: false });
-      const g = grouped.get(baseKey);
-      g.files.push(publicPath);
-      if (assigned) g.assigned = true;
+      const grouped = new Map();
+      for (const obj of objects) {
+        const key = obj.Key; // e.g., library/abc-large.webp
+        const publicPath = `/assets/img/${key}`;
+        const assigned = assignedPaths.has(publicPath);
+        const m = key.match(/^library\/(.*)-(large|thumb|original)\.[a-z]+$/i);
+        const baseKey = m ? `library/${m[1]}` : key;
+        if (!grouped.has(baseKey)) grouped.set(baseKey, { base: `/assets/img/${baseKey}`, files: [], assigned: false });
+        const g = grouped.get(baseKey);
+        g.files.push(publicPath);
+        if (assigned) g.assigned = true;
+      }
+      return [...grouped.values()];
+    } catch (err) {
+      throw normalizeS3Error(err, 'list');
     }
-    return [...grouped.values()];
   },
 
   resolve(publicPath) {
@@ -360,7 +372,7 @@ const s3Adapter = {
       return true;
     } catch (e) {
       if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return false;
-      throw e;
+      throw normalizeS3Error(e, 'exists');
     }
   },
 
@@ -377,9 +389,13 @@ const s3Adapter = {
       const base = `library/${m[1]}`;
       siblings = ['-large.webp', '-thumb.webp'].map((s) => `${base}${s}`);
       // original may have various extensions; try to find by listing prefix
-      const listResp = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: base + '-original.' }));
-      if (listResp.Contents?.length) {
-        siblings.push(listResp.Contents[0].Key);
+      try {
+        const listResp = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: base + '-original.' }));
+        if (listResp.Contents?.length) {
+          siblings.push(listResp.Contents[0].Key);
+        }
+      } catch (err) {
+        throw normalizeS3Error(err, 'delete:listOriginal');
       }
     }
 
@@ -389,7 +405,7 @@ const s3Adapter = {
         await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: sibling }));
         deleted++;
       } catch (e) {
-        if (e.name !== 'NotFound' && e.$metadata?.httpStatusCode !== 404) throw e;
+        if (e.name !== 'NotFound' && e.$metadata?.httpStatusCode !== 404) throw normalizeS3Error(e, 'delete:object');
       }
     }
     return deleted;
@@ -404,7 +420,7 @@ const s3Adapter = {
       return { size: resp.ContentLength, mtime: resp.LastModified };
     } catch (e) {
       if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return null;
-      throw e;
+      throw normalizeS3Error(e, 'stat');
     }
   },
 
@@ -418,10 +434,110 @@ const s3Adapter = {
       return resp.Body;
     } catch (e) {
       if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return null;
-      throw e;
+      throw normalizeS3Error(e, 'getReadStream');
     }
   },
 };
+
+/* ──────────────────────────────────────────────────────────────────────────
+   S3/B2 error normalization.
+   ------------------------------------------------------------------------ */
+
+/**
+ * Normalizes S3-compatible storage errors into ApiError instances.
+ * Handles common S3/B2 error codes and maps them to appropriate HTTP status codes.
+ * Never exposes credentials or sensitive information.
+ */
+function normalizeS3Error(err, context = '') {
+  // AWS SDK v3 errors have $metadata with httpStatusCode
+  const statusCode = err.$metadata?.httpStatusCode;
+  const errorCode = err.name || err.Code || err.code;
+  const errorMessage = err.message?.split('?')[0]; // Strip potential credentials from URLs
+  
+  // Safe diagnostic info for logging (no credentials)
+  const safeDiagnostic = {
+    errorCode,
+    statusCode,
+    context,
+    requestId: err.$metadata?.requestId,
+    extendedRequestId: err.$metadata?.extendedRequestId,
+    cfId: err.$metadata?.cfId,
+  };
+
+  // Map S3 error codes to appropriate ApiError types
+  switch (errorCode) {
+    case 'AccessDenied':
+      console.warn('[storage] Access denied', safeDiagnostic);
+      return ApiError.forbidden('Storage access denied. Check credentials and bucket permissions.');
+      
+    case 'InvalidAccessKeyId':
+    case 'SignatureDoesNotMatch':
+    case 'InvalidToken':
+      console.warn('[storage] Invalid credentials', safeDiagnostic);
+      return ApiError.unauthorized('Storage authentication failed. Check credentials.');
+      
+    case 'NoSuchBucket':
+      console.warn('[storage] Bucket not found', safeDiagnostic);
+      return ApiError.notFound('Storage bucket not found. Check bucket name and region.');
+      
+    case 'RequestTimeout':
+    case 'RequestTimeOut':
+      console.warn('[storage] Request timeout', safeDiagnostic);
+      return ApiError.serviceUnavailable('Storage request timed out. Please try again.');
+      
+    case 'SlowDown':
+    case 'Throttling':
+      console.warn('[storage] Rate limited', safeDiagnostic);
+      return ApiError.tooManyRequests('Storage rate limit exceeded. Please retry later.');
+      
+    case 'NetworkingError':
+    case 'TimeoutError':
+    case 'ECONNREFUSED':
+    case 'ENOTFOUND':
+    case 'ETIMEDOUT':
+      console.warn('[storage] Network error', safeDiagnostic);
+      return ApiError.serviceUnavailable('Storage service temporarily unavailable. Please try again.');
+      
+    case 'EntityTooLarge':
+    case 'ContentTooLarge':
+      console.warn('[storage] Upload too large', safeDiagnostic);
+      return ApiError.badRequest('Upload exceeds maximum allowed size (12MB).');
+      
+    case 'InvalidObjectState':
+    case 'ObjectLockError':
+      console.warn('[storage] Object state error', safeDiagnostic);
+      return ApiError.conflict('Storage object is locked or in an invalid state.');
+      
+    case 'KMS.KeyUnavailable':
+    case 'KMS.NotFound':
+      console.warn('[storage] KMS key error', safeDiagnostic);
+      return ApiError.internal('Storage encryption key unavailable.');
+      
+    default:
+      // Log unexpected errors for diagnostics (no credentials)
+      console.error('[storage] Unexpected storage error', {
+        ...safeDiagnostic,
+        message: errorMessage,
+      });
+      
+      // For specific error names, map appropriately
+      if (errorCode === 'UnknownError') {
+        // Preserve the original status code for unknown errors
+        if (statusCode === 500) return ApiError.internal('Storage operation failed.');
+        if (statusCode === 400) return ApiError.badRequest('Invalid storage request.');
+      }
+      
+      // For known status codes, map appropriately
+      if (statusCode === 403) return ApiError.forbidden('Storage access denied.');
+      if (statusCode === 401) return ApiError.unauthorized('Storage authentication failed.');
+      if (statusCode === 404) return ApiError.notFound('Storage resource not found.');
+      if (statusCode === 400) return ApiError.badRequest('Invalid storage request.');
+      if (statusCode >= 500) return ApiError.serviceUnavailable('Storage service temporarily unavailable.');
+      
+      // Default: internal server error without exposing internal details
+      return ApiError.internal('Storage operation failed.');
+  }
+}
 
 /* ──────────────────────────────────────────────────────────────────────────
    Backblaze B2 storage adapter (S3‑compatible)
@@ -461,7 +577,7 @@ const b2Adapter = {
     }
 
     const sig = detectImage(buffer);
-    if (!sig) throw new Error('Unrecognised image format. JPEG, PNG, WebP and AVIF are supported.');
+    if (!sig) throw ApiError.badRequest('Unrecognised image format. JPEG, PNG, WebP and AVIF are supported.');
 
     let meta;
     try {
@@ -494,11 +610,15 @@ const b2Adapter = {
       .webp({ quality: 75 })
       .toBuffer();
 
-    await Promise.all([
-      s3Put({ client, bucket, key: originalKey, buffer, contentType: `image/${sig.ext === 'jpg' ? 'jpeg' : sig.ext}` }),
-      s3Put({ client, bucket, key: largeKey, buffer: large, contentType: 'image/webp' }),
-      s3Put({ client, bucket, key: thumbKey, buffer: thumb, contentType: 'image/webp' }),
-    ]);
+    try {
+      await Promise.all([
+        s3Put({ client, bucket, key: originalKey, buffer, contentType: `image/${sig.ext === 'jpg' ? 'jpeg' : sig.ext}` }),
+        s3Put({ client, bucket, key: largeKey, buffer: large, contentType: 'image/webp' }),
+        s3Put({ client, bucket, key: thumbKey, buffer: thumb, contentType: 'image/webp' }),
+      ]);
+    } catch (err) {
+      throw normalizeS3Error(err, 'upload');
+    }
 
     const publicBase = process.env.STORAGE_PUBLIC_URL || `/assets/img`;
     return {
@@ -515,22 +635,26 @@ const b2Adapter = {
   async list({ assignedPaths = new Set() } = {}) {
     const { client, bucket } = getB2Client();
     const prefix = 'products/';
-    const resp = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
-    const objects = resp.Contents || [];
+    try {
+      const resp = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
+      const objects = resp.Contents || [];
 
-    const grouped = new Map();
-    for (const obj of objects) {
-      const key = obj.Key; // e.g., products/abc-large.webp
-      const publicPath = `/assets/img/${key}`;
-      const assigned = assignedPaths.has(publicPath);
-      const m = key.match(/^products\/(.*)-(large|thumb|original)\.[a-z]+$/i);
-      const baseKey = m ? `products/${m[1]}` : key;
-      if (!grouped.has(baseKey)) grouped.set(baseKey, { base: `/assets/img/${baseKey}`, files: [], assigned: false });
-      const g = grouped.get(baseKey);
-      g.files.push(publicPath);
-      if (assigned) g.assigned = true;
+      const grouped = new Map();
+      for (const obj of objects) {
+        const key = obj.Key; // e.g., products/abc-large.webp
+        const publicPath = `/assets/img/${key}`;
+        const assigned = assignedPaths.has(publicPath);
+        const m = key.match(/^products\/(.*)-(large|thumb|original)\.[a-z]+$/i);
+        const baseKey = m ? `products/${m[1]}` : key;
+        if (!grouped.has(baseKey)) grouped.set(baseKey, { base: `/assets/img/${baseKey}`, files: [], assigned: false });
+        const g = grouped.get(baseKey);
+        g.files.push(publicPath);
+        if (assigned) g.assigned = true;
+      }
+      return [...grouped.values()];
+    } catch (err) {
+      throw normalizeS3Error(err, 'list');
     }
-    return [...grouped.values()];
   },
 
   /* Resolve a public path to an absolute file path, ensuring it stays in IMG_ROOT. */
@@ -549,7 +673,7 @@ const b2Adapter = {
       return true;
     } catch (e) {
       if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return false;
-      throw e;
+      throw normalizeS3Error(e, 'exists');
     }
   },
 
@@ -570,12 +694,16 @@ const b2Adapter = {
       // extension must never be assumed — look for whatever is actually there.
       if (base.startsWith('products/')) {
         const baseName = path.basename(base);
-        const original = await client.send(new ListObjectsV2Command({
-          Bucket: process.env.B2_BUCKET_NAME,
-          Prefix: `products/${baseName}-original.`
-        }));
-        if (original.Contents?.length) {
-          siblings.push(`/assets/img/${original.Contents[0].Key}`);
+        try {
+          const original = await client.send(new ListObjectsV2Command({
+            Bucket: process.env.B2_BUCKET_NAME,
+            Prefix: `products/${baseName}-original.`
+          }));
+          if (original.Contents?.length) {
+            siblings.push(`/assets/img/${original.Contents[0].Key}`);
+          }
+        } catch (err) {
+          throw normalizeS3Error(err, 'delete:listOriginal');
         }
       }
     }
@@ -588,7 +716,7 @@ const b2Adapter = {
         await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: siblingKey }));
         deleted++;
       } catch (e) {
-        if (e.name !== 'NotFound' && e.$metadata?.httpStatusCode !== 404) throw e;
+        if (e.name !== 'NotFound' && e.$metadata?.httpStatusCode !== 404) throw normalizeS3Error(e, 'delete:object');
       }
     }
     return deleted;
@@ -604,7 +732,7 @@ const b2Adapter = {
       return { size: resp.ContentLength, mtime: resp.LastModified };
     } catch (e) {
       if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return null;
-      throw e;
+      throw normalizeS3Error(e, 'stat');
     }
   },
 
@@ -618,10 +746,111 @@ const b2Adapter = {
       return resp.Body;
     } catch (e) {
       if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return null;
-      throw e;
+      throw normalizeS3Error(e, 'getReadStream');
     }
   },
 };
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Storage health check.
+   ------------------------------------------------------------------------ */
+/**
+ * Checks storage adapter health without performing expensive operations.
+ * Returns a promise that resolves to a health object.
+ * Never throws; always resolves to a health object.
+ */
+export async function checkStorageHealth() {
+  const adapter = getStorageAdapter();
+  const health = {
+    provider: adapter.name,
+    configured: true,
+    available: false,
+    details: {},
+  };
+
+  try {
+    // For local adapter, check if the library directory is accessible
+    if (adapter.name === 'local') {
+      const fs = await import('fs');
+      const path = await import('path');
+      const { fileURLToPath } = await import('url');
+      const PUBLIC_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
+      const LIBRARY_DIR = path.join(PUBLIC_ROOT, 'assets', 'img', 'library');
+      
+      try {
+        await fs.promises.access(LIBRARY_DIR, fs.constants.R_OK | fs.constants.W_OK);
+        health.available = true;
+        health.details.root = LIBRARY_DIR;
+      } catch {
+        health.available = false;
+        health.details.error = 'Library directory not accessible';
+      }
+    }
+    // For S3-compatible adapters (b2, s3), do a lightweight check
+    else if (adapter.name === 'b2' || adapter.name === 's3') {
+      // Check if credentials are configured (already validated at startup)
+      health.configured = true;
+      
+      // Lightweight check: try to list with a minimal prefix (max 1 object)
+      // This is a quick connectivity check without heavy operations
+      try {
+        if (adapter.name === 'b2') {
+          const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+          const client = new S3Client({
+            region: process.env.B2_REGION || 'us-west-004',
+            endpoint: process.env.B2_ENDPOINT,
+            credentials: {
+              accessKeyId: process.env.B2_KEY_ID,
+              secretAccessKey: process.env.B2_APPLICATION_KEY,
+            },
+            forcePathStyle: true,
+          });
+          await client.send(new ListObjectsV2Command({
+            Bucket: process.env.B2_BUCKET_NAME,
+            Prefix: 'products/',
+            MaxKeys: 1,
+          }));
+          health.available = true;
+        } else if (adapter.name === 's3') {
+          const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+          const endpoint = process.env.S3_ENDPOINT;
+          const region = process.env.S3_REGION || 'auto';
+          const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+          const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+          const bucket = process.env.S3_BUCKET;
+          const client = new S3Client({
+            region,
+            endpoint,
+            credentials: { accessKeyId, secretAccessKey },
+            forcePathStyle: !!endpoint,
+          });
+          await client.send(new ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: 'library/',
+            MaxKeys: 1,
+          }));
+          health.available = true;
+        }
+      } catch (e) {
+        health.available = false;
+        // Don't expose sensitive error details in health response
+        health.details.error = 'Storage connectivity check failed';
+        // Log safely for diagnostics
+        console.warn('[storage] Health check failed:', {
+          provider: adapter.name,
+          errorCode: e.name,
+          errorMessage: e.message?.split('?')[0], // Strip potential credentials from URLs
+        });
+      }
+    }
+  } catch (e) {
+    health.available = false;
+    health.configured = false;
+    health.details.error = 'Health check failed';
+  }
+
+  return health;
+}
 
 /* ──────────────────────────────────────────────────────────────────────────
    Provider registry and selection.
@@ -640,6 +869,25 @@ let activeAdapter = localAdapter;
 export function setStorageAdapter(name) {
   const adapter = adapters[name];
   if (!adapter) throw ApiError.internal(`Unknown storage adapter: ${name}`);
+
+  // Validate B2 credentials at startup if B2 adapter selected
+  if (name === 'b2') {
+    const required = ['B2_BUCKET_NAME', 'B2_KEY_ID', 'B2_APPLICATION_KEY'];
+    const missing = required.filter((v) => !process.env[v]);
+    if (missing.length) {
+      throw ApiError.internal(`B2 adapter requires environment variables: ${missing.join(', ')}`);
+    }
+  }
+
+  // Validate S3 credentials at startup if S3 adapter selected
+  if (name === 's3') {
+    const required = ['S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'];
+    const missing = required.filter((v) => !process.env[v]);
+    if (missing.length) {
+      throw ApiError.internal(`S3 adapter requires environment variables: ${missing.join(', ')}`);
+    }
+  }
+
   activeAdapter = adapter;
   console.log(`[storage] adapter set to: ${name}`);
 }
@@ -653,4 +901,4 @@ export function getAvailableAdapters() {
 }
 
 /* Re-export the local adapter for direct use if needed. */
-export { localAdapter, b2Adapter };
+export { localAdapter, b2Adapter, normalizeS3Error };

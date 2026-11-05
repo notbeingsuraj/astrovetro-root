@@ -242,11 +242,6 @@ window.AV = window.AV || {};
     };
     if (fresh) requestAnimationFrame(add);
     else add();
-    setTimeout(() => {
-      t.style.opacity = '0';
-      t.style.transition = 'opacity .3s ease';
-      setTimeout(() => t.remove(), 320);
-    }, 3200);
   };
   AV.setBusy = (btn, busy, text) => {
     if (!btn) return;

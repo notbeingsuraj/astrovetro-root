@@ -55,6 +55,18 @@ export class ApiError extends Error {
   static outOfStock(message = 'One of the pieces in your bag is no longer available in that quantity.') {
     return new ApiError(409, 'OUT_OF_STOCK', message);
   }
+
+  static internal(message = 'Internal server error.') {
+    return new ApiError(500, 'INTERNAL_ERROR', message);
+  }
+
+  static serviceUnavailable(message = 'Service temporarily unavailable. Please try again.') {
+    return new ApiError(503, 'SERVICE_UNAVAILABLE', message);
+  }
+
+  static tooManyRequests(message = 'Too many requests. Please try again later.') {
+    return new ApiError(429, 'TOO_MANY_REQUESTS', message);
+  }
 }
 
 export default ApiError;

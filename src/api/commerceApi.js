@@ -28,6 +28,7 @@ import { dbProvider } from '../providers/dbProvider.js';
 import { requireSameOrigin } from '../middleware/auth.js';
 import { notFoundHandler, errorHandler } from '../middleware/errorHandler.js';
 import { paymentWebhook } from '../controllers/orderController.js';
+import { checkStorageHealth } from '../utils/storage.js';
 
 import authRoutes from '../routes/auth.js';
 import cartRoutes from '../routes/cart.js';
@@ -47,9 +48,10 @@ const ok = (res, data, meta = {}) => res.json({ success: true, data, meta });
    The same routes and the same envelope as staticApi.js, answered from the
    database. Nothing in the storefront branches on which one is live.
    ------------------------------------------------------------------------ */
-router.get('/status', (_req, res) => {
+router.get('/status', async (_req, res) => {
   const db = isDbConnected();
   const status = getDbStatus();
+  const storageHealth = await checkStorageHealth();
   res.json({
     success: true,
     data: {
@@ -64,8 +66,13 @@ router.get('/status', (_req, res) => {
       note: db
         ? 'Commerce is live: accounts, saved addresses, cart, wishlist, orders and tracking are all persistent.'
         : 'Catalogue browsing only. Orders, bookings, accounts, contact and newsletter are unavailable until a database is configured.',
+      storage: {
+        provider: storageHealth.provider,
+        configured: storageHealth.configured,
+        available: storageHealth.available,
+      },
     },
-    meta: { provider: dbProvider.name, database: isDbConnected(), paymentsLive: env.paymentLive },
+    meta: { provider: dbProvider.name, database: isDbConnected(), paymentsLive: env.paymentLive, storage: storageHealth.provider },
   });
 });
 
