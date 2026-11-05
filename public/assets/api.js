@@ -48,19 +48,17 @@ window.AV = window.AV || {};
     const headers = opts.headers || {};
     if (body !== undefined) headers['Content-Type'] = 'application/json';
 
-    const init = { method, credentials: 'include', headers };
-    if (body !== undefined) init.body = JSON.stringify(body);
-
     /* Idempotency-Key is sent as a header so a retried POST cannot become a
        second order. The backend treats a replay as the original response. */
     if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey;
 
+    const init = { method, credentials: 'include', headers };
+    if (body !== undefined) init.body = JSON.stringify(body);
+    /* Prevent caching of capability probe responses */
+    if (path === '/api/status') init.cache = 'no-cache';
+
     let res;
     try {
-      const init = { method, credentials: 'include', headers };
-      if (body !== undefined) init.body = JSON.stringify(body);
-      /* Prevent caching of capability probe responses */
-      if (path === '/api/status') init.cache = 'no-cache';
       res = await fetch(path, init);
     } catch (_e) {
       const e = new Error('Could not reach the server. Is it running?');
