@@ -49,56 +49,56 @@ describe('B2 storage adapter', () => {
 
     const result = await b2Adapter.upload({ buffer: validPng, filename: 'test.png' });
 
-    assert.ok(result.original.includes('/assets/img/products/'));
-    assert.ok(result.large.includes('/assets/img/products/'));
-    assert.ok(result.thumb.includes('/assets/img/products/'));
+    assert.ok(result.original.includes('/assets/img/library/'));
+    assert.ok(result.large.includes('/assets/img/library/'));
+    assert.ok(result.thumb.includes('/assets/img/library/'));
     assert.ok(result.width > 0 && result.height > 0);
   });
 
   it('lists uploaded objects with correct prefix', async () => {
     mockS3.on(ListObjectsV2Command).resolves({
       Contents: [
-        { Key: 'products/abc-original.png' },
-        { Key: 'products/abc-large.webp' },
-        { Key: 'products/abc-thumb.webp' },
+        { Key: 'library/abc-original.png' },
+        { Key: 'library/abc-large.webp' },
+        { Key: 'library/abc-thumb.webp' },
       ],
     });
 
     const list = await b2Adapter.list({ assignedPaths: new Set() });
     assert.strictEqual(list.length, 1);
-    assert.ok(list[0].files.includes('/assets/img/products/abc-original.png'));
-    assert.ok(list[0].files.includes('/assets/img/products/abc-large.webp'));
-    assert.ok(list[0].files.includes('/assets/img/products/abc-thumb.webp'));
+    assert.ok(list[0].files.includes('/assets/img/library/abc-original.png'));
+    assert.ok(list[0].files.includes('/assets/img/library/abc-large.webp'));
+    assert.ok(list[0].files.includes('/assets/img/library/abc-thumb.webp'));
   });
 
   it('checks existence of object', async () => {
     mockS3.on(HeadObjectCommand).resolves({});
-    const exists = await b2Adapter.exists('/assets/img/products/test-large.webp');
+    const exists = await b2Adapter.exists('/assets/img/library/test-large.webp');
     assert.strictEqual(exists, true);
 
     mockS3.on(HeadObjectCommand).rejects({ name: 'NotFound', $metadata: { httpStatusCode: 404 } });
-    const notExists = await b2Adapter.exists('/assets/img/products/missing.webp');
+    const notExists = await b2Adapter.exists('/assets/img/library/missing.webp');
     assert.strictEqual(notExists, false);
   });
 
   it('deletes object and its derivatives', async () => {
     mockS3.on(DeleteObjectCommand).resolves({});
-    mockS3.on(ListObjectsV2Command).resolves({ Contents: [{ Key: 'products/abc-original.png' }] });
+    mockS3.on(ListObjectsV2Command).resolves({ Contents: [{ Key: 'library/abc-original.png' }] });
     mockS3.on(DeleteObjectCommand).resolves({});
 
-    const deleted = await b2Adapter.delete('/assets/img/products/test-large.webp');
+    const deleted = await b2Adapter.delete('/assets/img/library/test-large.webp');
     assert.ok(deleted >= 1);
   });
 
   it('returns stat for existing object', async () => {
     mockS3.on(HeadObjectCommand).resolves({ ContentLength: 12345, LastModified: new Date('2024-01-01') });
-    const stat = await b2Adapter.stat('/assets/img/products/test-large.webp');
+    const stat = await b2Adapter.stat('/assets/img/library/test-large.webp');
     assert.strictEqual(stat.size, 12345);
   });
 
   it('returns null for missing object stat', async () => {
     mockS3.on(HeadObjectCommand).rejects({ name: 'NotFound', $metadata: { httpStatusCode: 404 } });
-    const stat = await b2Adapter.stat('/assets/img/products/missing.webp');
+    const stat = await b2Adapter.stat('/assets/img/library/missing.webp');
     assert.strictEqual(stat, null);
   });
 });

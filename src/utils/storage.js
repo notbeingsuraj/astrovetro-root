@@ -692,12 +692,12 @@ const b2Adapter = {
       siblings = ['-large.webp', '-thumb.webp'].map((s) => `${base}${s}`);
       // The uploaded original keeps the source format (png/jpg/webp), so its
       // extension must never be assumed — look for whatever is actually there.
-      if (base.startsWith('products/')) {
+      if (base.startsWith('library/')) {
         const baseName = path.basename(base);
         try {
           const original = await client.send(new ListObjectsV2Command({
             Bucket: process.env.B2_BUCKET_NAME,
-            Prefix: `products/${baseName}-original.`
+            Prefix: `library/${baseName}-original.`
           }));
           if (original.Contents?.length) {
             siblings.push(`/assets/img/${original.Contents[0].Key}`);
@@ -813,7 +813,7 @@ export async function checkStorageHealth() {
           });
           await client.send(new ListObjectsV2Command({
             Bucket: process.env.B2_BUCKET_NAME,
-            Prefix: 'products/',
+            Prefix: 'library/',
             MaxKeys: 1,
           }));
           health.available = true;
