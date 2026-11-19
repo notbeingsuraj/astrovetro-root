@@ -594,7 +594,7 @@ const b2Adapter = {
     const largeName = `${base}-large.webp`;
     const thumbName = `${base}-thumb.webp`;
 
-    const prefix = 'products/';                     // logical folder
+    const prefix = 'library/';                    // logical folder (matches local/S3 adapters)
     const originalKey = prefix + originalName;
     const largeKey = prefix + largeName;
     const thumbKey = prefix + thumbName;
@@ -622,30 +622,30 @@ const b2Adapter = {
 
     const publicBase = process.env.STORAGE_PUBLIC_URL || `/assets/img`;
     return {
-      original: `${publicBase}/products/${originalName}`,
-      large: `${publicBase}/products/${largeName}`,
-      thumb: `${publicBase}/products/${thumbName}`,
+      original: `${publicBase}/library/${originalName}`,
+      large: `${publicBase}/library/${largeName}`,
+      thumb: `${publicBase}/library/${thumbName}`,
       width: meta.width,
       height: meta.height,
       size: buffer.length,
     };
   },
 
-  /* List all images under assets/img/products, grouped by photograph (base name). */
+  /* List all images under assets/img/library, grouped by photograph (base name). */
   async list({ assignedPaths = new Set() } = {}) {
     const { client, bucket } = getB2Client();
-    const prefix = 'products/';
+    const prefix = 'library/';
     try {
       const resp = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
       const objects = resp.Contents || [];
 
       const grouped = new Map();
       for (const obj of objects) {
-        const key = obj.Key; // e.g., products/abc-large.webp
+        const key = obj.Key; // e.g., library/abc-large.webp
         const publicPath = `/assets/img/${key}`;
         const assigned = assignedPaths.has(publicPath);
-        const m = key.match(/^products\/(.*)-(large|thumb|original)\.[a-z]+$/i);
-        const baseKey = m ? `products/${m[1]}` : key;
+        const m = key.match(/^library\/(.*)-(large|thumb|original)\.[a-z]+$/i);
+        const baseKey = m ? `library/${m[1]}` : key;
         if (!grouped.has(baseKey)) grouped.set(baseKey, { base: `/assets/img/${baseKey}`, files: [], assigned: false });
         const g = grouped.get(baseKey);
         g.files.push(publicPath);
@@ -781,9 +781,15 @@ export async function checkStorageHealth() {
         await fs.promises.access(LIBRARY_DIR, fs.constants.R_OK | fs.constants.W_OK);
         health.available = true;
         health.details.root = LIBRARY_DIR;
+        // Warn if using local storage in serverless production
+        const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+        if (isServerless && process.env.NODE_ENV === 'production') {
+          health.details.warning = 'Local storage on serverless platform is ephemeral; use B2/S3 for persistence';
+          console.warn('[storage] Local adapter in serverless production — uploads will be lost on cold start. Set STORAGE_ADAPTER=b2 or STORAGE_ADAPTER=s3 for persistence.');
+        }
       } catch {
         health.available = false;
-        health.details.error = 'Library directory not accessible';
+        health.details.error = 'Library directory not accessible (read/write failed)';
       }
     }
     // For S3-compatible adapters (b2, s3), do a lightweight check
@@ -811,6 +817,8 @@ export async function checkStorageHealth() {
             MaxKeys: 1,
           }));
           health.available = true;
+          health.details.bucket = process.env.B2_BUCKET_NAME;
+          health.details.region = process.env.B2_REGION || 'us-west-004';
         } else if (adapter.name === 's3') {
           const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
           const endpoint = process.env.S3_ENDPOINT;
@@ -830,6 +838,8 @@ export async function checkStorageHealth() {
             MaxKeys: 1,
           }));
           health.available = true;
+          health.details.bucket = bucket;
+          health.details.region = region;
         }
       } catch (e) {
         health.available = false;
@@ -840,6 +850,14 @@ export async function checkStorageHealth() {
           provider: adapter.name,
           errorCode: e.name,
           errorMessage: e.message?.split('?')[0], // Strip potential credentials from URLs
+          // Actionable diagnostics
+          hint: e.name === 'InvalidAccessKeyId' || e.name === 'SignatureDoesNotMatch' 
+            ? 'Check B2_KEY_ID and B2_APPLICATION_KEY'
+            : e.name === 'NoSuchBucket'
+              ? 'Check B2_BUCKET_NAME and region'
+              : e.name === 'NetworkingError' || e.name === 'ENOTFOUND'
+                ? 'Check B2_ENDPOINT and network connectivity'
+                : 'Check credentials and bucket configuration',
         });
       }
     }

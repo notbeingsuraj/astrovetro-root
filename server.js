@@ -6,16 +6,23 @@ import helmet from 'helmet';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import staticApi from './src/api/staticApi.js';
-import commerceApi from './src/api/commerceApi.js';
 import { connectDB, isConnected, disconnectDB, dbReady, ensureConnected } from './src/db/connect.js';
 import { env, assertProductionSecrets } from './src/config/env.js';
 import { seedIfEmpty } from './src/db/seed.js';
 import { setStorageAdapter, getAvailableAdapters, getStorageAdapter, checkStorageHealth } from './src/utils/storage.js';
+import { initializeRateLimiters } from './src/middleware/rateLimitStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = Number(process.env.PORT || 5173);
+
+/* Initialize distributed rate limiters before loading routes.
+   This must happen before any route imports validate.js. */
+await initializeRateLimiters();
+
+/* Import API modules AFTER rate limiters are initialized using dynamic imports. */
+const { default: staticApi } = await import('./src/api/staticApi.js');
+const { default: commerceApi } = await import('./src/api/commerceApi.js');
 
 /* OPTIONAL. Two ways this server can answer /api, in priority order:
 
@@ -157,21 +164,25 @@ app.use(
    the auth middleware can read it. */
 app.use(cookieParser());
 
-/* CORS — allow credentialed requests from the configured frontend origin.
+/* CORS — allow credentialed requests from explicitly configured frontend origins.
    Only applied to /api routes; static files are served same-origin.
-   Wildcard origin is rejected when credentials are enabled (security best practice). */
-const corsOrigin = env.frontendUrl;
-if (corsOrigin === '*') {
-  throw new Error('CORS origin cannot be "*" when credentials are enabled. Set FRONTEND_URL to a specific origin.');
+   Wildcard origin is rejected when credentials are enabled (security best practice).
+   In production, FRONTEND_URL must be set to comma-separated origins (no localhost fallback). */
+const corsOrigins = env.frontendOrigins;
+if (corsOrigins.some(o => o === '*')) {
+  throw new Error('CORS origin cannot be "*" when credentials are enabled. Set FRONTEND_URL to specific origin(s).');
+}
+if (env.isProduction && corsOrigins.some(o => o.includes('localhost') || o.includes('127.0.0.1'))) {
+  throw new Error('CORS origin cannot include localhost in production. Set FRONTEND_URL to production origin(s).');
 }
 app.use('/api', cors({
-  origin: corsOrigin,
+  origin: corsOrigins,
   credentials: true,               // allow cookies/auth headers
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
   maxAge: 86400,                   // cache preflight for 24h
 }));
-console.log(`[cors] enabled for ${corsOrigin}`);
+console.log(`[cors] enabled for ${corsOrigins.join(', ')}`);
 
 /* Database connection readiness middleware.
    Runs before any database-backed routes to ensure the connection is ready.

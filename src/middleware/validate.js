@@ -8,15 +8,14 @@
    trust their types. Without it, `quantity` arrives as the string "3" and
    arithmetic quietly concatenates.
 
-   `rateLimit` is a thin wrapper over express-rate-limit so every limiter in the
-   project is configured and keyed identically. The auth limiter is deliberately
-   much tighter than the general one — it is the only route where guessing is
-   worth attempting.
+   Rate limiters are initialized at server startup via initializeRateLimiters()
+   in server.js. They use a distributed Redis store (Upstash) in production,
+   falling back to in-memory store in development.
    ------------------------------------------------------------------------- */
 
-import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { ZodError } from 'zod';
 import { ApiError } from '../utils/ApiError.js';
+import { getAuthLimiter, getSignupLimiter, getCheckoutLimiter, getWriteLimiter } from './rateLimitStore.js';
 
 export const validate = (schema, source = 'body') => (req, _res, next) => {
   try {
@@ -32,60 +31,19 @@ export const validate = (schema, source = 'body') => (req, _res, next) => {
   }
 };
 
-const limiter = ({ windowMs, max, message, code }) =>
-  rateLimit({
-    windowMs,
-    max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    /* Keyed by user where there is one, so one customer cannot exhaust the
-       allowance of everyone behind the same NAT or office IP.
-
-       The IP half must go through `ipKeyGenerator`: a raw req.ip on IPv6 is a
-       /64 subnet, so without it every customer on the same network shares — or
-       evades — a single bucket. */
-    keyGenerator: (req) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
-    handler: (_req, res) =>
-      res.status(429).json({
-        success: false,
-        message,
-        error: { code, message },
-      }),
-  });
-
 /* Credential endpoints: tight, because this is where password guessing pays
    off. 10 attempts per 15 minutes is enough for a real customer and useless
    for an attack. */
-export const authLimiter = limiter({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: 'Too many attempts. Please wait a few minutes and try again.',
-  code: 'RATE_LIMITED',
-});
+export const authLimiter = getAuthLimiter();
 
-export const signupLimiter = limiter({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  message: 'Too many accounts created from this connection. Please try again later.',
-  code: 'RATE_LIMITED',
-});
+export const signupLimiter = getSignupLimiter();
 
 /* Order creation gets its own, looser limit: it is the one route a legitimate
    customer may retry after a slow payment, and it is already protected by the
    idempotency key, so a double submit cannot create two orders anyway. */
-export const checkoutLimiter = limiter({
-  windowMs: 10 * 60 * 1000,
-  max: 30,
-  message: 'Too many checkout attempts. Please wait a moment.',
-  code: 'RATE_LIMITED',
-});
+export const checkoutLimiter = getCheckoutLimiter();
 
-export const writeLimiter = limiter({
-  windowMs: 60 * 1000,
-  max: 120,
-  message: 'Slow down a moment.',
-  code: 'RATE_LIMITED',
-});
+export const writeLimiter = getWriteLimiter();
 
 /* ── Shared field schemas ───────────────────────────────────────────────────
    Defined once because the same address shape is validated when saving an
