@@ -395,8 +395,8 @@ async function checkImageProxy() {
 async function checkRateLimiting() {
   console.log('\n=== Rate Limiting (basic) ===');
   try {
-    // Make several rapid requests to auth endpoint
-    const promises = Array(5).fill(null).map(() =>
+    // Make 11 rapid requests to auth endpoint (limit is 10 per 15 min)
+    const promises = Array(11).fill(null).map(() =>
       fetchWithTimeout(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Origin': BASE_URL },
@@ -407,14 +407,18 @@ async function checkRateLimiting() {
     const responses = await Promise.all(promises);
     const statuses = responses.map(r => r.status);
 
-    // Rate limiter should kick in and return 429 for some requests
-    // This is correct behavior - we verify rate limiting EXISTS
+    // Rate limiter should kick in and return 429 for requests beyond the limit (10)
     const rateLimited = statuses.some(s => s === 429);
-    logCheck('Login rate limiting active (returns 429)', rateLimited, `statuses=[${statuses.join(',')}]`);
+    logCheck('Login rate limiting active (returns 429 after 10 attempts)', rateLimited, `statuses=[${statuses.join(',')}]`);
 
     // All responses should be either 401 (unauthorized) or 429 (rate limited)
     const allValid = statuses.every(s => s === 401 || s === 429);
     logCheck('Login returns only 401 or 429', allValid, `statuses=[${statuses.join(',')}]`);
+
+    // Should have exactly 10 x 401 and 1 x 429 (or more 429s if requests overlap)
+    const count401 = statuses.filter(s => s === 401).length;
+    const count429 = statuses.filter(s => s === 429).length;
+    logCheck('Rate limit threshold respected (10 allowed, then 429)', count401 <= 10 && count429 >= 1, `401s=${count401}, 429s=${count429}`);
 
     return rateLimited && allValid;
   } catch (err) {
