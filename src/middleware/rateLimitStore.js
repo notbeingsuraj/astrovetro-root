@@ -9,16 +9,33 @@
    Production on Vercel: set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
    in Vercel environment variables.
 
+   Test mode: set DISABLE_RATE_LIMIT=true to disable all rate limiting
+   (for automated testing only — never enable in production).
+
    This module uses top-level await to initialize the store and limiters.
    Import it early in server.js to ensure initialization happens at startup.
    ------------------------------------------------------------------------- */
 
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
+/* Check if rate limiting should be disabled (test mode only). */
+const isRateLimitDisabled = process.env.DISABLE_RATE_LIMIT === 'true';
+
+/* Create a no-op limiter that allows all requests (for test mode). */
+function createNoOpLimiter() {
+  return (_req, _res, next) => next();
+}
+
 /* Create a rate limit store compatible with express-rate-limit.
    In production with Upstash credentials, uses distributed Redis store.
    In development without credentials, falls back to in-memory store (default). */
 async function createRateLimitStoreInternal() {
+  // Test mode: disable rate limiting entirely
+  if (isRateLimitDisabled) {
+    console.log('[rate-limit] DISABLED (test mode)');
+    return undefined;
+  }
+
   const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
   const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -81,6 +98,11 @@ async function createRateLimitStoreInternal() {
 const storePromise = createRateLimitStoreInternal();
 
 async function createRateLimiter(options) {
+  // Test mode: return no-op limiter
+  if (isRateLimitDisabled) {
+    return createNoOpLimiter();
+  }
+  
   const store = await storePromise;
   return rateLimit({
     windowMs: options.windowMs || 15 * 60 * 1000,
