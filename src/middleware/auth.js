@@ -128,9 +128,10 @@ export function requireSameOrigin(req, _res, next) {
 
   const fetchSite = req.get('sec-fetch-site');
   if (fetchSite) {
-    /* 'same-origin' is sent by our own pages; 'none' by a direct address-bar
-       navigation or a bookmark, which cannot be a cross-site POST. */
-    if (fetchSite !== 'same-origin' && fetchSite !== 'none') {
+    /* 'same-origin' is sent by our own pages. 'none' is only sent for
+       top-level navigations (address bar, bookmarks) which are always GET.
+       A state-changing request with 'none' is anomalous and rejected. */
+    if (fetchSite !== 'same-origin') {
       return next(ApiError.forbidden('That request did not come from this site.'));
     }
     return next();

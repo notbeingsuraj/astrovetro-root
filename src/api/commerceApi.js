@@ -39,6 +39,7 @@ import checkoutRoutes from '../routes/checkout.js';
 import adminRoutes from '../routes/admin.js';
 import * as accountCtrl from '../controllers/accountController.js';
 import { requireAuth } from '../middleware/auth.js';
+import { writeLimiter } from '../middleware/validate.js';
 
 const router = Router();
 
@@ -203,9 +204,9 @@ router.use('/auth', authRoutes);
 
 /* ── Account ─────────────────────────────────────────────────────────────── */
 router.get('/me', requireAuth, accountCtrl.getAccountSummary);
-router.patch('/me', requireAuth, accountCtrl.updateProfile);
-router.post('/me/password', requireAuth, accountCtrl.changePassword);
-router.delete('/me', requireAuth, accountCtrl.deleteAccount);
+router.patch('/me', requireAuth, writeLimiter, accountCtrl.updateProfile);
+router.post('/me/password', requireAuth, writeLimiter, accountCtrl.changePassword);
+router.delete('/me', requireAuth, writeLimiter, accountCtrl.deleteAccount);
 router.use('/me/addresses', addressRoutes);
 
 /* ── Commerce ────────────────────────────────────────────────────────────── */

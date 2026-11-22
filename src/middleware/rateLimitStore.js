@@ -42,8 +42,12 @@ async function createRateLimitStoreInternal() {
   // In production, Redis is required for distributed rate limiting
   if (process.env.NODE_ENV === 'production') {
     if (!redisUrl || !redisToken) {
-      console.warn('[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN not set in production — falling back to in-memory store (NOT distributed across instances)');
-      return undefined; // express-rate-limit will use default in-memory store
+      // Allow explicit opt-in for single-instance deployments via ALLOW_IN_MEMORY_RATE_LIMIT=1
+      if (process.env.ALLOW_IN_MEMORY_RATE_LIMIT === '1') {
+        console.warn('[rate-limit] ALLOW_IN_MEMORY_RATE_LIMIT=1 set — using in-memory store in production (NOT distributed across instances)');
+        return undefined;
+      }
+      throw new Error('[rate-limit] UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set in production for distributed rate limiting. Set ALLOW_IN_MEMORY_RATE_LIMIT=1 to explicitly allow single-instance in-memory fallback.');
     }
 
     try {

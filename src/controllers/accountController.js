@@ -28,6 +28,7 @@ import { Wishlist } from '../models/Wishlist.js';
 import { Cart } from '../models/Cart.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { recordSecurityEvent } from '../services/auditService.js';
 
 export const getAccountSummary = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -104,17 +105,46 @@ const updateProfileSchema = z.object({
 export const updateProfile = asyncHandler(async (req, res) => {
   const body = updateProfileSchema.parse(req.body);
   const user = req.user;
+  const changes = [];
 
-  if (body.name !== undefined) user.name = body.name;
-  if (body.phone !== undefined) user.phone = body.phone;
+  if (body.name !== undefined && body.name !== user.name) {
+    user.name = body.name;
+    changes.push('name');
+  }
+  if (body.phone !== undefined && body.phone !== user.phone) {
+    user.phone = body.phone;
+    changes.push('phone');
+  }
 
   if (body.email !== undefined && body.email !== user.email) {
     const taken = await emailInUse(body.email, user._id);
-    if (taken) throw ApiError.conflict('Another account already uses that email address.');
+    if (taken) {
+      await recordSecurityEvent({
+        action: 'email_change.conflict',
+        user: req.user,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+        success: false,
+        details: { requestedEmail: body.email },
+      });
+      throw ApiError.conflict('Another account already uses that email address.');
+    }
 
     /* Held, not applied. See the file header for why an email change cannot be
        applied directly on a live session. */
     user.pendingEmail = body.email;
+    changes.push('email');
+  }
+
+  if (changes.length > 0) {
+    await recordSecurityEvent({
+      action: 'profile_update',
+      user: req.user,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      success: true,
+      details: { changes },
+    });
   }
 
   await user.save();
@@ -141,6 +171,14 @@ export const changePassword = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select('+passwordHash');
 
   if (!(await user.verifyPassword(currentPassword))) {
+    await recordSecurityEvent({
+      action: 'password_change.failed',
+      user: req.user,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      success: false,
+      details: { reason: 'invalid_current_password' },
+    });
     throw ApiError.badRequest('That is not your current password.');
   }
 
@@ -151,6 +189,14 @@ export const changePassword = asyncHandler(async (req, res) => {
      stops working the moment the owner resets their password. */
   user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save({ validateBeforeSave: false });
+
+  await recordSecurityEvent({
+    action: 'password_change',
+    user: req.user,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    success: true,
+  });
 
   res.json({ success: true, data: { changed: true, message: 'Your password has been changed. Please sign in again.' } });
 });

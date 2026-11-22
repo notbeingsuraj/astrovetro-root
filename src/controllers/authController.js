@@ -25,6 +25,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { issueToken, clearToken } from '../middleware/auth.js';
 import { DUPLICATE_KEY } from '../middleware/errorHandler.js';
+import { recordSecurityEvent } from '../services/auditService.js';
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, 'Enter your name.').max(120),
@@ -49,9 +50,14 @@ export const register = asyncHandler(async (req, res) => {
 
   const existing = await User.findOne({ email });
   if (existing) {
-    /* Deliberately explicit here, unlike login: on sign-up the address is
-       already known to the person typing it, and a clear message is better
-       service than a generic failure. */
+    await recordSecurityEvent({
+      action: 'register.duplicate',
+      user: null,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      success: false,
+      details: { email },
+    });
     throw ApiError.conflict('An account already exists with that email address.');
   }
 
@@ -61,10 +67,26 @@ export const register = asyncHandler(async (req, res) => {
   } catch (err) {
     /* The unique index is the real guard against two simultaneous signups. */
     if (err?.code === DUPLICATE_KEY) {
+      await recordSecurityEvent({
+        action: 'register.duplicate',
+        user: null,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+        success: false,
+        details: { email },
+      });
       throw ApiError.conflict('An account already exists with that email address.');
     }
     throw err;
   }
+
+  await recordSecurityEvent({
+    action: 'register',
+    user,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    success: true,
+  });
 
   issueToken(res, user);
   return res.status(201).json({
@@ -86,10 +108,28 @@ export const login = asyncHandler(async (req, res) => {
 
   /* One message for both "no such account" and "wrong password", and only after
      the password work has been done. */
-  if (!user || !okPassword) throw ApiError.unauthorized('That email and password do not match.');
+  if (!user || !okPassword) {
+    await recordSecurityEvent({
+      action: 'login.failed',
+      user: null,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      success: false,
+      details: { email },
+    });
+    throw ApiError.unauthorized('That email and password do not match.');
+  }
 
   user.lastLoginAt = new Date();
   await user.save({ validateBeforeSave: false });
+
+  await recordSecurityEvent({
+    action: 'login',
+    user,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    success: true,
+  });
 
   issueToken(res, user);
   return res.json({
@@ -100,14 +140,23 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
+  const user = req.user;
   clearToken(res);
 
   /* Invalidate anything already issued for this account. Without this, signing
      out only removes the local cookie and a copied token stays valid for the
      rest of its life. */
-  if (req.user) {
-    req.user.tokenVersion = (req.user.tokenVersion || 0) + 1;
-    await req.user.save({ validateBeforeSave: false });
+  if (user) {
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save({ validateBeforeSave: false });
+
+    await recordSecurityEvent({
+      action: 'logout',
+      user,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      success: true,
+    });
   }
 
   return res.json({ success: true, data: { signedOut: true } });

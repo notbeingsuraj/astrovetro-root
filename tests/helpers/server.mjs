@@ -42,6 +42,8 @@ export async function startServer({ port, databaseUrl } = {}) {
   const env = { ...process.env, PORT: String(port), NODE_ENV: 'development' };
   delete env.API_TARGET;
   delete env.AV_DISABLE_API;
+  // Disable rate limiting for tests to avoid interference
+  env.DISABLE_RATE_LIMIT = 'true';
   // Only prevent dotenv loading when databaseUrl is explicitly null (no database wanted)
   // When databaseUrl is undefined, allow .env to be loaded for default database
   if (databaseUrl === null) {

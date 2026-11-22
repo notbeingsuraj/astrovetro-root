@@ -68,3 +68,43 @@ export async function listAudit({ limit = 20, entityType, entityId, action } = {
   if (action) filter.action = action;
   return AuditLog.find(filter).sort({ createdAt: -1 }).limit(Math.min(200, Number(limit) || 20)).lean();
 }
+
+/* -------------------------------------------------------------------------
+   Security event logging — authentication and authorization events
+   -------------------------------------------------------------------------
+   These are recorded with 'security' entity type for easy filtering. */
+export async function recordSecurityEvent({
+  action,
+  user,
+  ip,
+  userAgent,
+  success = true,
+  details = {},
+}) {
+  try {
+    return await AuditLog.create({
+      actor: {
+        userId: user?._id ?? null,
+        email: user?.email || 'anonymous',
+        role: user?.role || '',
+      },
+      action: `security.${action}`,
+      entity: {
+        type: 'security',
+        id: user?._id?.toString() || ip || 'unknown',
+        label: user?.email || ip || 'anonymous',
+      },
+      summary: `Security event: ${action} - ${success ? 'success' : 'failure'}`,
+      meta: {
+        ip,
+        userAgent,
+        success,
+        ...details,
+      },
+    });
+  } catch (err) {
+    console.error(`[security-audit] could not record "${action}": ${err.message}`);
+    // Don't throw - security logging should never break the flow
+    return null;
+  }
+}
