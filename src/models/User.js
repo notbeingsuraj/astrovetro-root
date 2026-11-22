@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    passwordHash: { type: String, required: true, select: false },
+    passwordHash: { type: String, required: true },
     phone: { type: String, trim: true, maxlength: 20, default: '' },
     role: { type: String, enum: ['customer', 'admin'], default: 'customer' },
 
@@ -52,13 +52,10 @@ const userSchema = new mongoose.Schema(
 /* Hashing lives on the model so no route can forget it. `pre('save')` only
    fires when the hash actually changed, so updating a name does not
    needlessly re-hash and invalidate nothing else. */
-/* Declared with no argument and called with `next()`. Mongoose inspects
-   fn.length to choose between the callback and promise styles: a zero-arity
-   function is treated as a promise hook, and a `next` parameter would be
-   `undefined` inside it. Declared `async function ()` and invoked explicitly. */
 userSchema.pre('save', async function hashPassword() {
   if (!this.isModified('passwordHash')) return;
   this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
+  this.markModified('passwordHash');
 });
 
 userSchema.methods.verifyPassword = function verifyPassword(plain) {
