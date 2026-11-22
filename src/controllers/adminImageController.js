@@ -122,7 +122,8 @@ const imagesPatchSchema = z.object({
 async function assertFilesExist(images) {
   const adapter = getStorageAdapter();
   for (const img of images) {
-    if (!adapter.exists(img)) {
+    const exists = await adapter.exists(img);
+    if (!exists) {
       throw ApiError.badRequest(`That image does not exist on the server: ${img}`);
     }
   }
@@ -211,7 +212,8 @@ export const deleteLibraryFile = asyncHandler(async (req, res) => {
   const publicPath = String(req.query.path || '');
   const adapter = getStorageAdapter();
   const abs = adapter.resolve(publicPath);
-  if (!abs || !adapter.exists(publicPath)) throw ApiError.notFound('We could not find that file.');
+  const exists = await adapter.exists(publicPath);
+  if (!abs || !exists) throw ApiError.notFound('We could not find that file.');
 
   /* Any product, ritual or journal post referencing this exact path blocks
      deletion. */

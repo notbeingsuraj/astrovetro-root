@@ -1,0 +1,24 @@
+# GSD Configuration for Astrovetro Canonical
+# Adapted from reference AstroVetro.com
+
+workflow:
+  text_mode: false
+  security_enforcement: true
+  ui_phase: true
+  audit_open: true
+  auto_advance: false
+  use_worktrees: true
+
+model:
+  planner: "claude-3-5-sonnet"
+  checker: "claude-3-5-sonnet"
+
+phase:
+  current: "1.4-production-readiness"
+  next: "2.0-payments"
+
+commit_docs: true
+
+requirements:
+  track_completion: true
+  auto_mark: true

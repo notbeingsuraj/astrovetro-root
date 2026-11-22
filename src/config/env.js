@@ -2,8 +2,8 @@
    Environment configuration
    -------------------------------------------------------------------------
 
-   One place that decides what this deployment is capable of, read once at
-   import time so no route handler has to re-derive it.
+   One place that decides what this deployment is capable of, read at runtime
+   so that test helpers can override environment variables before use.
 
    The important idea is that capability is never assumed. `database` is true
    only when DATABASE_URL is actually present AND the connection succeeded, so
@@ -11,8 +11,6 @@
    mode rather than half-working writes. Secrets are read here and nowhere
    else, and nothing in this module is ever sent to the browser.
    ------------------------------------------------------------------------- */
-
-import 'dotenv/config';
 
 const bool = (v) => v === '1' || String(v).toLowerCase() === 'true';
 
@@ -29,8 +27,6 @@ function parseFrontendOrigins() {
   return raw.split(',').map(s => s.trim()).filter(Boolean);
 }
 
-const parsedFrontendOrigins = parseFrontendOrigins();
-
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || 5173),
@@ -38,14 +34,25 @@ export const env = {
   /* Comma-separated origins allowed to send credentialed requests. Used by the
      CORS layer only when a browser is talking to the API cross-origin.
      In production, must be explicitly configured. No wildcard, no localhost fallback. */
-  frontendOrigins: parsedFrontendOrigins,
+  get frontendOrigins() {
+    const raw = process.env.FRONTEND_URL;
+    if (!raw) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FRONTEND_URL must be set in production (comma-separated origins, e.g. https://astrovetro.com,https://www.astrovetro.com)');
+      }
+      return ['http://localhost:5173'];
+    }
+    return raw.split(',').map(s => s.trim()).filter(Boolean);
+  },
 
   /* Backward compatibility: first origin for single-origin consumers */
   get frontendUrl() {
     return this.frontendOrigins[0];
   },
 
-  databaseUrl: process.env.DATABASE_URL || process.env.MONGODB_URI || '',
+  get databaseUrl() {
+    return process.env.DATABASE_URL || process.env.MONGODB_URI || '';
+  },
 
   jwt: {
     secret: process.env.JWT_SECRET || '',

@@ -226,6 +226,20 @@ const localAdapter = {
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
+/* Shared S3 client factory for both S3 and B2 adapters. */
+function createS3Client({ region = 'auto', endpoint, accessKeyId, secretAccessKey, bucket, forcePathStyle = false }) {
+  if (!bucket || !accessKeyId || !secretAccessKey) {
+    throw ApiError.internal('S3 adapter requires bucket, accessKeyId, secretAccessKey');
+  }
+  const client = new S3Client({
+    region,
+    endpoint,
+    credentials: { accessKeyId, secretAccessKey },
+    forcePathStyle: forcePathStyle,
+  });
+  return { client, bucket };
+}
+
 function getS3Client() {
   const endpoint = process.env.S3_ENDPOINT; // optional for R2/MinIO
   const region = process.env.S3_REGION || 'auto';
@@ -543,22 +557,45 @@ function normalizeS3Error(err, context = '') {
    Backblaze B2 storage adapter (S3‑compatible)
    ------------------------------------------------------------------------ */
 
-function getB2Client() {
-  const endpoint = process.env.B2_ENDPOINT;                 // e.g. https://s3.us-west-004.backblazeb2.com
-  const region = process.env.B2_REGION || 'us-west-004';
-  const accessKeyId = process.env.B2_KEY_ID;
-  const secretAccessKey = process.env.B2_APPLICATION_KEY;
-  const bucket = process.env.B2_BUCKET_NAME;
-  if (!bucket || !accessKeyId || !secretAccessKey) {
-    throw ApiError.internal('B2 adapter requires B2_BUCKET_NAME, B2_KEY_ID, B2_APPLICATION_KEY');
+/* Validate B2 configuration and return a normalized config object.
+   Throws on invalid/missing configuration. */
+function validateB2Config() {
+  const required = ['B2_BUCKET_NAME', 'B2_KEY_ID', 'B2_APPLICATION_KEY', 'B2_ENDPOINT', 'B2_REGION'];
+  const missing = required.filter((v) => !process.env[v]);
+  if (missing.length) {
+    throw ApiError.internal(`B2 adapter requires environment variables: ${missing.join(', ')}`);
   }
-  const client = new S3Client({
-    region,
+
+  const endpoint = process.env.B2_ENDPOINT;
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== 'https:') {
+      throw new Error('B2_ENDPOINT must be a valid HTTPS URL');
+    }
+  } catch {
+    throw ApiError.internal('B2_ENDPOINT must be a valid HTTPS URL');
+  }
+
+  return {
     endpoint,
-    credentials: { accessKeyId, secretAccessKey },
-    forcePathStyle: true,                // required for B2
+    region: process.env.B2_REGION,
+    accessKeyId: process.env.B2_KEY_ID,
+    secretAccessKey: process.env.B2_APPLICATION_KEY,
+    bucket: process.env.B2_BUCKET_NAME,
+  };
+}
+
+/* Shared B2 client factory - uses shared S3 client factory with B2-specific settings. */
+function getB2Client() {
+  const config = validateB2Config();
+  return createS3Client({
+    region: config.region,
+    endpoint: config.endpoint,
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
+    bucket: config.bucket,
+    forcePathStyle: true, // required for B2
   });
-  return { client, bucket };
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -567,7 +604,10 @@ function getB2Client() {
 const b2Adapter = {
   name: 'b2',
 
-  /* Upload raw image bytes, generate derivatives, return public paths. */
+  /* Upload raw image bytes, generate derivatives, return public paths.
+     Implements reliable partial-upload cleanup: tracks all three object keys,
+     attempts uploads, and on any failure attempts deletion of all keys
+     from that upload attempt. Preserves original upload error. */
   async upload({ buffer, filename }) {
     if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
       throw ApiError.badRequest('No image data received.');
@@ -610,14 +650,41 @@ const b2Adapter = {
       .webp({ quality: 75 })
       .toBuffer();
 
+    // Track all keys for this upload attempt for reliable partial-upload cleanup
+    const keys = [originalKey, largeKey, thumbKey];
+    const buffers = {
+      [originalKey]: buffer,
+      [largeKey]: large,
+      [thumbKey]: thumb,
+    };
+    const contentTypes = {
+      [originalKey]: `image/${sig.ext === 'jpg' ? 'jpeg' : sig.ext}`,
+      [largeKey]: 'image/webp',
+      [thumbKey]: 'image/webp',
+    };
+
     try {
-      await Promise.all([
-        s3Put({ client, bucket, key: originalKey, buffer, contentType: `image/${sig.ext === 'jpg' ? 'jpeg' : sig.ext}` }),
-        s3Put({ client, bucket, key: largeKey, buffer: large, contentType: 'image/webp' }),
-        s3Put({ client, bucket, key: thumbKey, buffer: thumb, contentType: 'image/webp' }),
-      ]);
+      // Upload all three objects sequentially to allow proper cleanup on failure
+      for (const key of keys) {
+        await s3Put({ client, bucket, key, buffer: buffers[key], contentType: contentTypes[key] });
+      }
     } catch (err) {
-      throw normalizeS3Error(err, 'upload');
+      // Partial-upload cleanup: attempt to delete all keys from this upload
+      const uploadError = err;
+      const cleanupErrors = [];
+      for (const key of keys) {
+        try {
+          await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+        } catch (cleanupErr) {
+          cleanupErrors.push({ key, error: cleanupErr.message });
+        }
+      }
+      // Log cleanup failures without exposing credentials
+      if (cleanupErrors.length) {
+        console.warn('[storage] Partial upload cleanup failures:', cleanupErrors);
+      }
+      // Preserve original upload error
+      throw normalizeS3Error(uploadError, 'upload');
     }
 
     const publicBase = process.env.STORAGE_PUBLIC_URL || `/assets/img`;
@@ -801,23 +868,14 @@ export async function checkStorageHealth() {
       // This is a quick connectivity check without heavy operations
       try {
         if (adapter.name === 'b2') {
-          const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
-          const client = new S3Client({
-            region: process.env.B2_REGION || 'us-west-004',
-            endpoint: process.env.B2_ENDPOINT,
-            credentials: {
-              accessKeyId: process.env.B2_KEY_ID,
-              secretAccessKey: process.env.B2_APPLICATION_KEY,
-            },
-            forcePathStyle: true,
-          });
+          const { client, bucket } = getB2Client();
           await client.send(new ListObjectsV2Command({
-            Bucket: process.env.B2_BUCKET_NAME,
+            Bucket: bucket,
             Prefix: 'library/',
             MaxKeys: 1,
           }));
           health.available = true;
-          health.details.bucket = process.env.B2_BUCKET_NAME;
+          health.details.bucket = bucket;
           health.details.region = process.env.B2_REGION || 'us-west-004';
         } else if (adapter.name === 's3') {
           const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');

@@ -131,18 +131,20 @@ export function formatMoney(amount, currency = CURRENCY) {
 
 /** Serialisable form for the client. Strips the mongoose document. */
 export function cartPayload(priced) {
+  const lines = priced.lines.map((l) => ({
+    productId: l.productId,
+    slug: l.slug,
+    name: l.name,
+    image: l.image,
+    unitPrice: l.unitPrice,
+    quantity: l.quantity,
+    lineTotal: l.lineTotal,
+    inStock: l.product.canFulfil(l.quantity),
+    maxQuantity: l.product.stock == null ? 99 : l.product.stock,
+  }));
   return {
-    lines: priced.lines.map((l) => ({
-      productId: l.productId,
-      slug: l.slug,
-      name: l.name,
-      image: l.image,
-      unitPrice: l.unitPrice,
-      quantity: l.quantity,
-      lineTotal: l.lineTotal,
-      inStock: l.product.canFulfil(l.quantity),
-      maxQuantity: l.product.stock == null ? 99 : l.product.stock,
-    })),
+    items: lines,
+    lines: lines, // deprecated alias
     subtotal: priced.subtotal,
     discount: priced.discount,
     shipping: priced.shipping,

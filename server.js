@@ -7,6 +7,12 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { connectDB, isConnected, disconnectDB, dbReady, ensureConnected } from './src/db/connect.js';
+import { seedIfEmpty } from './src/db/seed.js';
+import { setStorageAdapter, getAvailableAdapters, getStorageAdapter, checkStorageHealth } from './src/utils/storage.js';
+import { initializeRateLimiters } from './src/middleware/rateLimitStore.js';
+
+// Load environment variables before importing config
+import 'dotenv/config';
 import { env, assertProductionSecrets } from './src/config/env.js';
 import { seedIfEmpty } from './src/db/seed.js';
 import { setStorageAdapter, getAvailableAdapters, getStorageAdapter, checkStorageHealth } from './src/utils/storage.js';
