@@ -14,9 +14,6 @@ import { initializeRateLimiters } from './src/middleware/rateLimitStore.js';
 // Load environment variables before importing config
 import 'dotenv/config';
 import { env, assertProductionSecrets } from './src/config/env.js';
-import { seedIfEmpty } from './src/db/seed.js';
-import { setStorageAdapter, getAvailableAdapters, getStorageAdapter, checkStorageHealth } from './src/utils/storage.js';
-import { initializeRateLimiters } from './src/middleware/rateLimitStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
