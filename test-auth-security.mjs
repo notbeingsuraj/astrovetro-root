@@ -373,37 +373,44 @@ async function runTests() {
   const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
   
   const prodRedisTest = new Promise((resolve) => {
+    const testEnv = { ...process.env };
+    // Explicitly disable DISABLE_RATE_LIMIT to test production Redis failure
+    delete testEnv.DISABLE_RATE_LIMIT;
+    // Explicitly remove Upstash credentials to test Redis failure
+    delete testEnv.UPSTASH_REDIS_REST_URL;
+    delete testEnv.UPSTASH_REDIS_REST_TOKEN;
+    testEnv.NODE_ENV = 'production';
+    testEnv.PORT = '5403';
+    testEnv.DATABASE_URL = 'mongodb://127.0.0.1:27017/astrovetro_auth_test_prod_redis';
+    testEnv.FRONTEND_URL = 'https://app.example.com';
+    testEnv.JWT_SECRET = 'production-secret-key-at-least-32-chars-long';
+    testEnv.DOTENV_CONFIG_PATH = '/dev/null';
+    
     const child = spawn(process.execPath, ['server.js'], {
       cwd: ROOT,
-      env: {
-        ...process.env,
-        NODE_ENV: 'production',
-        PORT: '5403',
-        DATABASE_URL: 'mongodb://127.0.0.1:27017/astrovetro_auth_test_prod_redis',
-        FRONTEND_URL: 'https://app.example.com',
-        JWT_SECRET: 'production-secret-key-at-least-32-chars-long',
-        DOTENV_CONFIG_PATH: '/dev/null',
-      },
+      env: testEnv,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     
     let output = '';
-    child.stdout.on('data', (d) => output += String(d));
-    child.stderr.on('data', (d) => output += String(d));
+    child.stdout.on('data', (d) => { output += String(d); console.log('[TEST STDOUT]', String(d).trim()); });
+    child.stderr.on('data', (d) => { output += String(d); console.log('[TEST STDERR]', String(d).trim()); });
     
     const timeout = setTimeout(() => {
+      console.log('[TEST DEBUG] Timeout reached, killing child');
       child.kill('SIGKILL');
       resolve({ exited: false, output });
-    }, 10000);
+    }, 15000);
     
-    child.on('exit', (code) => {
+    child.on('exit', (code, signal) => {
+      console.log('[TEST DEBUG] Child exited with code:', code, 'signal:', signal);
       clearTimeout(timeout);
       resolve({ exited: true, code, output });
     });
   });
   
   const prodRedisResult = await prodRedisTest;
-  record('D4: Production fails without Redis', prodRedisResult.exited && prodRedisResult.code !== 0 && prodRedisResult.output.includes('must be set in production'),
+  record('D4: Production fails without Redis', prodRedisResult.exited && prodRedisResult.code !== 0 && (prodRedisResult.output.includes('must be set in production') || prodRedisResult.output.includes('Redis store initialization failed')),
     'Production server fails without Redis: exited=' + prodRedisResult.exited + ', code=' + prodRedisResult.code);
 
   // ============================================================

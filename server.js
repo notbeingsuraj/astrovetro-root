@@ -20,8 +20,14 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = Number(process.env.PORT || 5173);
 
 /* Initialize distributed rate limiters before loading routes.
-   This must happen before any route imports validate.js. */
-await initializeRateLimiters();
+   This must happen before any route imports validate.js.
+   If initialization fails (e.g., Redis unavailable in production), exit immediately. */
+try {
+  await initializeRateLimiters();
+} catch (err) {
+  console.error('[startup] Rate limiter initialization failed:', err.message);
+  process.exit(1);
+}
 
 /* Import API modules AFTER rate limiters are initialized using dynamic imports. */
 const { default: staticApi } = await import('./src/api/staticApi.js');
