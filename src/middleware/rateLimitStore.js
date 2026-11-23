@@ -48,16 +48,21 @@ async function createRateLimitStoreInternal() {
 
   const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
   const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
 
   // In production, Redis is required for distributed rate limiting
   if (process.env.NODE_ENV === 'production') {
     if (!redisUrl || !redisToken) {
       // Allow explicit opt-in for single-instance deployments via ALLOW_IN_MEMORY_RATE_LIMIT=1
-      if (process.env.ALLOW_IN_MEMORY_RATE_LIMIT === '1') {
+      // BUT NEVER on Vercel — Vercel deployments are inherently multi-instance
+      if (process.env.ALLOW_IN_MEMORY_RATE_LIMIT === '1' && !isVercel) {
         console.warn('[rate-limit] ALLOW_IN_MEMORY_RATE_LIMIT=1 set — using in-memory store in production (NOT distributed across instances)');
         return undefined;
       }
-      throw new Error('[rate-limit] UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set in production for distributed rate limiting. Set ALLOW_IN_MEMORY_RATE_LIMIT=1 to explicitly allow single-instance in-memory fallback.');
+      if (isVercel && process.env.ALLOW_IN_MEMORY_RATE_LIMIT === '1') {
+        throw new Error('[rate-limit] ALLOW_IN_MEMORY_RATE_LIMIT=1 is not permitted on Vercel. Vercel deployments are multi-instance and require distributed Redis rate limiting.');
+      }
+      throw new Error('[rate-limit] UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set in production for distributed rate limiting. Set ALLOW_IN_MEMORY_RATE_LIMIT=1 to explicitly allow single-instance in-memory fallback (not allowed on Vercel).');
     }
 
     try {
@@ -69,15 +74,19 @@ async function createRateLimitStoreInternal() {
         token: redisToken,
       });
 
-      // Test Redis connection
-      await redis.ping();
+      // Test Redis connection with 5-second timeout
+      const pingPromise = redis.ping();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Redis ping timeout after 5000ms')), 5000)
+      );
+      await Promise.race([pingPromise, timeoutPromise]);
 
       console.log('[rate-limit] Using Upstash Redis distributed store');
       return { redis, type: 'redis' };
     } catch (err) {
       // In production, Redis initialization failure is fatal — do NOT fall back to in-memory
       console.error('[rate-limit] Failed to initialize Upstash Redis store:', err.message);
-      throw new Error('[rate-limit] Redis store initialization failed in production. Rate limiting cannot start without Redis. Set ALLOW_IN_MEMORY_RATE_LIMIT=1 to explicitly allow in-memory fallback (not recommended for production).');
+      throw new Error('[rate-limit] Redis store initialization failed in production. Rate limiting cannot start without Redis. Set ALLOW_IN_MEMORY_RATE_LIMIT=1 to explicitly allow in-memory fallback (not recommended for production, not allowed on Vercel).');
     }
   }
 
@@ -224,6 +233,7 @@ async function createRateLimiter(options) {
         next();
       });
   }
+  }
 
   // Fallback to express-rate-limit with in-memory or wrapped store
   return rateLimit({
@@ -303,7 +313,11 @@ export async function initializeRateLimiters() {
     if (process.env.DISABLE_RATE_LIMIT === 'true') {
       throw new Error('[rate-limit] DISABLE_RATE_LIMIT=true is not allowed in production');
     }
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
     if (process.env.ALLOW_IN_MEMORY_RATE_LIMIT === '1') {
+      if (isVercel) {
+        throw new Error('[rate-limit] ALLOW_IN_MEMORY_RATE_LIMIT=1 is not permitted on Vercel. Vercel deployments are multi-instance and require distributed Redis rate limiting.');
+      }
       console.warn('[rate-limit] ALLOW_IN_MEMORY_RATE_LIMIT=1 set — using in-memory store in production (NOT distributed across instances)');
     }
   }
