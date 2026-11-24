@@ -128,6 +128,8 @@ describe('Rate Limiter Runtime Failure Tests', () => {
       // to test the Vercel in-memory override rejection path
       delete process.env.UPSTASH_REDIS_REST_URL;
       delete process.env.UPSTASH_REDIS_REST_TOKEN;
+      // Must also disable the test-mode rate limit override
+      delete process.env.DISABLE_RATE_LIMIT;
 
       try {
         await initializeRateLimiters();
