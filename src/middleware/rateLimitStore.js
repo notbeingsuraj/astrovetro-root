@@ -88,6 +88,7 @@ async function createRateLimitStoreInternal() {
       const store = {
         type: 'redis',
         redis,
+        redisUrl,
         async increment(key, windowMs) {
           const prefixedKey = `rl:${key}`;
           const current = await redis.incr(prefixedKey);
@@ -219,8 +220,9 @@ async function createRateLimiter(options) {
     const { Ratelimit } = await import('@upstash/ratelimit');
 
     // Create a Ratelimit instance with fixedWindow algorithm for atomic operations
+    // Use the Redis URL string directly to avoid compatibility issues with the Redis client instance
     const ratelimit = new Ratelimit({
-      redis: store.redis,
+      redis: store.redisUrl,
       limiter: Ratelimit.fixedWindow(options.max, options.windowMs),
       prefix: 'rl:',
       timeout: 5000, // 5 second timeout for Redis operations
