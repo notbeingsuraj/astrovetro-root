@@ -214,61 +214,9 @@ async function createRateLimiter(options) {
     }
   });
 
-  // If we have a Redis store, use Upstash Ratelimit directly for atomic operations
-  // Check the original store (before wrapping) for Redis type
-  if (store && store.type === 'redis') {
-    const { Ratelimit } = await import('@upstash/ratelimit');
-
-    // Create a Ratelimit instance with fixedWindow algorithm for atomic operations
-    // Use the Redis URL string directly to avoid compatibility issues with the Redis client instance
-    const ratelimit = new Ratelimit({
-      redis: store.redisUrl,
-      limiter: Ratelimit.fixedWindow(options.max, options.windowMs),
-      prefix: 'rl:',
-      timeout: 5000, // 5 second timeout for Redis operations
-    });
-
-    // Return a custom express-rate-limit compatible middleware that uses the atomic Upstash Ratelimit
-    return (req, res, next) => {
-      const key = options.keyGenerator ? options.keyGenerator(req) : req.ip;
-
-      ratelimit.limit(key).then(({ success, limit, remaining, reset, pending }) => {
-        // Set rate limit headers
-        res.setHeader('X-RateLimit-Limit', limit);
-        res.setHeader('X-RateLimit-Remaining', remaining);
-        res.setHeader('X-RateLimit-Reset', Math.ceil(reset / 1000));
-
-        if (!success) {
-          return res.status(429).json({
-            success: false,
-            message: options.message || 'Too many requests, please try again later.',
-            error: { code: options.code || 'RATE_LIMITED', message: options.message || 'Too many requests, please try again later.' },
-          });
-        }
-
-        // Wait for pending Redis operations (important for serverless)
-        if (pending) {
-          pending.catch(err => console.error('[rate-limit] Pending operation failed:', err));
-        }
-
-        next();
-      }).catch(err => {
-        console.error('[rate-limit] Ratelimit check failed:', err.message);
-        // Fail closed in production
-        if (process.env.NODE_ENV === 'production') {
-          return res.status(503).json({
-            success: false,
-            message: 'Rate limiting service temporarily unavailable',
-            error: { code: 'RATE_LIMITER_UNAVAILABLE', message: 'Rate limiting service temporarily unavailable' },
-          });
-        }
-        // In development, allow request through
-        next();
-      });
-  }
-  }
-
-  // Fallback to express-rate-limit with in-memory or wrapped store
+  // Use express-rate-limit with the wrapped store (works for both Redis and in-memory)
+  // The wrapped store implements the express-rate-limit Store interface with
+  // atomic Redis operations (incr/decr/del are atomic in Redis)
   return rateLimit({
     windowMs: options.windowMs || 15 * 60 * 1000,
     max: options.max || 100,
