@@ -98,9 +98,10 @@ async function createRateLimitStoreInternal() {
             await redis.expire(prefixedKey, windowSec);
           }
           const ttl = await redis.ttl(prefixedKey);
+          const resetTimeMs = Date.now() + (ttl > 0 ? ttl * 1000 : (windowMs || 15 * 60 * 1000));
           return {
             totalHits: current,
-            resetTime: Date.now() + (ttl > 0 ? ttl * 1000 : (windowMs || 15 * 60 * 1000)),
+            resetTime: new Date(resetTimeMs),
           };
         },
         async decrement(key) {
