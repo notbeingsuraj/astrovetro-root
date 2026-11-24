@@ -124,8 +124,10 @@ describe('Rate Limiter Runtime Failure Tests', () => {
       process.env.VERCEL = '1';
       process.env.ALLOW_IN_MEMORY_RATE_LIMIT = '1';
       process.env.NODE_ENV = 'production';
-      process.env.UPSTASH_REDIS_REST_URL = 'https://test.upstash.io';
-      process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
+      // Do NOT set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
+      // to test the Vercel in-memory override rejection path
+      delete process.env.UPSTASH_REDIS_REST_URL;
+      delete process.env.UPSTASH_REDIS_REST_TOKEN;
 
       try {
         await initializeRateLimiters();
