@@ -82,7 +82,37 @@ async function createRateLimitStoreInternal() {
       await Promise.race([pingPromise, timeoutPromise]);
 
       console.log('[rate-limit] Using Upstash Redis distributed store');
-      return { redis, type: 'redis' };
+      
+      // Return a proper store object implementing the express-rate-limit store interface
+      // using the Upstash Redis client
+      const store = {
+        type: 'redis',
+        redis,
+        async increment(key, windowMs) {
+          const prefixedKey = `rl:${key}`;
+          const current = await redis.incr(prefixedKey);
+          if (current === 1) {
+            // Set expiry based on the windowMs passed by express-rate-limit
+            const windowSec = Math.ceil((windowMs || 15 * 60 * 1000) / 1000);
+            await redis.expire(prefixedKey, windowSec);
+          }
+          const ttl = await redis.ttl(prefixedKey);
+          return {
+            totalHits: current,
+            resetTime: Date.now() + (ttl > 0 ? ttl * 1000 : (windowMs || 15 * 60 * 1000)),
+          };
+        },
+        async decrement(key) {
+          const prefixedKey = `rl:${key}`;
+          const current = await redis.decr(prefixedKey);
+          return { totalHits: Math.max(0, current) };
+        },
+        async resetKey(key) {
+          const prefixedKey = `rl:${key}`;
+          await redis.del(prefixedKey);
+        },
+      };
+      return store;
     } catch (err) {
       // In production, Redis initialization failure is fatal — do NOT fall back to in-memory
       console.error('[rate-limit] Failed to initialize Upstash Redis store:', err.message);
@@ -184,12 +214,13 @@ async function createRateLimiter(options) {
   });
 
   // If we have a Redis store, use Upstash Ratelimit directly for atomic operations
-  if (wrappedStore && wrappedStore.type === 'redis') {
+  // Check the original store (before wrapping) for Redis type
+  if (store && store.type === 'redis') {
     const { Ratelimit } = await import('@upstash/ratelimit');
 
     // Create a Ratelimit instance with fixedWindow algorithm for atomic operations
     const ratelimit = new Ratelimit({
-      redis: wrappedStore.redis,
+      redis: store.redis,
       limiter: Ratelimit.fixedWindow(options.max, options.windowMs),
       prefix: 'rl:',
       timeout: 5000, // 5 second timeout for Redis operations
