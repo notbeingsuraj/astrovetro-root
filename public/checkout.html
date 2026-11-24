@@ -498,11 +498,20 @@ function statusEl(wrap) {
    and never decides that a payment succeeded. */
 async function payAndConfirm(payload) {
   const session = await AV.checkout.session({ ...payload, paymentMethod: 'card' }, attemptKey);
+  const activeProvider = session.provider || 'cashfree';
 
-  const result = await C.payWithRazorpay({
-    ...session,
-    prefill: { name: user.name, email: user.email, contact: user.phone || '' },
-  });
+  let result;
+  if (activeProvider === 'cashfree') {
+    result = await C.payWithCashfree({
+      paymentSessionId: session.paymentSessionId,
+      orderId: session.cashfreeOrderId,
+    });
+  } else {
+    result = await C.payWithRazorpay({
+      ...session,
+      prefill: { name: user.name, email: user.email, contact: user.phone || '' },
+    });
+  }
 
   /* The dialog was closed without paying. The order exists in PENDING and the
      bag is untouched; the customer can pay or remove it later. Not an error. */
@@ -512,12 +521,21 @@ async function payAndConfirm(payload) {
     return;
   }
 
+  const confirmPayload = activeProvider === 'cashfree'
+    ? {
+        orderId: session.cashfreeOrderId,
+        paymentId: result.payment_id,
+        signature: result.signature,
+        paymentStatus: result.payment_status,
+      }
+    : {
+        razorpayOrderId: session.razorpayOrderId,
+        razorpayPaymentId: result.razorpay_payment_id,
+        razorpaySignature: result.razorpay_signature,
+      };
+
   const order = await AV.checkout.confirm(
-    {
-      razorpayOrderId: session.razorpayOrderId,
-      razorpayPaymentId: result.razorpay_payment_id,
-      razorpaySignature: result.razorpay_signature,
-    },
+    confirmPayload,
     /* The same key the session was created with, so a retry after a dropped
        response resolves to this order rather than starting another. */
     session.idempotencyKey || attemptKey

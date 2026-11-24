@@ -356,6 +356,25 @@ AV.customer = (() => {
     return razorpayScript;
   }
 
+  let cashfreeScript = null;
+
+  function loadCashfree() {
+    if (window.Cashfree) return Promise.resolve(window.Cashfree);
+    if (cashfreeScript) return cashfreeScript;
+    cashfreeScript = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://sdk.cashfree.com/js/cashfree-sdk/2023-08-01/checkout.js';
+      s.async = true;
+      s.onload = () => (window.Cashfree ? resolve(window.Cashfree) : reject(new Error('Cashfree SDK could not be loaded.')));
+      s.onerror = () => reject(new Error('Cashfree SDK could not be loaded. Check your connection and try again.'));
+      document.head.appendChild(s);
+    });
+    cashfreeScript.catch(() => {
+      cashfreeScript = null;
+    });
+    return cashfreeScript;
+  }
+
   /* Opens the provider dialog and resolves with its response, or rejects
      with a message written for a customer. The caller passes
      `session` verbatim — order id, key id and amount all come from the
@@ -388,6 +407,45 @@ AV.customer = (() => {
         reject(new Error(r?.error?.description || 'That payment could not be started.'))
       );
       rz.open();
+    });
+  }
+
+  /* Opens the Cashfree checkout dialog and resolves with its response,
+     or rejects with a message written for a customer. The caller passes
+     `session` verbatim — payment session id, order id all come from the
+     server's own pricing. */
+  async function payWithCashfree(session) {
+    const Cashfree = await loadCashfree();
+    return new Promise((resolve, reject) => {
+      const checkoutOptions = {
+        paymentSessionId: session.paymentSessionId,
+        redirect: true, // Use redirect mode for better UX
+        mode: 'embedded', // Use embedded mode for better UX
+      };
+
+      Cashfree.checkout(checkoutOptions)
+        .then((response) => {
+          if (response.redirect) {
+            // In redirect mode, we don't get a direct response
+            // The page will redirect to the return URL
+            resolve({ dismissed: true });
+          } else if (response.error) {
+            reject(new Error(response.error.message || 'Payment could not be completed.'));
+          } else if (response.paymentDetails) {
+            // Embedded mode response
+            resolve({
+              payment_id: response.paymentDetails.payment_id,
+              order_id: response.paymentDetails.order_id,
+              signature: response.paymentDetails.signature,
+              payment_status: response.paymentDetails.payment_status,
+            });
+          } else {
+            resolve({ dismissed: true });
+          }
+        })
+        .catch((err) => {
+          reject(new Error(err?.message || 'Payment could not be started.'));
+        });
     });
   }
 
@@ -481,6 +539,8 @@ AV.customer = (() => {
     safeNext,
     payWithRazorpay,
     loadRazorpay,
+    payWithCashfree,
+    loadCashfree,
     start,
   };
 })();

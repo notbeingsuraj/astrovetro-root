@@ -71,6 +71,29 @@ export const env = {
     webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
   },
 
+  cashfree: {
+    clientId: process.env.CASHFREE_CLIENT_ID || '',
+    clientSecret: process.env.CASHFREE_CLIENT_SECRET || '',
+    webhookSecret: process.env.CASHFREE_WEBHOOK_SECRET || '',
+    env: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
+    apiVersion: process.env.CASHFREE_API_VERSION || '2023-08-01',
+  },
+
+  /* The selected payment provider. Defaults to 'cashfree' if both are
+     configured, otherwise falls back to whichever has credentials. */
+  get paymentProvider() {
+    const explicit = process.env.PAYMENT_PROVIDER;
+    if (explicit === 'razorpay' || explicit === 'cashfree') return explicit;
+    if (this.cashfreeConfigured) return 'cashfree';
+    if (this.paymentLive) return 'razorpay';
+    return null;
+  },
+
+  /* Cashfree is only usable when both credentials are present. */
+  get cashfreeConfigured() {
+    return Boolean(this.cashfree.clientId && this.cashfree.clientSecret);
+  },
+
   /* Razorpay is only usable when both credentials are present. Without them
      checkout must refuse rather than pretend, which is why `paymentLive` is
      derived and not guessed per-request. */
@@ -79,11 +102,10 @@ export const env = {
   },
 
   /* Alias kept so callers can read the capability without reaching through to
-     the razorpay sub-object. `configured` means "keys are present"; `live`
-     means the same thing plus a webhook secret, which is what a server-to-server
-     payment confirmation actually requires. */
+     the razorpay sub-object. `configured` means "keys are present" for the
+     active provider; `live` means the same thing plus a webhook secret. */
   get paymentsConfigured() {
-    return this.paymentLive;
+    return this.cashfreeConfigured || this.paymentLive;
   },
 
   get databaseConfigured() {
@@ -116,6 +138,26 @@ export function assertProductionSecrets() {
   const { keyId, keySecret } = env.razorpay;
   if (Boolean(keyId) !== Boolean(keySecret)) {
     problems.push('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set together.');
+  }
+  /* Cashfree validation when it is the selected provider. */
+  if (env.paymentProvider === 'cashfree') {
+    const { clientId, clientSecret, webhookSecret } = env.cashfree;
+    if (!clientId || !clientSecret) {
+      problems.push('CASHFREE_CLIENT_ID and CASHFREE_CLIENT_SECRET must be set when PAYMENT_PROVIDER=cashfree.');
+    }
+    if (env.isProduction && !webhookSecret) {
+      problems.push('CASHFREE_WEBHOOK_SECRET must be set in production when using Cashfree.');
+    }
+  }
+  /* Razorpay validation when it is the selected provider. */
+  if (env.paymentProvider === 'razorpay') {
+    const { keyId, keySecret, webhookSecret } = env.razorpay;
+    if (!keyId || !keySecret) {
+      problems.push('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set when PAYMENT_PROVIDER=razorpay.');
+    }
+    if (env.isProduction && !webhookSecret) {
+      problems.push('RAZORPAY_WEBHOOK_SECRET must be set in production when using Razorpay.');
+    }
   }
 
   if (problems.length) {

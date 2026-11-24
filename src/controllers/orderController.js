@@ -19,7 +19,7 @@
    3. PAYMENT IS CONFIRMED AGAINST THE PROVIDER, NEVER AGAINST THE BROWSER.
       `paymentStatus: "paid"` from a request body is ignored entirely. The
       checkout signature is recomputed with our secret, and the payment record
-      is fetched from Razorpay to confirm it was captured for the right amount.
+      is fetched from the provider to confirm it was captured for the right amount.
 
    4. AN ORDER SNAPSHOTS WHAT WAS BOUGHT.
       Name, slug, image and unit price are copied onto the order. Repricing a
@@ -36,6 +36,7 @@
    ------------------------------------------------------------------------- */
 
 import { z } from 'zod';
+import { env } from '../config/env.js';
 import { Order, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, canTransition, SHIPPED_STATUSES } from '../models/Order.js';
 import { Product } from '../models/Product.js';
 
@@ -49,7 +50,7 @@ import { pageMeta } from '../utils/responses.js';
 import { priceCart, CURRENCY } from '../services/pricing.js';
 import { addressFields } from '../middleware/validate.js';
 import * as cartService from '../services/cartService.js';
-import * as razorpay from '../payments/razorpay.js';
+import * as payments from '../payments/index.js';
 import { DUPLICATE_KEY } from '../middleware/errorHandler.js';
 
 const MAX_QTY = 99;
@@ -58,32 +59,10 @@ const MAX_QTY = 99;
    Derived from the highest existing number rather than a counter collection, so
    it survives a fresh database without a migration and matches the reference
    pages' format without copying their sample values. */
-/* Order numbers are shown to customers on a packing slip, so they must be
-   sequential in the way a human reads them. That rules out sorting the stored
-   string: lexicographically "AV-999" > "AV-1048", so the highest number would
-   stop being the latest order the moment the sequence reached four digits. The
-   suffix is therefore converted to a number before taking the maximum.
-
-   Concurrent checkouts can read the same maximum and generate the same number,
-   so the unique index on orderNumber is the real guard: the first save wins and
-   the loser is retried against the new maximum. Attempt-based, because a genuine
-   collision should be rare and a fixed sleep would only make the queue slower. */
 const ORDER_START = 1048;
 const NUMBER_ATTEMPTS = 5;
 
 async function highestOrderNumber() {
-  /* Computed in JS rather than pushed into the aggregation pipeline.
-
-     Mongo has no clean way to pull a trailing capture group out of a string:
-     $regexMatch yields a boolean, and the $substrCP/$replaceAll workarounds both
-     failed in ways that were worse than useless — one silently returned 1 for
-     every row, so every new order collided with AV-1; the other threw on any
-     number that had not yet reached three digits. An aggregation pipeline that
-     silently computes the wrong value is far more dangerous here than a read
-     that scales with the order count, because it fails quietly and every order
-     after it collides.
-
-     Only order numbers are read, so the projection stays small. */
   const rows = await Order.find({}, { orderNumber: 1, _id: 0 }).lean();
 
   let highest = 0;
@@ -353,19 +332,19 @@ export const checkoutCod = asyncHandler(async (req, res) => {
   return res.status(201).json({ success: true, data: { order: order.toPublic() } });
 });
 
-/* ── Checkout: card or UPI, via Razorpay ────────────────────────────────────
+/* ── Checkout: card or UPI, via active payment provider ──────────────────────
    The order document is written here, in PENDING, and the provider order is
    attached to it. Confirmation then settles that same document rather than
    building a second one.
 
    Two reasons for creating it up front rather than only after payment:
 
-     - The order number the customer is shown at checkout is the number the order
-       actually carries. Building it later would mean the number could change
-       between showing and confirming.
-     - The delivery address is stored on the order itself. Passing it through the
-       provider's `notes` instead would mean serialising an address into a field
-       the provider caps at 256 characters.
+      - The order number the customer is shown at checkout is the number the order
+        actually carries. Building it later would mean the number could change
+        between showing and confirming.
+      - The delivery address is stored on the order itself. Passing it through the
+        provider's `notes` instead would mean serialising an address into a field
+        the provider caps at 256 characters.
 
    A pending card order is not a purchase, so `listOrders` filters it out of
    history. It exists so an abandoned checkout is visible to us, not to the
@@ -374,7 +353,7 @@ export const checkoutCod = asyncHandler(async (req, res) => {
 export const checkoutSession = asyncHandler(async (req, res) => {
   const body = checkoutSchema.parse(req.body);
 
-  if (!razorpay.isPaymentConfigured()) {
+  if (!payments.isPaymentConfigured()) {
     /* Honest refusal rather than a checkout page that renders a real-looking
        card form which can never complete. */
     throw ApiError.conflict(
@@ -404,7 +383,7 @@ export const checkoutSession = asyncHandler(async (req, res) => {
   if (!orderNumber) {
     throw ApiError.conflict('We could not allocate an order number. Please try again in a moment.');
   }
-  const amountInPaise = razorpay.toPaise(priced.total);
+  const amountInPaise = payments.toPaise(priced.total);
 
   const order = buildOrder({
     orderNumber,
@@ -417,7 +396,13 @@ export const checkoutSession = asyncHandler(async (req, res) => {
   });
   order.idempotencyKey = idempotencyKey || null;
 
-  const providerOrder = await razorpay.createProviderOrder({
+  const customerDetails = {
+    customer_id: req.user._id.toString(),
+    customer_email: body.contactEmail || req.user.email,
+    customer_phone: body.contactPhone || req.user.phone || '',
+  };
+
+  const providerOrder = await payments.createProviderOrder({
     amountInPaise,
     receipt: orderNumber,
     notes: {
@@ -425,29 +410,26 @@ export const checkoutSession = asyncHandler(async (req, res) => {
       userId: req.user._id.toString(),
       amount: String(amountInPaise),
       currency: CURRENCY,
-      /* Same fallback as the order itself — these notes are what a human reads
-         when reconciling a payment against an order, so they must not disagree
-         with it. */
       email: body.contactEmail || req.user.email,
+      orderNote: `Astro Vetro order ${orderNumber}`,
+      returnUrl: `${env.frontendUrl}/orders/${orderNumber}?payment=done`,
+      notifyUrl: `${env.frontendUrl}/api/webhooks/${payments.getActiveProvider()}`,
     },
+    customerDetails,
   });
 
   /* Attached before the save, so the document and the provider agree from the
      moment either is visible. */
-  order.payment = { provider: 'razorpay', providerOrderId: providerOrder.id, amount: amountInPaise };
+  order.payment = payments.buildPaymentObject(providerOrder, amountInPaise);
   await order.save();
+
+  const sessionData = payments.getSessionData(providerOrder, amountInPaise, priced);
 
   return res.status(201).json({
     success: true,
     data: {
       orderNumber,
-      razorpayOrderId: providerOrder.id,
-      /* The key id is public by design — Razorpay's own script needs it. The
-         key secret stays on the server and is never sent anywhere. */
-      keyId: razorpay.publicKeyId(),
-      amount: priced.total,
-      amountInPaise,
-      currency: CURRENCY,
+      ...sessionData,
       idempotencyKey: idempotencyKey || null,
     },
   });
@@ -457,12 +439,27 @@ export const checkoutSession = asyncHandler(async (req, res) => {
    The step that decides whether an order is paid.
    ------------------------------------------------------------------------ */
 export const confirmPayment = asyncHandler(async (req, res) => {
-  const schema = z.object({
-    razorpayOrderId: z.string().min(1),
-    razorpayPaymentId: z.string().min(1),
-    razorpaySignature: z.string().min(1),
-    idempotencyKey: z.string().trim().min(8).max(120).optional(),
-  });
+  const activeProvider = payments.getActiveProvider();
+  
+  // Provider-specific schema
+  let schema;
+  if (activeProvider === 'cashfree') {
+    schema = z.object({
+      orderId: z.string().min(1),
+      paymentId: z.string().min(1),
+      signature: z.string().min(1),
+      paymentStatus: z.string().min(1),
+      idempotencyKey: z.string().trim().min(8).max(120).optional(),
+    });
+  } else {
+    schema = z.object({
+      razorpayOrderId: z.string().min(1),
+      razorpayPaymentId: z.string().min(1),
+      razorpaySignature: z.string().min(1),
+      idempotencyKey: z.string().trim().min(8).max(120).optional(),
+    });
+  }
+  
   const body = schema.parse(req.body);
   const idempotencyKey = req.get('idempotency-key') || body.idempotencyKey;
 
@@ -472,8 +469,27 @@ export const confirmPayment = asyncHandler(async (req, res) => {
   if (replay) return res.json({ success: true, data: { order: replay.toPublic(), replayed: true } });
 
   /* 1. The signature. Proves this payment response belongs to an order we
-        created. A browser cannot produce it without the key secret. */
-  if (!razorpay.verifyCheckoutSignature(body)) {
+        created. A browser cannot produce it without the secret. */
+  let signatureValid = false;
+  let providerOrderId = '';
+  let providerPaymentId = '';
+  
+  if (activeProvider === 'cashfree') {
+    signatureValid = payments.verifyCheckoutSignature({
+      orderId: body.orderId,
+      paymentId: body.paymentId,
+      signature: body.signature,
+      paymentStatus: body.paymentStatus,
+    });
+    providerOrderId = body.orderId;
+    providerPaymentId = body.paymentId;
+  } else {
+    signatureValid = payments.verifyCheckoutSignature(body);
+    providerOrderId = body.razorpayOrderId;
+    providerPaymentId = body.razorpayPaymentId;
+  }
+  
+  if (!signatureValid) {
     throw ApiError.badRequest('We could not verify that payment.');
   }
 
@@ -481,15 +497,15 @@ export const confirmPayment = asyncHandler(async (req, res) => {
         account, so a payment raised against someone else's checkout cannot be
         confirmed here even with a valid signature. */
   const order = await Order.findOne({
-    'payment.providerOrderId': body.razorpayOrderId,
+    'payment.providerOrderId': providerOrderId,
     user: req.user._id,
   });
   if (!order) throw ApiError.notFound('We could not find that payment order.');
 
   /* 3. The provider's record of the payment. The signature proved the response
         is genuine; this proves the money actually moved. */
-  const payment = await razorpay.fetchPayment(body.razorpayPaymentId);
-  if (!razorpay.isPaymentSuccessful(payment, order.payment?.amount)) {
+  const payment = await payments.fetchPayment(providerPaymentId);
+  if (!payments.isPaymentSuccessful(payment, order.payment?.amount)) {
     throw ApiError.badRequest('That payment has not completed.');
   }
 
@@ -503,16 +519,14 @@ export const confirmPayment = asyncHandler(async (req, res) => {
         dialog was open, the customer authorised a different amount, so this is
         refused rather than quietly charging the new total. */
   const { priced } = await loadValidatedCart(req.user._id);
-  if (razorpay.toPaise(priced.total) !== order.payment?.amount) {
+  if (payments.toPaise(priced.total) !== order.payment?.amount) {
     throw ApiError.conflict('Your bag changed while the payment was open. Please review it and try again.');
   }
 
   order.paymentStatus = PAYMENT_STATUS.PAID;
   order.payment = {
     ...order.payment,
-    providerPaymentId: body.razorpayPaymentId,
-    signature: body.razorpaySignature,
-    paidAt: new Date(),
+    ...payments.buildPaymentUpdateObject(body),
   };
   if (canTransition(order.status, ORDER_STATUS.PAID)) order.status = ORDER_STATUS.PAID;
   await order.save();
@@ -523,22 +537,38 @@ export const confirmPayment = asyncHandler(async (req, res) => {
   return res.json({ success: true, data: { order: order.toPublic() } });
 });
 
-/* ── Razorpay webhook: the authoritative settlement path ─────────────────── */
+/* ── Webhook: the authoritative settlement path ─────────────────────────────
+   Registered before express.json() so the bytes are intact. No session, no CSRF
+   check: the request is authenticated by its signature instead, which is the
+   only thing the provider sends.
+   ------------------------------------------------------------------------ */
 export const paymentWebhook = asyncHandler(async (req, res) => {
-  const signature = req.get('x-razorpay-signature');
-  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body ?? {}));
+  const { signature, timestamp, rawBody } = payments.buildWebhookParams(req);
 
-  if (!razorpay.verifyWebhookSignature(raw, signature)) {
+  if (!payments.verifyWebhookSignature(rawBody, signature, timestamp)) {
     /* An unverified webhook is ignored outright. It must not be able to move an
        order to paid. */
     return res.status(400).json({ success: false, message: 'Invalid signature.' });
   }
 
-  const event = JSON.parse(raw.toString('utf8'));
-  const paymentEntity = event?.payload?.payment?.entity;
+  const event = JSON.parse(rawBody.toString('utf8'));
+  
+  let paymentEntity;
+  let providerOrderIdField;
+  
+  if (payments.getActiveProvider() === 'cashfree') {
+    // Cashfree webhook event structure
+    paymentEntity = event?.data?.payment;
+    providerOrderIdField = 'order_id';
+  } else {
+    // Razorpay webhook event structure
+    paymentEntity = event?.payload?.payment?.entity;
+    providerOrderIdField = 'order_id';
+  }
+  
   if (!paymentEntity) return res.json({ success: true, data: { ignored: true } });
 
-  const order = await Order.findOne({ 'payment.providerOrderId': paymentEntity.order_id });
+  const order = await Order.findOne({ 'payment.providerOrderId': paymentEntity[providerOrderIdField] });
   if (!order) return res.json({ success: true, data: { ignored: 'no matching order' } });
 
   /* Idempotent: a provider retry of the same event changes nothing. */
@@ -547,10 +577,11 @@ export const paymentWebhook = asyncHandler(async (req, res) => {
   }
 
   const succeeded =
-    paymentEntity.status === 'captured' && paymentEntity.amount === order.payment?.amount;
+    paymentEntity.payment_status === 'SUCCESS' && 
+    Math.round(Number(paymentEntity.payment_amount) * 100) === order.payment?.amount;
 
   if (!succeeded) {
-    if (paymentEntity.status === 'failed') {
+    if (paymentEntity.payment_status === 'FAILED') {
       order.paymentStatus = PAYMENT_STATUS.FAILED;
       /* PENDING -> PAYMENT_FAILED is a permitted transition; the guard is here
          so a late webhook cannot drive an order backwards. */
@@ -559,15 +590,15 @@ export const paymentWebhook = asyncHandler(async (req, res) => {
       }
       await order.save();
     }
-    return res.json({ success: true, data: { recorded: paymentEntity.status } });
+    return res.json({ success: true, data: { recorded: paymentEntity.payment_status } });
   }
 
   order.paymentStatus = PAYMENT_STATUS.PAID;
   order.payment = {
     ...order.payment,
-    providerPaymentId: paymentEntity.id,
-    paidAt: new Date(paymentEntity.created_at ? paymentEntity.created_at * 1000 : Date.now()),
-    amount: paymentEntity.amount,
+    providerPaymentId: paymentEntity.payment_id,
+    paidAt: new Date(paymentEntity.payment_time ? new Date(paymentEntity.payment_time).getTime() : Date.now()),
+    amount: Math.round(Number(paymentEntity.payment_amount) * 100),
   };
   if (canTransition(order.status, ORDER_STATUS.PAID)) order.status = ORDER_STATUS.PAID;
   await order.save();

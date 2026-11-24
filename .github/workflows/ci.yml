@@ -23,6 +23,9 @@ jobs:
       UPSTASH_REDIS_REST_URL: https://test.upstash.io
       UPSTASH_REDIS_REST_TOKEN: test-token
       DISABLE_RATE_LIMIT: 'true'
+      RAZORPAY_KEY_ID: rzp_test_key_id
+      RAZORPAY_KEY_SECRET: test_key_secret_12345
+      RAZORPAY_WEBHOOK_SECRET: test_webhook_secret_12345
 
     steps:
       - name: Checkout repository

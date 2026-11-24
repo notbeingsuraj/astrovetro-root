@@ -187,12 +187,13 @@ router.get('/testimonials', async (_req, res, next) => {
   }
 });
 
-/* ── Webhook, on the raw body ───────────────────────────────────────────────
+/* ── Webhooks, on the raw body ───────────────────────────────────────────────
    Registered before express.json() so the bytes are intact. No session, no CSRF
    check: the request is authenticated by its signature instead, which is the
-   only thing Razorpay sends.
+   only thing the provider sends.
    ------------------------------------------------------------------------ */
 router.post('/webhooks/razorpay', express.raw({ type: 'application/json', limit: '256kb' }), paymentWebhook);
+router.post('/webhooks/cashfree', express.raw({ type: 'application/json', limit: '256kb' }), paymentWebhook);
 
 /* Everything below this line is a normal JSON API called by our own pages. */
 router.use(express.json({ limit: '64kb' }));

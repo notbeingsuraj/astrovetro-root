@@ -142,20 +142,19 @@ if (trustProxy && trustProxy !== 'false' && trustProxy !== '0') {
 }
 
 /* Security headers. The CSP is deliberately permissive about inline styles and
-   the Razorpay script, because the site uses inline style attributes and the
-   payment dialog is loaded from Razorpay's origin. script-src is NOT opened to
-   unsafe-inline beyond what the existing pages already require — see the note
-   above `helmet` usage in README before tightening. `connect-src` must include
-   Razorpay so the checkout script can reach its API, and 'self' so the app's own
-   /api calls work. */
+   the Razorpay/Cashfree scripts, because the site uses inline style attributes
+   and the payment dialogs are loaded from their origins. script-src is NOT
+   opened to unsafe-inline beyond what the existing pages already require.
+   `connect-src` must include Razorpay and Cashfree so the checkout scripts can
+   reach their APIs, and 'self' so the app's own /api calls work. */
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://checkout.razorpay.com'],
-        frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
-        connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com'],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://checkout.razorpay.com', 'https://sdk.cashfree.com'],
+        frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com', 'https://sandbox.cashfree.com', 'https://api.cashfree.com'],
+        connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com', 'https://sandbox.cashfree.com', 'https://api.cashfree.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
