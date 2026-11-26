@@ -319,6 +319,9 @@ export const checkoutCod = asyncHandler(async (req, res) => {
     priced,
     paymentMethod: PAYMENT_METHOD.COD,
   });
+  // COD orders are paid on delivery, so payment status is PAID at creation
+  // Order status remains PENDING (awaiting fulfillment)
+  order.paymentStatus = PAYMENT_STATUS.PAID;
   order.idempotencyKey = idempotencyKey || null;
 
   await order.save();
@@ -984,8 +987,9 @@ export const getOrder = asyncHandler(async (req, res) => {
     (/^[a-f\d]{24}$/i.test(ref) ? await Order.findById(ref) : null);
 
   /* Not found and not-yours are the same answer, so the endpoint cannot be used
-     to discover which order numbers exist. */
-  if (!order || order.user?.toString() !== req.user._id.toString()) {
+     to discover which order numbers exist. Admin users can access any order. */
+  const isAdmin = req.user?.role === 'admin';
+  if (!order || (!isAdmin && order.user?.toString() !== req.user._id.toString())) {
     throw ApiError.notFound('We could not find that order.');
   }
 

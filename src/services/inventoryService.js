@@ -29,6 +29,7 @@ import { Product, LOW_STOCK_DEFAULT, defaultSku } from '../models/Product.js';
 import { StockMovement } from '../models/StockMovement.js';
 import { StockReceipt } from '../models/StockReceipt.js';
 import { PurchaseOrder, PO_STATUS } from '../models/PurchaseOrder.js';
+import { Order, INVENTORY_STATE } from '../models/Order.js';
 import { ApiError } from '../utils/ApiError.js';
 import { auditBestEffort } from './auditService.js';
 
@@ -396,11 +397,11 @@ export const PO_STATUS_VALUES = PO_STATUS;
 
 /**
  * Restore inventory for a cancelled order.
- * Only restores stock for items that were previously committed (inventoryCommitted = true).
+ * Only restores stock for items that were previously committed (inventoryState = committed).
  * Idempotent: safe to call multiple times for the same order.
  */
 export async function restoreInventoryForCancelledOrder({ order, actor }) {
-  if (!order.inventoryCommitted) {
+  if (order.inventoryState !== INVENTORY_STATE.COMMITTED) {
     return { restored: false, reason: 'Inventory was not committed for this order' };
   }
 
@@ -445,6 +446,7 @@ export async function restoreInventoryForCancelledOrder({ order, actor }) {
     throw err;
   }
 
+  order.inventoryState = INVENTORY_STATE.PENDING;
   order.inventoryCommitted = false;
   await order.save();
 
