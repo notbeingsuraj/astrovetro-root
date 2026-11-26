@@ -18,15 +18,14 @@
    ------------------------------------------------------------------------- */
 
 import { z } from 'zod';
-import { Order, ORDER_STATUS, PAYMENT_STATUS, canTransition } from '../models/Order.js';
+import { Order, ORDER_STATUS, PAYMENT_STATUS, INVENTORY_STATE, canTransition, SHIPPED_STATUSES } from '../models/Order.js';
 import { Shipment, SHIPMENT_STATUS } from '../models/Shipment.js';
 import { Product } from '../models/Product.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { pageMeta } from '../utils/responses.js';
-/* Legacy PATCH /products/:id/inventory used to write stock directly. It now
-   delegates here so a balance change can never bypass the ledger. */
 import { setStockAbsolute, clearTracking, restoreInventoryForCancelledOrder } from '../services/inventoryService.js';
+import { auditBestEffort } from '../services/auditService.js';
 
 const listSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
@@ -93,6 +92,37 @@ const statusSchema = z.object({
 
 export const updateOrderStatus = asyncHandler(async (req, res) => {
   const { status, note } = statusSchema.parse(req.body);
+
+  /* For cancellation, use atomic findOneAndUpdate to prevent race conditions.
+     Idempotent: safe to call multiple times, returns the cancelled order each time. */
+  if (status === ORDER_STATUS.CANCELLED) {
+    /* Try to atomically cancel if not already cancelled. */
+    let updated = await Order.findOneAndUpdate(
+      { _id: req.params.orderId, status: { $ne: ORDER_STATUS.CANCELLED } },
+      { $set: { status: ORDER_STATUS.CANCELLED } },
+      { new: true }
+    ).catch(() => null);
+
+    if (!updated) {
+      /* Already cancelled or transition not allowed - fetch current state. */
+      const existing = await Order.findById(req.params.orderId).catch(() => null);
+      if (!existing) throw ApiError.notFound('We could not find that order.');
+      if (existing.status === ORDER_STATUS.CANCELLED) {
+        /* Already cancelled - idempotent: return the cancelled order. */
+        return res.json({ success: true, data: { order: existing.toPublic() } });
+      }
+      throw ApiError.conflict(`An order that is ${existing.status.replace('_', ' ')} cannot become cancelled.`);
+    }
+
+    /* If order is being cancelled and inventory was committed, restore it. */
+    if (updated.inventoryState === INVENTORY_STATE.COMMITTED) {
+      await restoreInventoryForCancelledOrder({ order: updated, actor: req.user });
+    }
+
+    return res.json({ success: true, data: { order: updated.toPublic() } });
+  }
+
+  /* For non-cancellation status changes, use the standard path. */
   const order = await Order.findById(req.params.orderId).catch(() => null);
   if (!order) throw ApiError.notFound('We could not find that order.');
 
@@ -102,12 +132,6 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
   const previousStatus = order.status;
   order.status = status;
-
-  /* If order is being cancelled and inventory was committed, restore it.
-     This is idempotent: safe to call multiple times. */
-  if (status === ORDER_STATUS.CANCELLED && previousStatus !== ORDER_STATUS.CANCELLED) {
-    await restoreInventoryForCancelledOrder({ order, actor: req.user });
-  }
 
   /* Marking an order cancelled after payment does not refund it. Money moves
      back through the provider, deliberately as a separate, audited step. */
@@ -190,7 +214,7 @@ export const attachShipment = asyncHandler(async (req, res) => {
 
 const eventSchema = z.object({
   status: z.enum(Object.values(SHIPMENT_STATUS)),
-  title: z.string().trim().min(2, 'Give the event a title.').max(120),
+  title: z.string().trim().min(2, 'Give the event a title').max(120),
   description: z.string().trim().max(400).optional().default(''),
   location: z.string().trim().max(120).optional().default(''),
   /* Carrier scan time, which is routinely hours before it reaches us. */

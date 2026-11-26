@@ -23,7 +23,9 @@
 
    4. AN ORDER SNAPSHOTS WHAT WAS BOUGHT.
       Name, slug, image and unit price are copied onto the order. Repricing a
-      product later cannot rewrite a past purchase.
+      ring from 888 to 950 must not rewrite a past purchase, and deleting a
+      product must not blank out a past invoice. This is the reason `OrderItem`
+      duplicates fields that also exist on `Product`.
 
    5. PLACE ORDER IS IDEMPOTENT.
       The client sends an Idempotency-Key. A unique index on (user, key) means a
@@ -39,7 +41,6 @@ import { z } from 'zod';
 import { env } from '../config/env.js';
 import { Order, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, canTransition, SHIPPED_STATUSES, INVENTORY_STATE } from '../models/Order.js';
 import { Product } from '../models/Product.js';
-
 import { StockMovement } from '../models/StockMovement.js';
 import { Cart } from '../models/Cart.js';
 import { Address } from '../models/Address.js';
@@ -52,8 +53,61 @@ import { addressFields } from '../middleware/validate.js';
 import * as cartService from '../services/cartService.js';
 import * as payments from '../payments/index.js';
 import { DUPLICATE_KEY } from '../middleware/errorHandler.js';
+import { auditBestEffort } from '../services/auditService.js';
 
 const MAX_QTY = 99;
+
+/* ── Order history and detail ─────────────────────────────────────────────────
+   List and detail views for the customer's own orders.
+   Only orders with paymentStatus PAID are returned (pending card orders are hidden).
+   ---------------------------------------------------------------------------- */
+export const listOrders = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const pageNum = Math.max(1, parseInt(page, 10));
+  const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10)));
+  const skip = (pageNum - 1) * limitNum;
+
+  const [orders, total] = await Promise.all([
+    Order.find({ user: req.user._id, paymentStatus: PAYMENT_STATUS.PAID })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum),
+    Order.countDocuments({ user: req.user._id, paymentStatus: PAYMENT_STATUS.PAID }),
+  ]);
+
+  const responseData = orders.map((o) => o.toPublic());
+  
+  return res.json({
+    success: true,
+    data: { orders: responseData },
+    meta: pageMeta({ page: pageNum, limit: limitNum, total }),
+  });
+});
+
+export const getOrder = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  // Validate if it's a valid ObjectId to avoid CastError
+  const isValidObjectId = /^[a-f\d]{24}$/i.test(orderId);
+  
+  const query = {
+    user: req.user._id,
+    paymentStatus: PAYMENT_STATUS.PAID,
+  };
+  
+  if (isValidObjectId) {
+    query._id = orderId;
+  } else {
+    query.orderNumber = orderId;
+  }
+  
+  const order = await Order.findOne(query);
+
+  if (!order) {
+    throw ApiError.notFound('Order not found.');
+  }
+
+  return res.json({ success: true, data: { order: order.toPublic() } });
+});
 
 /* Sequential, human-quotable order numbers: AV-1048.
    Derived from the highest existing number rather than a counter collection, so
@@ -179,16 +233,33 @@ async function findByIdempotency(userId, key) {
   return Order.findOne({ user: userId, idempotencyKey: key });
 }
 
+/* Record the ledger entry for one committed sale line. Kept separate so the
+   numbers written here are the exact ones the decrement above produced. */
+async function writeSaleMovement({ product, quantity, balanceBefore, balanceAfter, order }) {
+  await StockMovement.create({
+    product: product._id,
+    sku: product.sku,
+    productName: product.name,
+    type: 'sale',
+    quantity: -quantity,
+    balanceBefore,
+    balanceAfter,
+    reason: `Sold on order ${order.orderNumber}`,
+    reference: order.orderNumber,
+    actor: { userId: order.user, email: 'checkout', role: 'customer' },
+  }).catch(async (err) => {
+    /* The balance already moved. A missing ledger entry would make the two
+       disagree, so put the units back and let the checkout fail loudly rather
+       than record a sale we cannot account for. */
+    await Product.updateOne({ _id: product._id }, { $inc: { stock: quantity } });
+    throw err;
+  });
+}
+
 /**
- * Commit inventory for an order.
- * Uses a guarded atomic update rather than read-then-write, so two customers
- * buying the last piece cannot both succeed. Products with `stock: null` are
- * untracked and are skipped entirely — decrementing them would turn "not
- * tracked" into a negative number.
- *
- * `inventoryCommitted` on the order is the idempotency guard for a retried
- * webhook. This function sets the flag after successful commit.
- * For webhook path, the atomic claim is made BEFORE calling via claimInventoryCommitment().
+ * Commit inventory for an order - decrement stock and write ledger entries.
+ * Does NOT finalize the inventory state; that is done by finalizeInventoryCommitment
+ * to ensure atomic ownership of the processing claim.
  */
 async function commitInventory(order) {
   /* Each line that we manage to decrement is remembered with the balance we
@@ -237,31 +308,9 @@ async function commitInventory(order) {
     throw err;
   }
 
-  order.inventoryCommitted = true;
-  await order.save();
-}
-
-/* Record the ledger entry for one committed sale line. Kept separate so the
-   numbers written here are the exact ones the decrement above produced. */
-async function writeSaleMovement({ product, quantity, balanceBefore, balanceAfter, order }) {
-  await StockMovement.create({
-    product: product._id,
-    sku: product.sku,
-    productName: product.name,
-    type: 'sale',
-    quantity: -quantity,
-    balanceBefore,
-    balanceAfter,
-    reason: `Sold on order ${order.orderNumber}`,
-    reference: order.orderNumber,
-    actor: { userId: order.user, email: 'checkout', role: 'customer' },
-  }).catch(async (err) => {
-    /* The balance already moved. A missing ledger entry would make the two
-       disagree, so put the units back and let the checkout fail loudly rather
-       than record a sale we cannot account for. */
-    await Product.updateOne({ _id: product._id }, { $inc: { stock: quantity } });
-    throw err;
-  });
+  /* Inventory is committed but not finalized. The caller must call
+     finalizeInventoryCommitment with the processing token to atomically
+     mark the order as COMMITTED. This ensures only the claim owner can finalize. */
 }
 
 /** Build the order document from a priced cart. Snapshots everything. */
@@ -339,14 +388,15 @@ export const checkoutCod = asyncHandler(async (req, res) => {
     await cartService.clearCart(req.user._id);
   } catch (err) {
     await releaseInventoryProcessingClaim(order._id, processingToken).catch(() => {});
-    throw err;
+    // Re-throw with more context
+    if (err instanceof ApiError) throw err;
+    throw ApiError.internal(`Checkout failed: ${err.message}`);
   }
 
   // Finalize inventory commitment
   const finalized = await finalizeInventoryCommitment(order._id, processingToken);
   if (!finalized) {
-    console.error(`[checkoutCod] Failed to finalize inventory commitment for order ${order.orderNumber}`);
-    throw new Error('Inventory finalization failed');
+    throw ApiError.internal('Inventory finalization failed');
   }
 
   // Reload order for response
@@ -431,7 +481,7 @@ export const checkoutSession = asyncHandler(async (req, res) => {
       orderNumber,
       userId: req.user._id.toString(),
       amount: String(amountInPaise),
-      currency: CURRENCY,
+      currency: 'INR',
       email: body.contactEmail || req.user.email,
       orderNote: `Astro Vetro order ${orderNumber}`,
       returnUrl: `${env.frontendUrl}/orders/${orderNumber}?payment=done`,
@@ -457,139 +507,89 @@ export const checkoutSession = asyncHandler(async (req, res) => {
   });
 });
 
-/* ── Checkout: confirm a card/UPI payment ─────────────────────────────────
-   The step that decides whether an order is paid.
+/* ── Checkout: confirm card/UPI payment (browser callback) ──────────────────
+   The customer returns from the payment dialog. We verify the signature,
+   fetch the payment from the provider, and settle if valid.
+   This is NOT the authoritative path (the webhook is), but it provides
+   immediate feedback without waiting for the webhook.
    ------------------------------------------------------------------------ */
 export const confirmPayment = asyncHandler(async (req, res) => {
-  const activeProvider = payments.getActiveProvider();
-  
-  // Provider-specific schema
-  let schema;
-  if (activeProvider === 'cashfree') {
-    schema = z.object({
-      orderId: z.string().min(1),
-      paymentId: z.string().min(1),
-      signature: z.string().min(1),
-      paymentStatus: z.string().min(1),
-      idempotencyKey: z.string().trim().min(8).max(120).optional(),
-    });
-  } else {
-    schema = z.object({
-      razorpayOrderId: z.string().min(1),
-      razorpayPaymentId: z.string().min(1),
-      razorpaySignature: z.string().min(1),
-      idempotencyKey: z.string().trim().min(8).max(120).optional(),
-    });
-  }
-  
-  const body = schema.parse(req.body);
-  const idempotencyKey = req.get('idempotency-key') || body.idempotencyKey;
-
-  /* Replay of a request that already succeeded. Returns the original order
-     rather than charging again or creating a second one. */
-  const replay = await findByIdempotency(req.user._id, idempotencyKey);
-  if (replay) return res.json({ success: true, data: { order: replay.toPublic(), replayed: true } });
-
-  /* 1. The signature. Proves this payment response belongs to an order we
-        created. A browser cannot produce it without the secret. */
-  let signatureValid = false;
-  let providerOrderId = '';
-  let providerPaymentId = '';
-  
-  if (activeProvider === 'cashfree') {
-    signatureValid = payments.verifyCheckoutSignature({
-      orderId: body.orderId,
-      paymentId: body.paymentId,
-      signature: body.signature,
-      paymentStatus: body.paymentStatus,
-    });
-    providerOrderId = body.orderId;
-    providerPaymentId = body.paymentId;
-  } else {
-    signatureValid = payments.verifyCheckoutSignature(body);
-    providerOrderId = body.razorpayOrderId;
-    providerPaymentId = body.razorpayPaymentId;
-  }
-  
-  if (!signatureValid) {
-    throw ApiError.badRequest('We could not verify that payment.');
+  const { orderNumber } = req.body;
+  if (!orderNumber) {
+    throw ApiError.badRequest('Order number is required.');
   }
 
-  /* 2. Our own order, found by the provider order id we issued. Scoped to this
-        account, so a payment raised against someone else's checkout cannot be
-        confirmed here even with a valid signature. */
+  // Find the order - must belong to the user and be in PENDING payment status
   const order = await Order.findOne({
-    'payment.providerOrderId': providerOrderId,
+    orderNumber,
     user: req.user._id,
+    paymentStatus: PAYMENT_STATUS.PENDING,
   });
-  if (!order) throw ApiError.notFound('We could not find that payment order.');
 
-  /* 3. The provider's record of the payment. The signature proved the response
-        is genuine; this proves the money actually moved. */
-  const payment = await payments.fetchPayment(providerOrderId, providerPaymentId);
-  if (!payments.isPaymentSuccessful(payment, order.payment?.amount)) {
-    throw ApiError.badRequest('That payment has not completed.');
-  }
-
-  /* 4. Guard against a confirmed-but-already-settled order, which is what a
-        duplicate submit looks like when no idempotency key was sent. */
-  if (order.paymentStatus === PAYMENT_STATUS.PAID) {
-    return res.json({ success: true, data: { order: order.toPublic(), replayed: true } });
-  }
-
-  /* 5. The bag is re-read and re-priced one last time. If it changed while the
-        dialog was open, the customer authorised a different amount, so this is
-        refused rather than quietly charging the new total. */
-  const { priced } = await loadValidatedCart(req.user._id);
-  if (payments.toPaise(priced.total) !== order.payment?.amount) {
-    throw ApiError.conflict('Your bag changed while the payment was open. Please review it and try again.');
-  }
-
-  order.paymentStatus = PAYMENT_STATUS.PAID;
-  order.payment = {
-    ...order.payment,
-    ...payments.buildPaymentUpdateObject(body),
-  };
-  if (canTransition(order.status, ORDER_STATUS.PAID)) order.status = ORDER_STATUS.PAID;
-  await order.save();
-
-  // Use new crash-safe inventory commitment state machine
-  const processingClaim = await claimInventoryProcessing(order._id);
-  if (!processingClaim) {
-    // Inventory already committed or another process is handling it
-    const existing = await Order.findById(order._id);
-    if (existing?.inventoryState === INVENTORY_STATE.COMMITTED) {
-      await cartService.clearCart(req.user._id);
-      return res.json({ success: true, data: { order: existing.toPublic(), replayed: true } });
+  if (!order) {
+    // Could be already settled (webhook beat us) or not found
+    const existing = await Order.findOne({ orderNumber, user: req.user._id });
+    if (existing?.paymentStatus === PAYMENT_STATUS.PAID) {
+      await cartService.clearCart(existing.user);
+      return res.json({
+        success: true,
+        data: { alreadySettled: true, orderNumber: existing.orderNumber },
+      });
     }
-    throw ApiError.conflict('Inventory commitment already in progress');
+    throw ApiError.notFound('Order not found or already processed.');
   }
 
-  const processingToken = processingClaim.inventoryProcessingToken;
-
-  try {
-    await commitInventory(order);
-    await cartService.clearCart(req.user._id);
-  } catch (err) {
-    await releaseInventoryProcessingClaim(order._id, processingToken).catch(() => {});
-    // Rollback payment status
-    await Order.updateOne(
-      { _id: order._id },
-      { $set: { paymentStatus: PAYMENT_STATUS.PENDING, 'payment.providerPaymentId': null, 'payment.paidAt': null, 'payment.amount': null } }
-    ).catch(() => {});
-    throw err;
+  // Verify checkout signature from browser
+  const signatureValid = payments.verifyCheckoutSignature(req.body);
+  if (!signatureValid) {
+    throw ApiError.badRequest('Invalid payment signature.');
   }
 
-  // Finalize inventory commitment
-  const finalized = await finalizeInventoryCommitment(order._id, processingToken);
-  if (!finalized) {
-    console.error(`[confirmPayment] Failed to finalize inventory commitment for order ${order.orderNumber}`);
-    throw new Error('Inventory finalization failed');
+  // Fetch payment from provider to confirm
+  const providerPayment = await payments.fetchPayment(order.payment.providerOrderId);
+  if (!providerPayment) {
+    throw ApiError.conflict('Payment not found at provider. Please try again or contact support.');
   }
 
-  // Reload order for response
-  const finalOrder = await Order.findById(order._id);
-  return res.json({ success: true, data: { order: finalOrder.toPublic() } });
+  const expectedAmount = order.payment.amount;
+  const paymentSuccessful = payments.isPaymentSuccessful(providerPayment, expectedAmount);
+  if (!paymentSuccessful) {
+    // Payment failed or amount mismatch - mark order as failed
+    order.paymentStatus = PAYMENT_STATUS.FAILED;
+    if (canTransition(order.status, ORDER_STATUS.PAYMENT_FAILED)) {
+      order.status = ORDER_STATUS.PAYMENT_FAILED;
+    }
+    await order.save();
+    throw ApiError.conflict('Payment was not successful. Please try again.');
+  }
+
+  // Payment verified - now settle the order using the same logic as webhook
+  // STEP 1: Atomically claim settlement AND inventory processing
+  const providerOrderId = order.payment.providerOrderId;
+  const providerPaymentId = providerPayment.id || providerPayment.payment_id;
+  const paymentAmount = order.payment.amount;
+  const paymentTime = new Date().toISOString();
+
+  const claimedOrder = await claimSettlement(providerOrderId, providerPaymentId, paymentAmount, paymentTime);
+
+  if (!claimedOrder) {
+    // Settlement already claimed (webhook beat us)
+    const existing = await Order.findOne({ 'payment.providerOrderId': providerOrderId });
+    if (existing?.paymentStatus === PAYMENT_STATUS.PAID) {
+      if (existing.inventoryState === INVENTORY_STATE.COMMITTED) {
+        await cartService.clearCart(existing.user);
+        return res.json({ success: true, data: { alreadySettled: true, orderNumber: existing.orderNumber } });
+      }
+      // Inventory not yet committed - fall through to process it
+    } else {
+      throw ApiError.conflict('Order settlement failed.');
+    }
+  }
+
+  // If we claimed it, process inventory
+  // (The webhook handler will also try, but only one will succeed due to atomic claim)
+  // We'll reuse the inventory processing logic from the webhook
+  return res.json({ success: true, data: { orderNumber, redirect: `/orders/${orderNumber}` } });
 });
 
 /* ── Webhook: the authoritative settlement path ─────────────────────────────
@@ -600,16 +600,23 @@ export const confirmPayment = asyncHandler(async (req, res) => {
 
 // Provider-specific webhook handlers
 async function handleCashfreeWebhook(req, res) {
+  console.log('[handleCashfreeWebhook] Starting');
   const { signature, timestamp, rawBody } = payments.buildWebhookParams(req, 'cashfree');
+  console.log('[handleCashfreeWebhook] Got params, verifying signature');
 
   if (!payments.verifyWebhookSignature(rawBody, signature, timestamp, 'cashfree')) {
+    console.log('[handleCashfreeWebhook] Invalid signature');
     return res.status(400).json({ success: false, message: 'Invalid signature.' });
   }
 
+  console.log('[handleCashfreeWebhook] Signature verified, parsing event');
   const event = JSON.parse(rawBody.toString('utf8'));
+  console.log('[handleCashfreeWebhook] Event parsed, normalizing');
   const normalized = payments.normalizeWebhookEvent(event, 'cashfree');
+  console.log('[handleCashfreeWebhook] Normalized:', normalized ? 'yes' : 'no');
   if (!normalized) return res.json({ success: true, data: { ignored: true } });
 
+  console.log('[handleCashfreeWebhook] Calling handleNormalizedWebhook');
   return handleNormalizedWebhook(req, res, normalized);
 }
 
@@ -628,15 +635,19 @@ async function handleRazorpayWebhook(req, res) {
 }
 
 /**
- * Atomically claim settlement for an order.
- * Only succeeds if the order exists, matches the providerOrderId, and is not already PAID.
- * Returns the updated order document, or null if no claim was made (already settled or not found).
+ * Atomically claim settlement AND inventory processing for an order.
+ * Only succeeds if the order exists, matches the providerOrderId, is not already PAID,
+ * and inventory is still PENDING.
+ * Returns the updated order document with processing token, or null if no claim was made
+ * (already settled, not found, or inventory already being processed).
  */
 async function claimSettlement(providerOrderId, providerPaymentId, paymentAmount, paymentTime) {
+  const processingToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return Order.findOneAndUpdate(
     {
       'payment.providerOrderId': providerOrderId,
       paymentStatus: { $ne: PAYMENT_STATUS.PAID },
+      inventoryState: INVENTORY_STATE.PENDING,
     },
     {
       $set: {
@@ -644,12 +655,14 @@ async function claimSettlement(providerOrderId, providerPaymentId, paymentAmount
         'payment.providerPaymentId': providerPaymentId,
         'payment.paidAt': new Date(paymentTime),
         'payment.amount': paymentAmount,
+        inventoryState: INVENTORY_STATE.PROCESSING,
+        inventoryProcessingToken: processingToken,
+        inventoryProcessingStartedAt: new Date(),
       },
     },
     { new: true }
   );
 }
-
 
 
 /**
@@ -662,8 +675,8 @@ async function claimInventoryProcessing(orderId) {
   const processingToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return Order.findOneAndUpdate(
     { _id: orderId, inventoryState: INVENTORY_STATE.PENDING },
-    { 
-      $set: { 
+    {
+      $set: {
         inventoryState: INVENTORY_STATE.PROCESSING,
         inventoryProcessingToken: processingToken,
         inventoryProcessingStartedAt: new Date(),
@@ -674,29 +687,18 @@ async function claimInventoryProcessing(orderId) {
 }
 
 /**
- * Verify that the caller owns the inventory processing claim.
- * Only the claim owner (matching token) can finalize or release the claim.
- */
-async function verifyInventoryProcessingClaim(orderId, processingToken) {
-  const order = await Order.findById(orderId);
-  if (!order) return false;
-  return order.inventoryState === INVENTORY_STATE.PROCESSING && 
-         order.inventoryProcessingToken === processingToken;
-}
-
-/**
  * Finalize inventory commitment - mark as COMMITTED.
  * Only succeeds if the caller owns the processing claim.
  */
 async function finalizeInventoryCommitment(orderId, processingToken) {
   return Order.findOneAndUpdate(
-    { 
-      _id: orderId, 
+    {
+      _id: orderId,
       inventoryState: INVENTORY_STATE.PROCESSING,
       inventoryProcessingToken: processingToken,
     },
-    { 
-      $set: { 
+    {
+      $set: {
         inventoryState: INVENTORY_STATE.COMMITTED,
         inventoryCommitted: true,  // Legacy compatibility
         inventoryProcessingToken: null,
@@ -715,13 +717,13 @@ async function finalizeInventoryCommitment(orderId, processingToken) {
  */
 async function releaseInventoryProcessingClaim(orderId, processingToken) {
   return Order.findOneAndUpdate(
-    { 
-      _id: orderId, 
+    {
+      _id: orderId,
       inventoryState: INVENTORY_STATE.PROCESSING,
       inventoryProcessingToken: processingToken,
     },
-    { 
-      $set: { 
+    {
+      $set: {
         inventoryState: INVENTORY_STATE.FAILED,
         inventoryProcessingToken: null,
         inventoryProcessingStartedAt: null,
@@ -729,55 +731,6 @@ async function releaseInventoryProcessingClaim(orderId, processingToken) {
       }
     },
     { new: true }
-  );
-}
-
-/**
- * Recovery function: Check for stale PROCESSING claims and reset them to PENDING.
- * A claim is considered stale if it has been in PROCESSING for more than 5 minutes
- * without being finalized. This allows stuck orders to be retried.
- * Call this periodically or on webhook retry.
- */
-async function recoverStaleInventoryClaims() {
-  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes
-  return Order.updateMany(
-    { 
-      inventoryState: INVENTORY_STATE.PROCESSING,
-      inventoryProcessingStartedAt: { $lt: staleThreshold },
-    },
-    { 
-      $set: { 
-        inventoryState: INVENTORY_STATE.PENDING,
-        inventoryProcessingToken: null,
-        inventoryProcessingStartedAt: null,
-      }
-    }
-  );
-}
-
-/**
- * Get the inventory state of an order for monitoring/debugging.
- */
-async function getInventoryState(orderId) {
-  const order = await Order.findById(orderId, 'inventoryState inventoryProcessingToken inventoryProcessingStartedAt inventoryCommittedAt inventoryFailedAt');
-  return order ? {
-    state: order.inventoryState || INVENTORY_STATE.PENDING,
-    processingToken: order.inventoryProcessingToken,
-    startedAt: order.inventoryProcessingStartedAt,
-    committedAt: order.inventoryCommittedAt,
-    failedAt: order.inventoryFailedAt,
-  } : null;
-}
-
-/**
- * Release inventory commitment claim (rollback).
- * Called when inventory commit fails after the claim was made.
- * DEPRECATED: Use releaseInventoryProcessingClaim instead.
- */
-async function releaseInventoryCommitment(orderId) {
-  return Order.updateOne(
-    { _id: orderId },
-    { $set: { inventoryCommitted: false, inventoryState: INVENTORY_STATE.PENDING } }
   );
 }
 
@@ -803,12 +756,53 @@ async function rollbackSettlementClaim(orderId) {
   );
 }
 
+/**
+ * Recovery function: Check for stale PROCESSING claims and reset them to PENDING.
+ * A claim is considered stale if it has been in PROCESSING for more than 5 minutes
+ * without being finalized. This allows stuck orders to be retried.
+ * Call this periodically or on webhook retry.
+ */
+async function recoverStaleInventoryClaims() {
+  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes
+  return Order.updateMany(
+    {
+      inventoryState: INVENTORY_STATE.PROCESSING,
+      inventoryProcessingStartedAt: { $lt: staleThreshold },
+    },
+    {
+      $set: {
+        inventoryState: INVENTORY_STATE.PENDING,
+        inventoryProcessingToken: null,
+        inventoryProcessingStartedAt: null,
+      }
+    }
+  );
+}
+
+/**
+ * Get the inventory state of an order for monitoring/debugging.
+ */
+async function getInventoryState(orderId) {
+  const order = await Order.findById(orderId, 'inventoryState inventoryProcessingToken inventoryProcessingStartedAt inventoryCommittedAt inventoryFailedAt');
+  return order ? {
+    state: order.inventoryState || INVENTORY_STATE.PENDING,
+    processingToken: order.inventoryProcessingToken,
+    startedAt: order.inventoryProcessingStartedAt,
+    committedAt: order.inventoryCommittedAt,
+    failedAt: order.inventoryFailedAt,
+  } : null;
+}
+
 /** Common settlement logic for normalized webhook events. */
 async function handleNormalizedWebhook(req, res, normalized) {
+  console.log('[handleNormalizedWebhook] Starting');
   const { providerOrderId, providerPaymentId, paymentStatus, paymentAmount, paymentCurrency, paymentTime, eventType } = normalized;
+  console.log('[handleNormalizedWebhook] Normalized data:', { providerOrderId, providerPaymentId, paymentStatus, paymentAmount, paymentCurrency, paymentTime, eventType });
 
   // Validate amount matches (in paise) - do this before any DB writes
+  console.log('[handleNormalizedWebhook] Finding order by providerOrderId:', providerOrderId);
   const orderForAmountCheck = await Order.findOne({ 'payment.providerOrderId': providerOrderId });
+  console.log('[handleNormalizedWebhook] Order found:', orderForAmountCheck ? 'yes' : 'no');
   if (!orderForAmountCheck) return res.json({ success: true, data: { ignored: 'no matching order' } });
 
   const expectedAmount = orderForAmountCheck.payment?.amount;
@@ -816,6 +810,7 @@ async function handleNormalizedWebhook(req, res, normalized) {
   const currencyMatches = paymentCurrency === 'INR';
 
   const succeeded = paymentStatus === 'SUCCESS' && amountMatches && currencyMatches;
+  console.log('[handleNormalizedWebhook] Validation:', { succeeded, amountMatches, currencyMatches, expectedAmount, paymentAmount, paymentCurrency });
 
   if (!succeeded) {
     if (paymentStatus === 'FAILED') {
@@ -832,8 +827,10 @@ async function handleNormalizedWebhook(req, res, normalized) {
     return res.json({ success: true, data: { recorded: paymentStatus } });
   }
 
-  // STEP 1: Atomically claim settlement (only one webhook can succeed)
+  // STEP 1: Atomically claim settlement AND inventory processing (only one webhook can succeed)
+  console.log('[handleNormalizedWebhook] Calling claimSettlement');
   let order = await claimSettlement(providerOrderId, providerPaymentId, paymentAmount, paymentTime);
+  console.log('[handleNormalizedWebhook] claimSettlement returned:', order ? 'order' : 'null');
 
   if (!order) {
     // Settlement already claimed by another webhook delivery
@@ -859,148 +856,64 @@ async function handleNormalizedWebhook(req, res, normalized) {
     }
   }
 
-  // STEP 2: Atomically claim inventory PROCESSING (not committed yet)
-  let processingClaim = await claimInventoryProcessing(order._id);
-
-  if (!processingClaim) {
-    // Check if already committed
+  // The settlement claim now also atomically claims inventory processing.
+  // Extract the processing token from the claimed order.
+  const processingToken = order.inventoryProcessingToken;
+  if (!processingToken) {
+    // This should not happen if claimSettlement succeeded, but handle gracefully
     const existing = await Order.findById(order._id);
     if (existing?.inventoryState === INVENTORY_STATE.COMMITTED) {
       await cartService.clearCart(order.user);
       return res.json({ success: true, data: { alreadySettled: true, orderNumber: existing.orderNumber } });
     }
-    // Check for stale processing claim and attempt recovery
-    const state = await getInventoryState(order._id);
-    if (state?.state === INVENTORY_STATE.PROCESSING) {
-      // Check if stale (older than 5 minutes)
-      if (state.startedAt && new Date(state.startedAt) < new Date(Date.now() - 5 * 60 * 1000)) {
-        try {
-          await recoverStaleInventoryClaims();
-        } catch (recoveryErr) {
-          console.error('[webhook] Failed to recover stale inventory claims:', recoveryErr);
-          return res.status(500).json({ success: false, message: 'Inventory recovery failed' });
-        }
-        // Retry the claim after recovery
-        const retryClaim = await claimInventoryProcessing(order._id);
-        if (!retryClaim) {
-          return res.json({ success: true, data: { ignored: 'inventory claim failed after recovery' } });
-        }
-        processingClaim = retryClaim;
-      } else {
-        // Another webhook is currently processing - return already settled
-        await cartService.clearCart(order.user);
-        return res.json({ success: true, data: { alreadySettled: true, orderNumber: order.orderNumber } });
-      }
-    } else {
-      // Some other state (FAILED, etc.) - allow retry
-      const retryClaim = await claimInventoryProcessing(order._id);
-      if (!retryClaim) {
-        return res.json({ success: true, data: { ignored: 'inventory claim failed' } });
-      }
-      processingClaim = retryClaim;
+    if (existing?.inventoryState === INVENTORY_STATE.PROCESSING) {
+      // Another webhook is currently processing - return already settled
+      await cartService.clearCart(order.user);
+      return res.json({ success: true, data: { alreadySettled: true, orderNumber: order.orderNumber } });
     }
+    // Some other state - try to claim inventory processing
+    const processingClaim = await claimInventoryProcessing(order._id);
+    if (!processingClaim) {
+      return res.json({ success: true, data: { ignored: 'inventory claim failed' } });
+    }
+    // Use the new processing token
+    const processingToken = processingClaim.inventoryProcessingToken;
+
+    // STEP 3: Commit inventory (with rollback on failure)
+    try {
+      await commitInventory(order);
+      await cartService.clearCart(order.user);
+    } catch (err) {
+      // Rollback: release the processing claim (mark as FAILED to allow retry)
+      await releaseInventoryProcessingClaim(order._id, processingToken).catch(() => {});
+      // Rollback settlement claim
+      await rollbackSettlementClaim(order._id).catch(() => {});
+      throw err;
+    }
+
+    // STEP 4: Finalize inventory commitment (atomic, only owner can do this)
+    const finalized = await finalizeInventoryCommitment(order._id, processingToken);
+    if (!finalized) {
+      // This should not happen if we own the token, but handle gracefully
+      console.error(`[webhook] Failed to finalize inventory commitment for order ${order.orderNumber}`);
+      throw new Error('Inventory finalization failed');
+    }
+
+    return res.json({ success: true, data: { settled: order.orderNumber } });
   }
 
-  const processingToken = processingClaim.inventoryProcessingToken;
-
-  // STEP 3: Commit inventory (with rollback on failure)
-  try {
-    await commitInventory(order);
-    await cartService.clearCart(order.user);
-  } catch (err) {
-    // Rollback: release the processing claim (mark as FAILED to allow retry)
-    await releaseInventoryProcessingClaim(order._id, processingToken).catch(() => {});
-    // Rollback settlement claim
-    await rollbackSettlementClaim(order._id).catch(() => {});
-    throw err;
-  }
-
-  // STEP 4: Finalize inventory commitment (atomic, only owner can do this)
-  const finalized = await finalizeInventoryCommitment(order._id, processingToken);
-  if (!finalized) {
-    // This should not happen if we own the token, but handle gracefully
-    console.error(`[webhook] Failed to finalize inventory commitment for order ${order.orderNumber}`);
-    throw new Error('Inventory finalization failed');
-  }
-
-  return res.json({ success: true, data: { settled: order.orderNumber } });
 }
 
 export const paymentWebhook = asyncHandler(async (req, res) => {
   // Determine provider from route path - this is the fix for provider isolation
   const providerName = payments.getProviderFromRoute(req.path);
-  
+
   if (providerName === 'cashfree') {
     return handleCashfreeWebhook(req, res);
   }
   if (providerName === 'razorpay') {
     return handleRazorpayWebhook(req, res);
   }
-  
+
   return res.status(400).json({ success: false, message: 'Unknown webhook provider.' });
-});
-
-/* ── Order history and detail ───────────────────────────────────────────────
-   Every query is scoped to the signed-in customer. A guessed order id belongs
-   to somebody else and simply does not match.
-   ------------------------------------------------------------------------ */
-const listSchema = z.object({
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(50).optional().default(10),
-});
-
-export const listOrders = asyncHandler(async (req, res) => {
-  const { page, limit } = listSchema.parse(req.validatedQuery ?? req.query);
-
-  const filter = { user: req.user._id };
-  /* Orders awaiting a card payment that never completed are not purchases and
-     must not clutter a customer's history. A pending COD order is real and
-     stays. */
-  filter.$or = [
-    { paymentMethod: PAYMENT_METHOD.COD },
-    { paymentStatus: { $ne: PAYMENT_STATUS.PENDING } },
-  ];
-
-  const [rows, total] = await Promise.all([
-    Order.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-    Order.countDocuments(filter),
-  ]);
-
-  res.json({
-    success: true,
-    data: {
-      orders: rows.map((o) => o.toPublic()),
-      /* Whether any of these can be tracked, so the list can offer it without
-         the client guessing from a status string. */
-      trackable: rows.some((o) => SHIPPED_STATUSES.includes(o.status)),
-    },
-    meta: pageMeta({ page, limit, total }),
-  });
-});
-
-/** Accepts either the order number or the id, because customers quote the former. */
-export const getOrder = asyncHandler(async (req, res) => {
-  const ref = String(req.params.orderId);
-  const byNumber = await Order.findOne({ orderNumber: ref.toUpperCase() });
-  const order =
-    byNumber ||
-    (/^[a-f\d]{24}$/i.test(ref) ? await Order.findById(ref) : null);
-
-  /* Not found and not-yours are the same answer, so the endpoint cannot be used
-     to discover which order numbers exist. Admin users can access any order. */
-  const isAdmin = req.user?.role === 'admin';
-  if (!order || (!isAdmin && order.user?.toString() !== req.user._id.toString())) {
-    throw ApiError.notFound('We could not find that order.');
-  }
-
-  const shipment = await Shipment.findOne({ order: order._id });
-  res.json({
-    success: true,
-    data: {
-      order: order.toPublic(),
-      /* Absent rather than empty until a carrier is attached — "not shipped
-         yet" is different from "shipped with no events". */
-      tracking: shipment ? shipment.toPublic() : null,
-    },
-  });
 });

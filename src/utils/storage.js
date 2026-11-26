@@ -948,7 +948,7 @@ export function setStorageAdapter(name) {
 
   // Validate B2 credentials at startup if B2 adapter selected
   if (name === 'b2') {
-    const required = ['B2_BUCKET_NAME', 'B2_KEY_ID', 'B2_APPLICATION_KEY'];
+    const required = ['B2_BUCKET_NAME', 'B2_KEY_ID', 'B2_APPLICATION_KEY', 'B2_ENDPOINT', 'B2_REGION'];
     const missing = required.filter((v) => !process.env[v]);
     if (missing.length) {
       throw ApiError.internal(`B2 adapter requires environment variables: ${missing.join(', ')}`);

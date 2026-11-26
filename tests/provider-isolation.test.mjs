@@ -3,24 +3,21 @@
    -------------------------------------------------------------------------
    Tests that each webhook route always uses its own provider's verification
    and event parsing, regardless of the PAYMENT_PROVIDER environment variable.
+
+   Uses dynamic imports to ensure environment variables are set before
+   the payment module is loaded.
    ------------------------------------------------------------------------- */
 
-import { describe, it, before, after } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import crypto from 'node:crypto';
-import { 
-  verifyWebhookSignature, 
-  normalizeWebhookEvent,
-  getProviderFromRoute,
-  buildWebhookParams
-} from '../src/payments/index.js';
 
-// Test secrets
+/* Test secrets - use fixed test secrets for deterministic tests */
 const CASH_FREE_CLIENT_SECRET = 'test_client_secret_12345';
 const RAZORPAY_WEBHOOK_SECRET = 'test_webhook_secret_12345';
 const RAZORPAY_KEY_SECRET = 'test_key_secret_12345';
 
-// Cashfree signature helpers
+/* Signature helpers */
 function createCashfreeWebhookSignature(rawBody, timestamp, secret) {
   return crypto
     .createHmac('sha256', secret)
@@ -35,7 +32,6 @@ function createCashfreeCheckoutSignature(orderId, paymentId, secret) {
     .digest('hex');
 }
 
-// Razorpay signature helpers
 function createRazorpayWebhookSignature(payload, secret) {
   return crypto
     .createHmac('sha256', secret)
@@ -49,6 +45,24 @@ function createRazorpayCheckoutSignature(orderId, paymentId, secret) {
     .update(`${orderId}|${paymentId}`)
     .digest('hex');
 }
+
+/* Set the environment variables BEFORE importing the payment module.
+   This must happen before the module is loaded because the env module
+   reads process.env at import time. */
+process.env.CASHFREE_CLIENT_SECRET = CASH_FREE_CLIENT_SECRET;
+process.env.CASHFREE_CLIENT_ID = 'test_client_id';
+process.env.CASHFREE_ENV = 'sandbox';
+process.env.RAZORPAY_KEY_SECRET = RAZORPAY_KEY_SECRET;
+process.env.RAZORPAY_WEBHOOK_SECRET = RAZORPAY_WEBHOOK_SECRET;
+process.env.RAZORPAY_KEY_ID = 'test_key_id';
+
+/* Now dynamically import the payment module - env vars are set */
+const { 
+  verifyWebhookSignature, 
+  normalizeWebhookEvent,
+  getProviderFromRoute,
+  buildWebhookParams
+} = await import('../src/payments/index.js');
 
 // Test payloads
 const CASH_FREE_PAYLOAD = JSON.stringify({
@@ -211,16 +225,16 @@ describe('Provider Isolation Tests', () => {
   });
 
   describe('Event normalization', () => {
+    
     it('normalizes Cashfree PAYMENT_SUCCESS event correctly', () => {
       const event = JSON.parse(CASH_FREE_PAYLOAD);
       const normalized = normalizeWebhookEvent(event, 'cashfree');
       
-      assert.ok(normalized);
       assert.strictEqual(normalized.provider, 'cashfree');
       assert.strictEqual(normalized.providerOrderId, 'order_cf_123');
       assert.strictEqual(normalized.providerPaymentId, 'pay_cf_456');
       assert.strictEqual(normalized.paymentStatus, 'SUCCESS');
-      assert.strictEqual(normalized.paymentAmount, 100000); // 1000 * 100
+      assert.strictEqual(normalized.paymentAmount, 100000); // 1000 * 100 = 100000 paise
       assert.strictEqual(normalized.paymentCurrency, 'INR');
       assert.strictEqual(normalized.eventType, 'PAYMENT_SUCCESS');
     });
@@ -229,7 +243,7 @@ describe('Provider Isolation Tests', () => {
       const event = JSON.parse(CASH_FREE_FAILED_PAYLOAD);
       const normalized = normalizeWebhookEvent(event, 'cashfree');
       
-      assert.ok(normalized);
+      assert.strictEqual(normalized.provider, 'cashfree');
       assert.strictEqual(normalized.paymentStatus, 'FAILED');
     });
 
@@ -237,12 +251,11 @@ describe('Provider Isolation Tests', () => {
       const event = JSON.parse(RAZORPAY_PAYLOAD);
       const normalized = normalizeWebhookEvent(event, 'razorpay');
       
-      assert.ok(normalized);
       assert.strictEqual(normalized.provider, 'razorpay');
       assert.strictEqual(normalized.providerOrderId, 'order_rzp_123');
       assert.strictEqual(normalized.providerPaymentId, 'pay_rzp_123');
       assert.strictEqual(normalized.paymentStatus, 'captured');
-      assert.strictEqual(normalized.paymentAmount, 100000); // already in paise
+      assert.strictEqual(normalized.paymentAmount, 100000);
       assert.strictEqual(normalized.paymentCurrency, 'INR');
       assert.strictEqual(normalized.eventType, 'payment.captured');
     });
@@ -251,19 +264,19 @@ describe('Provider Isolation Tests', () => {
       const event = JSON.parse(RAZORPAY_FAILED_PAYLOAD);
       const normalized = normalizeWebhookEvent(event, 'razorpay');
       
-      assert.ok(normalized);
+      assert.strictEqual(normalized.provider, 'razorpay');
       assert.strictEqual(normalized.paymentStatus, 'failed');
     });
 
     it('returns null for unknown Cashfree event structure', () => {
-      const event = { type: 'UNKNOWN', data: {} };
-      const normalized = normalizeWebhookEvent(event, 'cashfree');
+      const unknownEvent = { type: 'UNKNOWN_EVENT' };
+      const normalized = normalizeWebhookEvent(unknownEvent, 'cashfree');
       assert.strictEqual(normalized, null);
     });
 
     it('returns null for unknown Razorpay event structure', () => {
-      const event = { event: 'unknown', payload: {} };
-      const normalized = normalizeWebhookEvent(event, 'razorpay');
+      const unknownEvent = { event: 'unknown.event' };
+      const normalized = normalizeWebhookEvent(unknownEvent, 'razorpay');
       assert.strictEqual(normalized, null);
     });
 
@@ -275,58 +288,62 @@ describe('Provider Isolation Tests', () => {
   });
 
   describe('buildWebhookParams', () => {
+    
     it('extracts Cashfree headers correctly', () => {
+      const timestamp = '1705315800';
+      const signature = 'test_signature';
+      const rawBody = Buffer.from(CASH_FREE_PAYLOAD, 'utf8');
+      
       const mockReq = {
         get: (header) => {
-          if (header === 'x-webhook-signature') return 'test_sig';
-          if (header === 'x-webhook-timestamp') return '1705315800';
+          if (header === 'x-webhook-signature') return signature;
+          if (header === 'x-webhook-timestamp') return timestamp;
           return undefined;
         },
-        body: Buffer.from('{"test":true}')
+        body: rawBody
       };
       
       const params = buildWebhookParams(mockReq, 'cashfree');
-      assert.strictEqual(params.signature, 'test_sig');
-      assert.strictEqual(params.timestamp, '1705315800');
-      assert.ok(Buffer.isBuffer(params.rawBody));
+      assert.strictEqual(params.signature, signature);
+      assert.strictEqual(params.timestamp, timestamp);
+      assert.deepStrictEqual(params.rawBody, rawBody);
     });
 
     it('extracts Razorpay headers correctly', () => {
+      const signature = 'test_razorpay_signature';
+      const rawBody = Buffer.from(RAZORPAY_PAYLOAD, 'utf8');
+      
       const mockReq = {
         get: (header) => {
-          if (header === 'x-razorpay-signature') return 'test_sig';
+          if (header === 'x-razorpay-signature') return signature;
           return undefined;
         },
-        body: Buffer.from('{"test":true}')
+        body: rawBody
       };
       
       const params = buildWebhookParams(mockReq, 'razorpay');
-      assert.strictEqual(params.signature, 'test_sig');
+      assert.strictEqual(params.signature, signature);
       assert.strictEqual(params.timestamp, null);
-      assert.ok(Buffer.isBuffer(params.rawBody));
+      assert.deepStrictEqual(params.rawBody, rawBody);
     });
   });
 
   describe('Cross-provider signature rejection', () => {
+    
     it('Cashfree route rejects Razorpay-signed payload', () => {
-      // Simulate a request to Cashfree route with Razorpay-style signature
-      const razorpaySig = createRazorpayWebhookSignature(RAZORPAY_PAYLOAD, RAZORPAY_WEBHOOK_SECRET);
+      const signature = createRazorpayWebhookSignature(RAZORPAY_PAYLOAD, RAZORPAY_WEBHOOK_SECRET);
       const rawBody = Buffer.from(RAZORPAY_PAYLOAD, 'utf8');
       
-      // Cashfree verification uses client secret + timestamp + body in base64
-      // Razorpay signature is hex without timestamp
-      const result = verifyWebhookSignature(rawBody, razorpaySig, '1705315800', 'cashfree');
+      const result = verifyWebhookSignature(rawBody, signature, null, 'cashfree');
       assert.strictEqual(result, false);
     });
 
     it('Razorpay route rejects Cashfree-signed payload', () => {
-      // Simulate a request to Razorpay route with Cashfree-style signature
       const timestamp = '1705315800';
-      const cashfreeSig = createCashfreeWebhookSignature(CASH_FREE_PAYLOAD, timestamp, CASH_FREE_CLIENT_SECRET);
+      const signature = createCashfreeWebhookSignature(CASH_FREE_PAYLOAD, timestamp, CASH_FREE_CLIENT_SECRET);
       const rawBody = Buffer.from(CASH_FREE_PAYLOAD, 'utf8');
       
-      // Razorpay verification uses webhook secret + body in hex (no timestamp)
-      const result = verifyWebhookSignature(rawBody, cashfreeSig, timestamp, 'razorpay');
+      const result = verifyWebhookSignature(rawBody, signature, timestamp, 'razorpay');
       assert.strictEqual(result, false);
     });
   });

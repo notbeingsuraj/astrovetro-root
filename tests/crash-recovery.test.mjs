@@ -24,9 +24,10 @@ import { StockMovement } from '../src/models/StockMovement.js';
 
 const PORT = 5317;
 const TEST_DB = 'mongodb://127.0.0.1:27017/astrovetro_crash_recovery_test';
-const ADMIN_EMAIL = 'crash@astrovetro.test';
+const RUN_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const ADMIN_EMAIL = `crash-${RUN_ID}@astrovetro.test`;
 const ADMIN_PASSWORD = 'crash-pass-12345';
-const CUSTOMER_EMAIL = 'customer@astrovetro.test';
+const CUSTOMER_EMAIL = `customer-${RUN_ID}@astrovetro.test`;
 const CUSTOMER_PASSWORD = 'customer-pass-12345';
 
 const mongoUp = await tcpUp('127.0.0.1', 27017);
@@ -83,6 +84,12 @@ describe('Crash-Recovery Fault-Injection Tests', { skip: mongoUp ? false : 'mong
 
   before(async () => {
     await createAdmin({ databaseUrl: TEST_DB, email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    // Set test Cashfree secret so webhook signatures match
+    process.env.CASHFREE_CLIENT_SECRET = CASH_FREE_CLIENT_SECRET;
+    process.env.CASHFREE_CLIENT_ID = 'test_client_id';
+    process.env.CASHFREE_ENV = 'sandbox';
+    // Connect mongoose for direct model usage in tests
+    await mongoose.connect(TEST_DB, { serverSelectionTimeoutMS: 5000, bufferCommands: false });
     server = await startServer({ port: PORT, databaseUrl: TEST_DB, disableRateLimit: true });
     base = server.base;
     adminCookie = await login(base, ADMIN_EMAIL, ADMIN_PASSWORD);
