@@ -642,8 +642,10 @@ async function handleRazorpayWebhook(req, res) {
  * (already settled, not found, or inventory already being processed).
  */
 async function claimSettlement(providerOrderId, providerPaymentId, paymentAmount, paymentTime) {
+  console.log('[claimSettlement] Starting', { providerOrderId, providerPaymentId, paymentAmount, paymentTime });
   const processingToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  return Order.findOneAndUpdate(
+  console.log('[claimSettlement] Finding and updating order');
+  const result = await Order.findOneAndUpdate(
     {
       'payment.providerOrderId': providerOrderId,
       paymentStatus: { $ne: PAYMENT_STATUS.PAID },
@@ -662,6 +664,8 @@ async function claimSettlement(providerOrderId, providerPaymentId, paymentAmount
     },
     { new: true }
   );
+  console.log('[claimSettlement] Result:', result ? 'found' : 'null');
+  return result;
 }
 
 
