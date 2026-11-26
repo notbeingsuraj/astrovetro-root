@@ -42,16 +42,20 @@ export async function startServer({ port, databaseUrl, disableRateLimit = false 
   const env = { ...process.env, PORT: String(port), NODE_ENV: 'development' };
   delete env.API_TARGET;
   delete env.AV_DISABLE_API;
+  // Always prevent dotenv loading in tests - test env vars are passed explicitly
+  env.DOTENV_CONFIG_PATH = '/dev/null';
+  // Ensure required secrets are set for test server
+  if (!env.JWT_SECRET) {
+    env.JWT_SECRET = 'test-secret-key-at-least-32-characters-long-for-testing';
+  }
   // Only disable rate limiting when explicitly requested
   if (disableRateLimit) {
     env.DISABLE_RATE_LIMIT = 'true';
   }
-  // Only prevent dotenv loading when databaseUrl is explicitly null (no database wanted)
-  // When databaseUrl is undefined, allow .env to be loaded for default database
+  // Only prevent database when databaseUrl is explicitly null (no database wanted)
   if (databaseUrl === null) {
     delete env.DATABASE_URL;
     delete env.MONGODB_URI;
-    env.DOTENV_CONFIG_PATH = '/dev/null';
   } else if (databaseUrl) {
     env.DATABASE_URL = databaseUrl;
     env.MONGODB_URI = databaseUrl;
@@ -108,9 +112,9 @@ export function sessionCookie(res, name = 'av_token') {
  * and never throws on a non-2xx, because asserting on failures is most of
  * what these tests do.
  */
-export async function api(base, apiPath, { method = 'GET', body, cookie, headers = {} } = {}) {
+export async function api(base, apiPath, { method = 'GET', body, cookie, headers = {}, rawBody = false } = {}) {
   const h = { ...headers };
-  if (body !== undefined) h['Content-Type'] = 'application/json';
+  if (body !== undefined && !rawBody) h['Content-Type'] = 'application/json';
   if (cookie) h.Cookie = cookie;
   /* Browsers always send Origin (or Sec-Fetch-Site) on a credentialed
      mutation, and the CSRF middleware refuses a cookie-authenticated write
@@ -119,7 +123,7 @@ export async function api(base, apiPath, { method = 'GET', body, cookie, headers
   const res = await fetch(base + apiPath, {
     method,
     headers: h,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? (rawBody ? body : JSON.stringify(body)) : undefined,
   });
   let json = null;
   try {
@@ -150,6 +154,7 @@ export function createAdmin({ databaseUrl, email, password }) {
           DATABASE_URL: databaseUrl,
           MONGODB_URI: databaseUrl,
           AV_ADMIN_PASSWORD: password,
+          DOTENV_CONFIG_PATH: '/dev/null',
         },
         timeout: 30000,
       },

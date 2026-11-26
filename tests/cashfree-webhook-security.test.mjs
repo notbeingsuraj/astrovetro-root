@@ -24,14 +24,13 @@ import {
 } from '../src/payments/cashfree.js';
 
 /* Test helpers */
-const TEST_WEBHOOK_SECRET = 'test_webhook_secret_12345';
 const TEST_CLIENT_SECRET = 'test_client_secret_12345';
 
 function createValidWebhookSignature(rawBody, timestamp, secret) {
   return crypto
     .createHmac('sha256', secret)
     .update(`${timestamp}${rawBody}`)
-    .digest('hex');
+    .digest('base64');
 }
 
 function createValidCheckoutSignature(orderId, paymentId, secret) {
@@ -42,13 +41,13 @@ function createValidCheckoutSignature(orderId, paymentId, secret) {
 }
 
 describe('Cashfree Webhook Security', () => {
-  
+   
   describe('verifyWebhookSignature', () => {
     
     it('validates a correct webhook signature', () => {
       const rawBody = '{"event":"PAYMENT_SUCCESS","data":{"payment":{"order_id":"order_123","payment_id":"pay_456","payment_amount":1000,"payment_currency":"INR","payment_status":"SUCCESS","payment_time":"2024-01-15T10:30:00Z"}}}';
       const timestamp = '1705315800';
-      const signature = createValidWebhookSignature(rawBody, timestamp, TEST_WEBHOOK_SECRET);
+      const signature = createValidWebhookSignature(rawBody, timestamp, TEST_CLIENT_SECRET);
       
       const result = verifyWebhookSignature(Buffer.from(rawBody), signature, timestamp);
       assert.strictEqual(result, true);
@@ -76,7 +75,7 @@ describe('Cashfree Webhook Security', () => {
       // For now, verify the function handles empty secret
       const rawBody = Buffer.from('{"event":"PAYMENT_SUCCESS"}', 'utf8');
       const timestamp = '1705315800';
-      const signature = createValidWebhookSignature(rawBody.toString(), timestamp, TEST_WEBHOOK_SECRET);
+      const signature = createValidWebhookSignature(rawBody.toString(), timestamp, TEST_CLIENT_SECRET);
       
       // The function reads from env at runtime, so this test documents expected behavior
       assert.ok(true, 'Missing webhook secret should fail closed');
@@ -89,7 +88,7 @@ describe('Cashfree Webhook Security', () => {
 
     it('rejects missing timestamp', () => {
       const rawBody = Buffer.from('{"event":"PAYMENT_SUCCESS"}', 'utf8');
-      const signature = createValidWebhookSignature(rawBody.toString(), '1705315800', TEST_WEBHOOK_SECRET);
+      const signature = createValidWebhookSignature(rawBody.toString(), '1705315800', TEST_CLIENT_SECRET);
       
       const result = verifyWebhookSignature(rawBody, signature, '');
       assert.strictEqual(result, false);
@@ -99,7 +98,7 @@ describe('Cashfree Webhook Security', () => {
       const originalPayload = { event: 'PAYMENT_SUCCESS', data: { payment: { order_id: 'order_123', payment_id: 'pay_456', payment_amount: 1000, payment_currency: 'INR', payment_status: 'SUCCESS', payment_time: '2024-01-15T10:30:00Z' } } };
       const originalBody = JSON.stringify(originalPayload);
       const timestamp = '1705315800';
-      const signature = createValidWebhookSignature(originalBody, timestamp, TEST_WEBHOOK_SECRET);
+      const signature = createValidWebhookSignature(originalBody, timestamp, TEST_CLIENT_SECRET);
       
       // Tamper with the payload - change amount
       const tamperedPayload = { event: 'PAYMENT_SUCCESS', data: { payment: { order_id: 'order_123', payment_id: 'pay_456', payment_amount: 99999, payment_currency: 'INR', payment_status: 'SUCCESS', payment_time: '2024-01-15T10:30:00Z' } } };
@@ -118,7 +117,7 @@ describe('Cashfree Webhook Security', () => {
       const payload = { event: 'PAYMENT_SUCCESS', data: { payment: { order_id: 'order_123', payment_id: 'pay_456', payment_amount: 1000, payment_currency: 'INR', payment_status: 'SUCCESS', payment_time: '2024-01-15T10:30:00Z' } } };
       const bodyString = JSON.stringify(payload);
       const timestamp = '1705315800';
-      const signature = createValidWebhookSignature(bodyString, timestamp, TEST_WEBHOOK_SECRET);
+      const signature = createValidWebhookSignature(bodyString, timestamp, TEST_CLIENT_SECRET);
       
       // Test with Buffer
       const resultBuffer = verifyWebhookSignature(Buffer.from(bodyString, 'utf8'), signature, timestamp);
@@ -229,7 +228,7 @@ describe('Cashfree Webhook Security', () => {
       // Re-serializing a parsed object changes bytes and breaks signature
       const originalBody = '{"event":"PAYMENT_SUCCESS","data":{"payment":{"order_id":"order_123","payment_amount":1000}}}';
       const timestamp = '1705315800';
-      const signature = createValidWebhookSignature(originalBody, timestamp, TEST_WEBHOOK_SECRET);
+      const signature = createValidWebhookSignature(originalBody, timestamp, TEST_CLIENT_SECRET);
       
       // Re-serialize (might change key order, whitespace)
       const parsed = JSON.parse(originalBody);

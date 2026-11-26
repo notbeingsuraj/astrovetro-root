@@ -11,7 +11,7 @@ import { env } from '../config/env.js';
 import * as cashfree from './cashfree.js';
 import * as razorpay from './razorpay.js';
 
-/** Get the active payment provider module. */
+/** Get the active payment provider module (for checkout). */
 function getProvider() {
   const provider = env.paymentProvider;
   if (provider === 'cashfree') return cashfree;
@@ -19,6 +19,13 @@ function getProvider() {
   // Default to cashfree if configured, otherwise razorpay
   if (env.cashfreeConfigured) return cashfree;
   if (env.paymentLive) return razorpay;
+  return null;
+}
+
+/** Get a specific provider module by name. */
+function getProviderByName(name) {
+  if (name === 'cashfree') return cashfree;
+  if (name === 'razorpay') return razorpay;
   return null;
 }
 
@@ -44,9 +51,9 @@ export function verifyCheckoutSignature(data) {
   return provider.verifyCheckoutSignature(data);
 }
 
-/** Verify webhook signature. */
-export function verifyWebhookSignature(rawBody, signature, timestamp) {
-  const provider = getProvider();
+/** Verify webhook signature for a specific provider. */
+export function verifyWebhookSignature(rawBody, signature, timestamp, providerName) {
+  const provider = getProviderByName(providerName);
   if (!provider) return false;
   return provider.verifyWebhookSignature(rawBody, signature, timestamp);
 }
@@ -87,36 +94,14 @@ export const getCashfreeEnvironment = () => {
   return provider && provider.getEnvironment ? provider.getEnvironment() : 'sandbox';
 };
 
-/** Get the active provider name. */
+/** Get the active provider name (for checkout). */
 export const getActiveProvider = () => env.paymentProvider;
 
-/** Get provider-specific data for session response. */
-export function getSessionData(providerOrder, amountInPaise, priced) {
-  const provider = getProvider();
-  if (!provider) throw new Error('No payment provider configured');
-
-  const baseData = {
-    amount: priced.total,
-    amountInPaise,
-    currency: priced.currency,
-  };
-
-  if (env.paymentProvider === 'cashfree') {
-    return {
-      ...baseData,
-      cashfreeOrderId: providerOrder.order_id,
-      paymentSessionId: providerOrder.payment_session_id,
-      clientId: cashfree.publicClientId(),
-      environment: cashfree.getEnvironment(),
-    };
-  }
-
-  // Razorpay
-  return {
-    ...baseData,
-    razorpayOrderId: providerOrder.id,
-    keyId: razorpay.publicKeyId(),
-  };
+/** Determine provider from webhook route path. */
+export function getProviderFromRoute(path) {
+  if (path.includes('/cashfree')) return 'cashfree';
+  if (path.includes('/razorpay')) return 'razorpay';
+  return null;
 }
 
 /** Build payment object for order document. */
@@ -158,9 +143,9 @@ export function buildPaymentUpdateObject(body) {
   };
 }
 
-/** Build webhook verification params. */
-export function buildWebhookParams(req) {
-  if (env.paymentProvider === 'cashfree') {
+/** Build webhook verification params for a specific provider. */
+export function buildWebhookParams(req, providerName) {
+  if (providerName === 'cashfree') {
     return {
       signature: req.get('x-webhook-signature'),
       timestamp: req.get('x-webhook-timestamp'),
@@ -173,5 +158,39 @@ export function buildWebhookParams(req) {
     signature: req.get('x-razorpay-signature'),
     timestamp: null,
     rawBody: Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body ?? {})),
+  };
+}
+
+/** Normalize webhook event to common internal representation. */
+export function normalizeWebhookEvent(event, providerName) {
+  if (providerName === 'cashfree') {
+    const payment = event?.data?.payment;
+    if (!payment) return null;
+    return {
+      provider: 'cashfree',
+      providerOrderId: payment.order_id,
+      providerPaymentId: payment.payment_id,
+      paymentStatus: payment.payment_status,
+      paymentAmount: Math.round(Number(payment.payment_amount) * 100), // to paise
+      paymentCurrency: payment.payment_currency,
+      paymentTime: payment.payment_time ? new Date(payment.payment_time).getTime() : Date.now(),
+      eventType: event.type,
+      eventId: event.data?.event_id || null,
+    };
+  }
+
+  // Razorpay
+  const payment = event?.payload?.payment?.entity;
+  if (!payment) return null;
+  return {
+    provider: 'razorpay',
+    providerOrderId: payment.order_id,
+    providerPaymentId: payment.id,
+    paymentStatus: payment.status,
+    paymentAmount: payment.amount, // already in paise
+    paymentCurrency: payment.currency,
+    paymentTime: payment.created_at ? new Date(payment.created_at * 1000).getTime() : Date.now(),
+    eventType: event.event,
+    eventId: event.id || null,
   };
 }

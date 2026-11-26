@@ -35,7 +35,7 @@
    ------------------------------------------------------------------------- */
 
 import crypto from 'node:crypto';
-import { Cashfree } from 'cashfree-pg';
+import { Cashfree, CFEnvironment } from 'cashfree-pg';
 import { env } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 
@@ -49,9 +49,17 @@ function cashfree() {
     );
   }
   if (!client) {
-    client = new Cashfree(env.cashfree.env);
-    client.XClientId = env.cashfree.clientId;
-    client.XClientSecret = env.cashfree.clientSecret;
+    const environment = env.cashfree.env === 'production' 
+      ? CFEnvironment.PRODUCTION 
+      : CFEnvironment.SANDBOX;
+    // Use the API version from config, fallback to SDK default
+    const apiVersion = env.cashfree.apiVersion || '2026-01-01';
+    client = new Cashfree({
+      environment,
+      clientId: env.cashfree.clientId,
+      clientSecret: env.cashfree.clientSecret,
+      apiVersion: apiVersion
+    });
   }
   return client;
 }
@@ -69,7 +77,7 @@ export async function createProviderOrder({ amountInPaise, receipt, notes = {}, 
   const cf = cashfree();
   const orderAmount = amountInPaise / 100; // Cashfree expects amount in rupees, not paise
 
-  return cf.PGCreateOrder('2023-08-01', {
+  return cf.PGCreateOrder({
     order_id: receipt,
     order_amount: orderAmount,
     order_currency: 'INR',
@@ -84,19 +92,24 @@ export async function createProviderOrder({ amountInPaise, receipt, notes = {}, 
       notify_url: notes.notifyUrl || `${env.frontendUrl}/api/webhooks/cashfree`,
       payment_methods: 'cc,dc,nb,upi,wallet',
     },
+  }, {
+    // Pass API version explicitly if supported
+    xApiVersion: env.cashfree.apiVersion || '2026-01-01'
   });
 }
 
 /**
  * Verify the signature the browser returns after Cashfree's checkout.
  * Cashfree returns order_id, payment_id, and signature in the response.
+ * 
+ * According to Cashfree v2023-08-01 documentation:
+ * The signature is HMAC_SHA256(order_id + payment_id, client_secret) in hex
  */
 export function verifyCheckoutSignature({ orderId, paymentId, signature, paymentStatus }) {
   if (!orderId || !paymentId || !signature) return false;
   if (paymentStatus !== 'SUCCESS') return false;
 
-  // Cashfree v2023-08-01 signature verification
-  // The signature is HMAC_SHA256(order_id + payment_id, client_secret)
+  // Cashfree signature verification: HMAC_SHA256(order_id + payment_id, client_secret) in hex
   const expected = crypto
     .createHmac('sha256', env.cashfree.clientSecret)
     .update(`${orderId}${paymentId}`)
@@ -109,16 +122,22 @@ export function verifyCheckoutSignature({ orderId, paymentId, signature, payment
 
 /**
  * Verify a webhook delivery. Requires the exact bytes Cashfree sent.
- * Cashfree webhook signature: HMAC_SHA256(raw_body + timestamp, client_secret)
+ * Cashfree webhook signature: HMAC_SHA256(timestamp + raw_body, client_secret) in base64
+ * 
+ * According to Cashfree Payment Gateway documentation:
+ * - Signature is HMAC-SHA256 of (timestamp + raw_body) using the client secret
+ * - The signature is base64 encoded
+ * - The timestamp is in the x-webhook-timestamp header
+ * - The raw body must be used exactly as received (no JSON parsing/re-serialization)
  */
 export function verifyWebhookSignature(rawBody, signature, timestamp) {
-  if (!env.cashfree.webhookSecret || !signature || !timestamp) return false;
+  if (!env.cashfree.clientSecret || !signature || !timestamp) return false;
 
-  // Cashfree webhook signature format: timestamp + raw_body
+  // Cashfree webhook signature format: timestamp + raw_body (base64 encoded HMAC-SHA256 with client secret)
   const expected = crypto
-    .createHmac('sha256', env.cashfree.webhookSecret)
+    .createHmac('sha256', env.cashfree.clientSecret)
     .update(`${timestamp}${rawBody.toString('utf8')}`)
-    .digest('hex');
+    .digest('base64');
 
   const a = Buffer.from(expected);
   const b = Buffer.from(String(signature));
@@ -128,12 +147,16 @@ export function verifyWebhookSignature(rawBody, signature, timestamp) {
 /**
  * Ask the provider what actually happened to a payment. Used to settle an
  * order whose webhook has not arrived, rather than trusting the browser.
+ * 
+ * Uses PGOrderFetchPayments to get all payments for the order, then finds
+ * the specific payment by payment_id.
  */
-export async function fetchPayment(paymentId) {
+export async function fetchPayment(orderId, paymentId) {
   try {
     const cf = cashfree();
-    const response = await cf.PGOrderFetchPayments('2023-08-01', paymentId);
-    return response.data;
+    const paymentsList = await cf.PGOrderFetchPayments(orderId);
+    if (!paymentsList || !Array.isArray(paymentsList)) return null;
+    return paymentsList.find(p => p.payment_id === paymentId) || null;
   } catch {
     /* Not found at the provider, or not configured. Either way the caller must
        not treat the payment as confirmed. */
@@ -147,8 +170,7 @@ export async function fetchPayment(paymentId) {
 export async function fetchProviderOrder(orderId) {
   try {
     const cf = cashfree();
-    const response = await cf.PGOrderFetchOrder('2023-08-01', orderId);
-    return response.data;
+    return await cf.PGFetchOrder(orderId);
   } catch {
     return null;
   }

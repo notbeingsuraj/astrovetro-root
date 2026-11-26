@@ -58,11 +58,55 @@ jobs:
           mongodb-port: 27017
           mongodb-db: astrovetro_test
 
-      - name: Run tests
+      - name: Run unit tests
         run: npm test
 
       - name: Build
         run: npm run build
+
+  cashfree-integration:
+    name: Cashfree Sandbox Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' && github.repository == 'notbeingsuraj/astrovetro-root' && github.repository_owner == 'notbeingsuraj' && env.CASHFREE_CLIENT_ID != ''
+    env:
+      NODE_ENV: test
+      DATABASE_URL: mongodb://localhost:27017/astrovetro_test
+      JWT_SECRET: test-secret-key-at-least-32-characters-long-for-testing
+      UPSTASH_REDIS_REST_URL: https://test.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: test-token
+      DISABLE_RATE_LIMIT: 'true'
+      RAZORPAY_KEY_ID: rzp_test_key_id
+      RAZORPAY_KEY_SECRET: test_key_secret_12345
+      RAZORPAY_WEBHOOK_SECRET: test_webhook_secret_12345
+      CASHFREE_CLIENT_ID: ${{ secrets.CASHFREE_CLIENT_ID }}
+      CASHFREE_CLIENT_SECRET: ${{ secrets.CASHFREE_CLIENT_SECRET }}
+      CASHFREE_WEBHOOK_SECRET: ${{ secrets.CASHFREE_WEBHOOK_SECRET }}
+      CASHFREE_ENV: sandbox
+      PAYMENT_PROVIDER: cashfree
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.12.0
+        with:
+          mongodb-version: '7.0'
+          mongodb-port: 27017
+          mongodb-db: astrovetro_test
+
+      - name: Run Cashfree integration tests
+        run: npm test -- --test-name-pattern="Cashfree Webhook Security"
 
   dependency-audit:
     name: Dependency Audit

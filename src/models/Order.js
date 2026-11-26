@@ -53,6 +53,13 @@ export const PAYMENT_METHOD = Object.freeze({
   CARD: 'card',
 });
 
+export const INVENTORY_STATE = Object.freeze({
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  COMMITTED: 'committed',
+  FAILED: 'failed',
+});
+
 /* The whole state machine. `PROCESSING` is reachable from PAID (payment
    confirmed, now being picked) and from PENDING (cash on delivery, or a
    webhook that confirmed payment without an intermediate step). */
@@ -183,6 +190,20 @@ const orderSchema = new mongoose.Schema(
     /* Set once inventory has been decremented, so a retried webhook cannot
        double-decrement stock for the same order. */
     inventoryCommitted: { type: Boolean, default: false },
+
+    /* Crash-safe inventory commitment state machine.
+       States: pending -> processing -> committed, or processing -> failed (for recovery).
+       A processing claim includes a unique token and timestamp for ownership and staleness detection. */
+    inventoryState: { 
+      type: String, 
+      enum: ['pending', 'processing', 'committed', 'failed'], 
+      default: 'pending',
+      index: true,
+    },
+    inventoryProcessingToken: { type: String, default: null },
+    inventoryProcessingStartedAt: { type: Date, default: null },
+    inventoryCommittedAt: { type: Date, default: null },
+    inventoryFailedAt: { type: Date, default: null },
 
     /* The customer's own retry token. Unique per account so a second submit
        with the same key is recognised rather than duplicated. Sparse, because
