@@ -10,7 +10,6 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { startServer, tcpUp } from './helpers/server.mjs';
 import { setStorageAdapter } from '../src/utils/storage.js';
-import { testStorageAdapter } from './storage-adapter-test.mjs';
 
 const mongoUp = await tcpUp('127.0.0.1', 27017);
 
@@ -133,5 +132,3 @@ test('Image upload size limits', { skip: mongoUp ? false : 'mongod is not reacha
     adapter.clear();
   });
 });
-
-const TEST_DB = 'mongodb://127.0.0.1:27017/astrovetro_upload_test';

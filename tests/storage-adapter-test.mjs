@@ -7,6 +7,7 @@
 import { randomBytes } from 'crypto';
 import sharp from 'sharp';
 import { ApiError } from '../src/utils/ApiError.js';
+import { Readable } from 'stream';
 
 const MAGIC = [
   { bytes: [0xff, 0xd8, 0xff], ext: 'jpg', mime: 'image/jpeg' },
@@ -180,7 +181,6 @@ const testStorageAdapter = {
     if (!entry) return null;
     
     // Create a readable stream from the buffer
-    const { Readable } = await import('stream');
     const readable = new Readable();
     readable._read = () => {};
     readable.push(entry.buffer);
