@@ -29,7 +29,7 @@ window.AV = window.AV || {};
       const src = this[variant] || this.wordmark;
       const width = this.widths[size]?.[variant] || this.widths.desktop[variant];
       const height = Math.round(width * (variant === 'symbol' ? 1 : 0.5)); // wordmark ~2:1, symbol ~1:1
-      return `<img src="${this.esc(src)}" alt="${this.esc(this.alt)}" width="${width}" height="${height}" loading="lazy" decoding="async" style="width:${width}px;height:${height}px;object-fit:contain;">`;
+      return `<img src="${AV.esc(src)}" alt="${AV.esc(this.alt)}" width="${width}" height="${height}" loading="lazy" decoding="async" style="width:${width}px;height:${height}px;object-fit:contain;">`;
     },
   };
   BRAND.alt = 'Astro Vetro';
