@@ -268,7 +268,7 @@ async function init() {
   view = TABS.some(([k]) => k === view) ? view : 'dashboard';
   root.innerHTML = `<div class="adm-shell">
     <aside class="adm-side">
-      <div class="adm-brand"><strong>Astro Vetro</strong><span>Studio</span></div>
+      <div class="adm-brand"><a href="/home.html" aria-label="Astro Vetro — Home">${BRAND.logo('wordmark', 'desktop')}</a><span>Studio</span></div>
       <nav id="admTabs" aria-label="Studio sections">${TABS.map(
         ([k, l]) => `<button class="adm-tab${k === view ? ' active' : ''}" data-view="${k}">${l}</button>`
       ).join('')}</nav>

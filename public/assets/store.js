@@ -7,29 +7,32 @@ window.AV = window.AV || {};
   const CART_KEY = 'av_cart';
   const USER_KEY = 'av_user';
 
-  /* Shipping rules live here so the bag and the checkout can never disagree. */
-  const SHIPPING = { freeAbove: 1500, flat: 99 };
-  AV.SHIPPING = SHIPPING;
-  AV.shippingFor = (subtotal) =>
-    subtotal >= SHIPPING.freeAbove || subtotal === 0 ? 0 : SHIPPING.flat;
-  /* Nav order follows the gateway: the two experiences come first, the shop
-     is the catalogue behind them, then the supporting pages. There is no
-     Tarot item — tarot lives inside Rituals at /readings.html#tarot and is
-     reached through there, not from the top of the page. */
-  /* The gateway at "/" carries no navigation, so this is the only way back to
-     the homepage. "Home" is the full page at /home.html, not the gateway. */
-  /* Crystals is not listed here: it is no longer a page of its own and forwards
-     to the shop, so a "Crystals" entry would only promise a destination that
-     does not exist. The collection is reached through Shop, and the gateway's
-     Crystals panel goes there too. */
-  const nav = [
-    ['Home', '/home.html'],
-    ['Rituals', '/readings.html'],
-    ['Shop', '/shop.html'],
-    ['Journal', '/journal.html'],
-    ['About', '/about.html'],
-    ['Contact', '/contact.html'],
-  ];
+  /* ──────────────────────────────────────────────────────────────────────────
+     Brand Assets — Centralized Logo System
+     ──────────────────────────────────────────────────────────────────────────
+     Two logo variants:
+     - Wordmark (astrovetro-wordmark.png): Full "Astro Vetro" wordmark for primary branding
+     - Symbol (astrovetro-symbol.png): Compact symbol for icon-only placements
+     Both are transparent PNGs with preserved aspect ratios.
+     ────────────────────────────────────────────────────────────────────────── */
+  const BRAND = {
+    wordmark: '/assets/img/brand/astrovetro-wordmark.png',
+    symbol: '/assets/img/brand/astrovetro-symbol.png',
+    alt: 'Astro Vetro',
+    widths: {
+      desktop: { wordmark: 160, symbol: 36 },
+      mobile: { wordmark: 120, symbol: 28 },
+      footer: { wordmark: 140, symbol: 32 },
+    },
+    /* Generate logo HTML for different contexts */
+    logo: function (variant, size) {
+      const src = this[variant] || this.wordmark;
+      const width = this.widths[size]?.[variant] || this.widths.desktop[variant];
+      const height = Math.round(width * (variant === 'symbol' ? 1 : 0.5)); // wordmark ~2:1, symbol ~1:1
+      return `<img src="${this.esc(src)}" alt="${this.esc(this.alt)}" width="${width}" height="${height}" loading="lazy" decoding="async" style="width:${width}px;height:${height}px;object-fit:contain;">`;
+    },
+  };
+  BRAND.alt = 'Astro Vetro';
 
   function page(file) {
     return location.pathname.replace(/^\//, '').split('?')[0].split('#')[0] === file;
@@ -86,9 +89,10 @@ window.AV = window.AV || {};
     const initial = AV.user?.name?.[0] ?? AV.user?.email?.[0] ?? null;
     /* .header-inner carries the same max-width and padding as the page body,
        so the logo starts on the same vertical line as every page heading. */
+    const logoHTML = BRAND.logo('wordmark', 'desktop');
     return `
 <div class="header-inner">
-<a href="/home.html" class="logo">Astro Vetro</a>
+<a href="/home.html" class="logo" aria-label="Astro Vetro — Home">${logoHTML}</a>
 <button class="icon menu" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="siteNav">${icon('menu')}</button>
 <nav id="siteNav">${links}
   <a class="mobile-auth-link" href="${AV.user ? '/account.html' : '/signin.html'}">${AV.user ? 'My account' : 'Sign in'}</a>
@@ -114,10 +118,11 @@ window.AV = window.AV || {};
     /* Every link here is a real route. "Your bookings" pointed at an account
        view that no longer exists and led nowhere, so it is gone rather than
        left as a dead promise. */
+    const footerLogo = BRAND.logo('wordmark', 'footer');
     return `
 <div class="footer-grid">
   <div>
-    <div class="footer-logo">Astro Vetro</div>
+    <a href="/home.html" class="footer-logo" aria-label="Astro Vetro — Home">${footerLogo}</a>
     <p>Objects, rituals and symbols for coming back to yourself.</p>
   </div>
   <div>
