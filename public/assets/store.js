@@ -34,6 +34,16 @@ window.AV = window.AV || {};
   };
   BRAND.alt = 'Astro Vetro';
 
+  /* Navigation links used by headerHTML() — single source of truth */
+  const nav = [
+    ['Home', '/home.html'],
+    ['Rituals', '/readings.html'],
+    ['Shop', '/shop.html'],
+    ['Journal', '/journal.html'],
+    ['About', '/about.html'],
+    ['Contact', '/contact.html'],
+  ];
+
   function page(file) {
     return location.pathname.replace(/^\//, '').split('?')[0].split('#')[0] === file;
   }

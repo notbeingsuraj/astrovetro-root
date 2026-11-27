@@ -282,65 +282,6 @@ grid.addEventListener('click', (e) => {
   }
 });
 
-async function initFilters() {
-  const s = state();
-  AV.qs('#searchInput').value = s.search || '';
-  /* Reflect the URL in the control; fall back to Newest for anything the
-     select does not offer so it can never display a stale, mismatched value. */
-  const sortEl = AV.qs('#sortSelect');
-  const wanted = `${s.sort}:${s.order}`;
-  sortEl.value = [...sortEl.options].some((o) => o.value === wanted)
-    ? wanted
-    : ([...sortEl.options].some((o) => o.value === s.sort) ? s.sort : 'createdAt:desc');
-
-  try {
-    const env = await AV.api.get('/api/products/intentions');
-    const intentions = Array.isArray(env.data) ? env.data : (env.data || []);
-    const chips = AV.qs('#intentionChips');
-    [['', 'All']].concat(intentions.map((x) => [x.name || x, x.name || x])).forEach(([val, label]) => {
-      const chip = document.createElement('button');
-      chip.className = 'chip' + (s.intention && s.intention.toLowerCase() === String(val).toLowerCase() ? ' on' : '');
-      chip.textContent = label;
-      chip.dataset.intention = val;
-      chip.addEventListener('click', () => {
-        const same = s.intention.toLowerCase() === String(val).toLowerCase();
-        params.delete('category');
-        params.delete('search');
-        if (!same) params.set('intention', val);
-        else params.delete('intention');
-        AV.qs('#searchInput').value = '';
-        AV.qs('#catSelect').value = '';
-        AV.qsa('#intentionChips .chip').forEach((c) => {
-          c.classList.toggle('on', !same && c.dataset.intention === val);
-        });
-        refetch();
-      });
-      chips.appendChild(chip);
-    });
-  } catch (_e) { /* filters are optional */ }
-
-  try {
-    const all = await AV.api.get('/api/products?limit=50');
-    const cats = [...new Set((all.data || []).map((p) => p.category).filter(Boolean))];
-    const sel = AV.qs('#catSelect');
-    cats.forEach((c) => {
-      const o = document.createElement('option');
-      o.value = c;
-      o.textContent = c[0].toUpperCase() + c.slice(1);
-      sel.appendChild(o);
-    });
-    sel.value = s.category || '';
-  } catch (_e) { /* optional */ }
-}
-
-AV.qs('#searchForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const v = AV.qs('#searchInput').value.trim();
-  if (v) params.set('search', v);
-  else params.delete('search');
-  refetch();
-});
-
 /* Filter Drawer */
 const filterBtn = AV.qs('#filterBtn');
 const filterDrawer = AV.qs('#filterDrawer');
@@ -508,31 +449,6 @@ async function initFilters() {
   
   updateFilterCount();
 }
-
-function updateFilterCount() {
-  const s = state();
-  let count = 0;
-  if (s.search) count++;
-  if (s.intention) count++;
-  if (s.category) count++;
-  if (s.collection) count++;
-  if (s.sort !== 'createdAt' || s.order !== 'desc') count++;
-  const countEl = AV.qs('#filterCount');
-  if (count) {
-    countEl.textContent = count;
-    countEl.style.display = 'inline-flex';
-  } else {
-    countEl.style.display = 'none';
-  }
-}
-
-AV.qs('#searchForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const v = AV.qs('#searchInput').value.trim();
-  if (v) params.set('search', v);
-  else params.delete('search');
-  refetch();
-});
 
 /* Update refetch to sync drawer elements and filter count */
 async function load() {
