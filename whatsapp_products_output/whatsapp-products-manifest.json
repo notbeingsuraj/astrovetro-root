@@ -1,6 +1,738 @@
 {
-  "extractedAt": "2026-11-27T13:39:05.065Z",
+  "extractedAt": "2026-11-27T13:41:36.488Z",
   "sourceFile": "_chat.txt",
-  "totalProducts": 0,
-  "products": []
+  "totalProducts": 37,
+  "products": [
+    {
+      "id": 1,
+      "name": "Flower agate",
+      "description": "Flower agate",
+      "price": 999,
+      "priceFormatted": "₹999",
+      "currency": "INR",
+      "images": [
+        "00003107-PHOTO-2026-10-31-20-20-15.jpg",
+        "00003108-PHOTO-2026-10-31-20-20-16.jpg",
+        "00003139-PHOTO-2026-10-31-20-20-28.jpg",
+        "00003140-PHOTO-2026-10-31-20-20-29.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 121: ‎[31/10/26, 20:20:15] ~ Astro Vetro: Flower agate ₹999 ‎<attached: 00003107-PHOTO-2026-10-31-20-20-15.jpg>\r...; Line 122: ‎[31/10/26, 20:20:16] ~ Astro Vetro: Flower agate ₹999 ‎<attached: 00003108-PHOTO-2026-10-31-20-20-16.jpg>\r...; Line 153: ‎[31/10/26, 20:20:28] ~ Astro Vetro: Flower agate ₹999 ‎<attached: 00003139-PHOTO-2026-10-31-20-20-28.jpg>\r...; Line 154: ‎[31/10/26, 20:20:29] ~ Astro Vetro: Flower agate ₹999 ‎<attached: 00003140-PHOTO-2026-10-31-20-20-29.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "flower-agate",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 2,
+      "name": "Fire agate angel",
+      "description": "Fire agate angel",
+      "price": 777,
+      "priceFormatted": "₹777",
+      "currency": "INR",
+      "images": [
+        "00003110-PHOTO-2026-10-31-20-20-16.jpg",
+        "00003111-PHOTO-2026-10-31-20-20-17.jpg",
+        "00003112-PHOTO-2026-10-31-20-20-17.jpg",
+        "00003142-PHOTO-2026-10-31-20-20-29.jpg",
+        "00003143-PHOTO-2026-10-31-20-20-30.jpg",
+        "00003144-PHOTO-2026-10-31-20-20-30.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 124: ‎[31/10/26, 20:20:16] ~ Astro Vetro: Fire agate angel ₹777 ‎<attached: 00003110-PHOTO-2026-10-31-20-20-16.jpg>\r...; Line 125: ‎[31/10/26, 20:20:17] ~ Astro Vetro: Fire agate angel ₹777 ‎<attached: 00003111-PHOTO-2026-10-31-20-20-17.jpg>\r...; Line 126: ‎[31/10/26, 20:20:17] ~ Astro Vetro: Fire agate angel ₹777 ‎<attached: 00003112-PHOTO-2026-10-31-20-20-17.jpg>\r...; Line 156: ‎[31/10/26, 20:20:29] ~ Astro Vetro: Fire agate angel ₹777 ‎<attached: 00003142-PHOTO-2026-10-31-20-20-29.jpg>\r...; Line 157: ‎[31/10/26, 20:20:30] ~ Astro Vetro: Fire agate angel ₹777 ‎<attached: 00003143-PHOTO-2026-10-31-20-20-30.jpg>\r...; Line 158: ‎[31/10/26, 20:20:30] ~ Astro Vetro: Fire agate angel ₹777 ‎<attached: 00003144-PHOTO-2026-10-31-20-20-30.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "fire-agate-angel",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 3,
+      "name": "Labradorite pregnant woman",
+      "description": "Labradorite pregnant woman",
+      "price": 777,
+      "priceFormatted": "₹777",
+      "currency": "INR",
+      "images": [
+        "00003115-PHOTO-2026-10-31-20-20-19.jpg",
+        "00003147-PHOTO-2026-10-31-20-20-31.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 129: ‎[31/10/26, 20:20:19] ~ Astro Vetro: Labradorite pregnant woman ₹777 ‎<attached: 00003115-PHOTO-2026-10-31-20-20-19.jpg>\r...; Line 161: ‎[31/10/26, 20:20:31] ~ Astro Vetro: Labradorite pregnant woman ₹777 ‎<attached: 00003147-PHOTO-2026-10-31-20-20-31.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "labradorite-pregnant-woman",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 4,
+      "name": "Larvakite koala",
+      "description": "Larvakite koala",
+      "price": 888,
+      "priceFormatted": "₹888",
+      "currency": "INR",
+      "images": [
+        "00003116-PHOTO-2026-10-31-20-20-19.jpg",
+        "00003118-PHOTO-2026-10-31-20-20-20.jpg",
+        "00003148-PHOTO-2026-10-31-20-20-32.jpg",
+        "00003150-PHOTO-2026-10-31-20-20-33.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 130: ‎[31/10/26, 20:20:19] ~ Astro Vetro: Larvakite koala ₹888 ‎<attached: 00003116-PHOTO-2026-10-31-20-20-19.jpg>\r...; Line 132: ‎[31/10/26, 20:20:20] ~ Astro Vetro: Larvakite koala ₹888 ‎<attached: 00003118-PHOTO-2026-10-31-20-20-20.jpg>\r...; Line 162: ‎[31/10/26, 20:20:32] ~ Astro Vetro: Larvakite koala ₹888 ‎<attached: 00003148-PHOTO-2026-10-31-20-20-32.jpg>\r...; Line 164: ‎[31/10/26, 20:20:33] ~ Astro Vetro: Larvakite koala ₹888 ‎<attached: 00003150-PHOTO-2026-10-31-20-20-33.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "larvakite-koala",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 5,
+      "name": "Green jade sphere",
+      "description": "Green jade sphere",
+      "price": 1111,
+      "priceFormatted": "₹1111",
+      "currency": "INR",
+      "images": [
+        "00003119-PHOTO-2026-10-31-20-20-20.jpg",
+        "00003120-PHOTO-2026-10-31-20-20-21.jpg",
+        "00003151-PHOTO-2026-10-31-20-20-33.jpg",
+        "00003152-PHOTO-2026-10-31-20-20-33.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 133: ‎[31/10/26, 20:20:20] ~ Astro Vetro: Green jade sphere ₹1111 ‎<attached: 00003119-PHOTO-2026-10-31-20-20-20.jpg>\r...; Line 134: ‎[31/10/26, 20:20:21] ~ Astro Vetro: Green jade sphere ₹1111 ‎<attached: 00003120-PHOTO-2026-10-31-20-20-21.jpg>\r...; Line 165: ‎[31/10/26, 20:20:33] ~ Astro Vetro: Green jade sphere ₹1111 ‎<attached: 00003151-PHOTO-2026-10-31-20-20-33.jpg>\r...; Line 166: ‎[31/10/26, 20:20:33] ~ Astro Vetro: Green jade sphere ₹1111 ‎<attached: 00003152-PHOTO-2026-10-31-20-20-33.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "green-jade-sphere",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 6,
+      "name": "Black obsidian witch cat",
+      "description": "Black obsidian witch cat",
+      "price": 777,
+      "priceFormatted": "₹777",
+      "currency": "INR",
+      "images": [
+        "00003121-PHOTO-2026-10-31-20-20-21.jpg",
+        "00003153-PHOTO-2026-10-31-20-20-34.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 135: ‎[31/10/26, 20:20:21] ~ Astro Vetro: Black obsidian witch cat ₹777 ‎<attached: 00003121-PHOTO-2026-10-31-20-20-21.jpg>\r...; Line 167: ‎[31/10/26, 20:20:34] ~ Astro Vetro: Black obsidian witch cat ₹777 ‎<attached: 00003153-PHOTO-2026-10-31-20-20-34.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "black-obsidian-witch-cat",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 7,
+      "name": "Abalone cross pendant -",
+      "description": "Abalone cross pendant -",
+      "price": 999,
+      "priceFormatted": "₹999",
+      "currency": "INR",
+      "images": [
+        "00003122-PHOTO-2026-10-31-20-20-21.jpg",
+        "00003123-PHOTO-2026-10-31-20-20-22.jpg",
+        "00003154-PHOTO-2026-10-31-20-20-34.jpg",
+        "00003155-PHOTO-2026-10-31-20-20-34.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 136: ‎[31/10/26, 20:20:21] ~ Astro Vetro: Abalone cross pendant - ₹999 ‎<attached: 00003122-PHOTO-2026-10-31-20-20-21.jpg>\r...; Line 137: ‎[31/10/26, 20:20:22] ~ Astro Vetro: Abalone cross pendant - ₹999 ‎<attached: 00003123-PHOTO-2026-10-31-20-20-22.jpg>\r...; Line 168: ‎[31/10/26, 20:20:34] ~ Astro Vetro: Abalone cross pendant - ₹999 ‎<attached: 00003154-PHOTO-2026-10-31-20-20-34.jpg>\r...; Line 169: ‎[31/10/26, 20:20:34] ~ Astro Vetro: Abalone cross pendant - ₹999 ‎<attached: 00003155-PHOTO-2026-10-31-20-20-34.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "abalone-cross-pendant",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 8,
+      "name": "Golden rutile hair clip",
+      "description": "Golden rutile hair clip",
+      "price": 555,
+      "priceFormatted": "₹555",
+      "currency": "INR",
+      "images": [
+        "00003124-PHOTO-2026-10-31-20-20-22.jpg",
+        "00003156-PHOTO-2026-10-31-20-20-35.jpg"
+      ],
+      "category": "accessory",
+      "sourceReference": "Line 138: ‎[31/10/26, 20:20:22] ~ Astro Vetro: Golden rutile hair clip ₹555 ‎<attached: 00003124-PHOTO-2026-10-31-20-20-22.jpg>\r...; Line 170: ‎[31/10/26, 20:20:35] ~ Astro Vetro: Golden rutile hair clip ₹555 ‎<attached: 00003156-PHOTO-2026-10-31-20-20-35.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "golden-rutile-hair-clip",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 9,
+      "name": "Moss agate clouds",
+      "description": "Moss agate clouds",
+      "price": 444,
+      "priceFormatted": "₹444",
+      "currency": "INR",
+      "images": [
+        "00003125-PHOTO-2026-10-31-20-20-23.jpg",
+        "00003157-PHOTO-2026-10-31-20-20-35.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 139: ‎[31/10/26, 20:20:23] ~ Astro Vetro: Moss agate clouds ₹444 ‎<attached: 00003125-PHOTO-2026-10-31-20-20-23.jpg>\r...; Line 171: ‎[31/10/26, 20:20:35] ~ Astro Vetro: Moss agate clouds ₹444 ‎<attached: 00003157-PHOTO-2026-10-31-20-20-35.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "moss-agate-clouds",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 10,
+      "name": "Fluorite lollipop",
+      "description": "Fluorite lollipop",
+      "price": 666,
+      "priceFormatted": "₹666",
+      "currency": "INR",
+      "images": [
+        "00003126-PHOTO-2026-10-31-20-20-23.jpg",
+        "00003127-PHOTO-2026-10-31-20-20-23.jpg",
+        "00003158-PHOTO-2026-10-31-20-20-36.jpg",
+        "00003159-PHOTO-2026-10-31-20-20-36.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 140: ‎[31/10/26, 20:20:23] ~ Astro Vetro: Fluorite lollipop ₹666 ‎<attached: 00003126-PHOTO-2026-10-31-20-20-23.jpg>\r...; Line 141: ‎[31/10/26, 20:20:23] ~ Astro Vetro: Fluorite lollipop ₹666 ‎<attached: 00003127-PHOTO-2026-10-31-20-20-23.jpg>\r...; Line 172: ‎[31/10/26, 20:20:36] ~ Astro Vetro: Fluorite lollipop ₹666 ‎<attached: 00003158-PHOTO-2026-10-31-20-20-36.jpg>\r...; Line 173: ‎[31/10/26, 20:20:36] ~ Astro Vetro: Fluorite lollipop ₹666 ‎<attached: 00003159-PHOTO-2026-10-31-20-20-36.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "fluorite-lollipop",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 11,
+      "name": "Tree agate snake",
+      "description": "Tree agate snake",
+      "price": 888,
+      "priceFormatted": "₹888",
+      "currency": "INR",
+      "images": [
+        "00003128-PHOTO-2026-10-31-20-20-24.jpg",
+        "00003129-PHOTO-2026-10-31-20-20-24.jpg",
+        "00003160-PHOTO-2026-10-31-20-20-36.jpg",
+        "00003161-PHOTO-2026-10-31-20-20-37.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 142: ‎[31/10/26, 20:20:24] ~ Astro Vetro: Tree agate snake ₹888 ‎<attached: 00003128-PHOTO-2026-10-31-20-20-24.jpg>\r...; Line 143: ‎[31/10/26, 20:20:24] ~ Astro Vetro: Tree agate snake ₹888 ‎<attached: 00003129-PHOTO-2026-10-31-20-20-24.jpg>\r...; Line 174: ‎[31/10/26, 20:20:36] ~ Astro Vetro: Tree agate snake ₹888 ‎<attached: 00003160-PHOTO-2026-10-31-20-20-36.jpg>\r...; Line 175: ‎[31/10/26, 20:20:37] ~ Astro Vetro: Tree agate snake ₹888 ‎<attached: 00003161-PHOTO-2026-10-31-20-20-37.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "tree-agate-snake",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 12,
+      "name": "Yellow calcite yoda",
+      "description": "Yellow calcite yoda",
+      "price": 999,
+      "priceFormatted": "₹999",
+      "currency": "INR",
+      "images": [
+        "00003130-PHOTO-2026-10-31-20-20-25.jpg",
+        "00003162-PHOTO-2026-10-31-20-20-37.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 144: ‎[31/10/26, 20:20:25] ~ Astro Vetro: Yellow calcite yoda ₹999 ‎<attached: 00003130-PHOTO-2026-10-31-20-20-25.jpg>\r...; Line 176: ‎[31/10/26, 20:20:37] ~ Astro Vetro: Yellow calcite yoda ₹999 ‎<attached: 00003162-PHOTO-2026-10-31-20-20-37.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "yellow-calcite-yoda",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 13,
+      "name": "Abalone bumblebee pendant and broach -",
+      "description": "Abalone bumblebee pendant and broach -",
+      "price": 999,
+      "priceFormatted": "₹999",
+      "currency": "INR",
+      "images": [
+        "00003131-PHOTO-2026-10-31-20-20-25.jpg",
+        "00003132-PHOTO-2026-10-31-20-20-25.jpg",
+        "00003133-PHOTO-2026-10-31-20-20-26.jpg",
+        "00003163-PHOTO-2026-10-31-20-20-38.jpg",
+        "00003164-PHOTO-2026-10-31-20-20-38.jpg",
+        "00003165-PHOTO-2026-10-31-20-20-38.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 145: ‎[31/10/26, 20:20:25] ~ Astro Vetro: Abalone bumblebee pendant and broach - ₹999 ‎<attached: 00003131-PHOTO-2026-10-31-20-20-25.jpg>\r...; Line 146: ‎[31/10/26, 20:20:25] ~ Astro Vetro: Abalone bumblebee pendant and broach - ₹999 ‎<attached: 00003132-PHOTO-2026-10-31-20-20-25.jpg>\r...; Line 147: ‎[31/10/26, 20:20:26] ~ Astro Vetro: Abalone bumblebee pendant and broach - ₹999 ‎<attached: 00003133-PHOTO-2026-10-31-20-20-26.jpg>\r...; Line 177: ‎[31/10/26, 20:20:38] ~ Astro Vetro: Abalone bumblebee pendant and broach - ₹999 ‎<attached: 00003163-PHOTO-2026-10-31-20-20-38.jpg>\r...; Line 178: ‎[31/10/26, 20:20:38] ~ Astro Vetro: Abalone bumblebee pendant and broach - ₹999 ‎<attached: 00003164-PHOTO-2026-10-31-20-20-38.jpg>\r...; Line 179: ‎[31/10/26, 20:20:38] ~ Astro Vetro: Abalone bumblebee pendant and broach - ₹999 ‎<attached: 00003165-PHOTO-2026-10-31-20-20-38.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "abalone-bumblebee-pendant-and-broach",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 14,
+      "name": "Peach moonstone pendant",
+      "description": "Peach moonstone pendant",
+      "price": 777,
+      "priceFormatted": "₹777",
+      "currency": "INR",
+      "images": [
+        "00003134-PHOTO-2026-10-31-20-20-26.jpg",
+        "00003136-PHOTO-2026-10-31-20-20-27.jpg",
+        "00003166-PHOTO-2026-10-31-20-20-39.jpg",
+        "00003168-PHOTO-2026-10-31-20-20-40.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 148: ‎[31/10/26, 20:20:26] ~ Astro Vetro: Peach moonstone pendant ₹777 ‎<attached: 00003134-PHOTO-2026-10-31-20-20-26.jpg>\r...; Line 150: ‎[31/10/26, 20:20:27] ~ Astro Vetro: Peach moonstone pendant ₹777 ‎<attached: 00003136-PHOTO-2026-10-31-20-20-27.jpg>\r...; Line 180: ‎[31/10/26, 20:20:39] ~ Astro Vetro: Peach moonstone pendant ₹777 ‎<attached: 00003166-PHOTO-2026-10-31-20-20-39.jpg>\r...; Line 182: ‎[31/10/26, 20:20:40] ~ Astro Vetro: Peach moonstone pendant ₹777 ‎<attached: 00003168-PHOTO-2026-10-31-20-20-40.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "peach-moonstone-pendant",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 15,
+      "name": "Abalone snake pendant -",
+      "description": "Abalone snake pendant -",
+      "price": 1111,
+      "priceFormatted": "₹1111",
+      "currency": "INR",
+      "images": [
+        "00003135-PHOTO-2026-10-31-20-20-27.jpg",
+        "00003167-PHOTO-2026-10-31-20-20-39.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 149: ‎[31/10/26, 20:20:27] ~ Astro Vetro: Abalone snake pendant - ₹1111 ‎<attached: 00003135-PHOTO-2026-10-31-20-20-27.jpg>\r...; Line 181: ‎[31/10/26, 20:20:39] ~ Astro Vetro: Abalone snake pendant - ₹1111 ‎<attached: 00003167-PHOTO-2026-10-31-20-20-39.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "abalone-snake-pendant",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 16,
+      "name": "Abalone spider pendant and broach -",
+      "description": "Abalone spider pendant and broach -",
+      "price": 999,
+      "priceFormatted": "₹999",
+      "currency": "INR",
+      "images": [
+        "00003137-PHOTO-2026-10-31-20-20-27.jpg",
+        "00003169-PHOTO-2026-10-31-20-20-40.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 151: ‎[31/10/26, 20:20:27] ~ Astro Vetro: Abalone spider pendant and broach - ₹999 ‎<attached: 00003137-PHOTO-2026-10-31-20-20-27.jpg>\r...; Line 183: ‎[31/10/26, 20:20:40] ~ Astro Vetro: Abalone spider pendant and broach - ₹999 ‎<attached: 00003169-PHOTO-2026-10-31-20-20-40.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "abalone-spider-pendant-and-broach",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 17,
+      "name": "Black obsidian triple moon disk",
+      "description": "Black obsidian triple moon disk",
+      "price": 999,
+      "priceFormatted": "₹999",
+      "currency": "INR",
+      "images": [
+        "00003138-PHOTO-2026-10-31-20-20-28.jpg",
+        "00003170-PHOTO-2026-10-31-20-20-40.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 152: ‎[31/10/26, 20:20:28] ~ Astro Vetro: Black obsidian triple moon disk ₹999 ‎<attached: 00003138-PHOTO-2026-10-31-20-20-28.jpg>\r...; Line 184: ‎[31/10/26, 20:20:40] ~ Astro Vetro: Black obsidian triple moon disk ₹999 ‎<attached: 00003170-PHOTO-2026-10-31-20-20-40.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "black-obsidian-triple-moon-disk",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 18,
+      "name": "Realgar tower",
+      "description": "Realgar tower",
+      "price": 1999,
+      "priceFormatted": "₹1999",
+      "currency": "INR",
+      "images": [
+        "00003194-PHOTO-2026-11-01-23-36-24.jpg",
+        "00003248-PHOTO-2026-11-01-23-36-44.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 208: ‎[01/11/26, 23:36:24] ~ Astro Vetro: Realgar tower ₹1999 ‎<attached: 00003194-PHOTO-2026-11-01-23-36-24.jpg>\r...; Line 262: ‎[01/11/26, 23:36:44] ~ Astro Vetro: Realgar tower ₹1999 ‎<attached: 00003248-PHOTO-2026-11-01-23-36-44.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "realgar-tower",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 19,
+      "name": "Carabien calcite",
+      "description": "Carabien calcite",
+      "price": 1333,
+      "priceFormatted": "₹1333",
+      "currency": "INR",
+      "images": [
+        "00003197-PHOTO-2026-11-01-23-36-25.jpg",
+        "00003251-PHOTO-2026-11-01-23-36-45.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 211: ‎[01/11/26, 23:36:25] ~ Astro Vetro: Carabien calcite ₹1333 ‎<attached: 00003197-PHOTO-2026-11-01-23-36-25.jpg>\r...; Line 265: ‎[01/11/26, 23:36:45] ~ Astro Vetro: Carabien calcite ₹1333 ‎<attached: 00003251-PHOTO-2026-11-01-23-36-45.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "carabien-calcite",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 20,
+      "name": "Golden sheen obsidian lion",
+      "description": "Golden sheen obsidian lion",
+      "price": 777,
+      "priceFormatted": "₹777",
+      "currency": "INR",
+      "images": [
+        "00003201-PHOTO-2026-11-01-23-36-26.jpg",
+        "00003255-PHOTO-2026-11-01-23-36-47.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 215: ‎[01/11/26, 23:36:26] ~ Astro Vetro: Golden sheen obsidian lion ₹777 ‎<attached: 00003201-PHOTO-2026-11-01-23-36-26.jpg>\r...; Line 269: ‎[01/11/26, 23:36:47] ~ Astro Vetro: Golden sheen obsidian lion ₹777 ‎<attached: 00003255-PHOTO-2026-11-01-23-36-47.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "golden-sheen-obsidian-lion",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 21,
+      "name": "Aura quartz raw chunk",
+      "description": "Aura quartz raw chunk",
+      "price": 444,
+      "priceFormatted": "₹444",
+      "currency": "INR",
+      "images": [
+        "00003202-PHOTO-2026-11-01-23-36-26.jpg",
+        "00003203-PHOTO-2026-11-01-23-36-27.jpg",
+        "00003204-PHOTO-2026-11-01-23-36-27.jpg",
+        "00003205-PHOTO-2026-11-01-23-36-27.jpg",
+        "00003256-PHOTO-2026-11-01-23-36-47.jpg",
+        "00003257-PHOTO-2026-11-01-23-36-48.jpg",
+        "00003258-PHOTO-2026-11-01-23-36-48.jpg",
+        "00003259-PHOTO-2026-11-01-23-36-49.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 216: ‎[01/11/26, 23:36:26] ~ Astro Vetro: Aura quartz raw chunk ₹444 ‎<attached: 00003202-PHOTO-2026-11-01-23-36-26.jpg>\r...; Line 217: ‎[01/11/26, 23:36:27] ~ Astro Vetro: Aura quartz raw chunk ₹444 ‎<attached: 00003203-PHOTO-2026-11-01-23-36-27.jpg>\r...; Line 218: ‎[01/11/26, 23:36:27] ~ Astro Vetro: Aura quartz raw chunk ₹444 ‎<attached: 00003204-PHOTO-2026-11-01-23-36-27.jpg>\r...; Line 219: ‎[01/11/26, 23:36:27] ~ Astro Vetro: Aura quartz raw chunk ₹444 ‎<attached: 00003205-PHOTO-2026-11-01-23-36-27.jpg>\r...; Line 270: ‎[01/11/26, 23:36:47] ~ Astro Vetro: Aura quartz raw chunk ₹444 ‎<attached: 00003256-PHOTO-2026-11-01-23-36-47.jpg>\r...; Line 271: ‎[01/11/26, 23:36:48] ~ Astro Vetro: Aura quartz raw chunk ₹444 ‎<attached: 00003257-PHOTO-2026-11-01-23-36-48.jpg>\r...; Line 272: ‎[01/11/26, 23:36:48] ~ Astro Vetro: Aura quartz raw chunk ₹444 ‎<attached: 00003258-PHOTO-2026-11-01-23-36-48.jpg>\r...; Line 273: ‎[01/11/26, 23:36:49] ~ Astro Vetro: Aura quartz raw chunk ₹444 ‎<attached: 00003259-PHOTO-2026-11-01-23-36-49.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "aura-quartz-raw-chunk",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 22,
+      "name": "Pink amethyst",
+      "description": "Pink amethyst",
+      "price": 2555,
+      "priceFormatted": "₹2555",
+      "currency": "INR",
+      "images": [
+        "00003209-PHOTO-2026-11-01-23-36-29.jpg",
+        "00003263-PHOTO-2026-11-01-23-36-50.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 223: ‎[01/11/26, 23:36:29] ~ Astro Vetro: Pink amethyst ₹2555 ‎<attached: 00003209-PHOTO-2026-11-01-23-36-29.jpg>\r...; Line 277: ‎[01/11/26, 23:36:50] ~ Astro Vetro: Pink amethyst ₹2555 ‎<attached: 00003263-PHOTO-2026-11-01-23-36-50.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "pink-amethyst",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 23,
+      "name": "Selenite ₹999 and calacite",
+      "description": "Selenite ₹999 and calacite",
+      "price": 888,
+      "priceFormatted": "₹888",
+      "currency": "INR",
+      "images": [
+        "00003211-PHOTO-2026-11-01-23-36-30.jpg",
+        "00003265-PHOTO-2026-11-01-23-36-51.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 225: ‎[01/11/26, 23:36:30] ~ Astro Vetro: Selenite ₹999 and calacite ₹888 ‎<attached: 00003211-PHOTO-2026-11-01-23-36-30.jpg>\r...; Line 279: ‎[01/11/26, 23:36:51] ~ Astro Vetro: Selenite ₹999 and calacite ₹888 ‎<attached: 00003265-PHOTO-2026-11-01-23-36-51.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "selenite-999-and-calacite",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 24,
+      "name": "Garnet butterfly",
+      "description": "Garnet butterfly",
+      "price": 1333,
+      "priceFormatted": "₹1333",
+      "currency": "INR",
+      "images": [
+        "00003212-PHOTO-2026-11-01-23-36-30.jpg",
+        "00003266-PHOTO-2026-11-01-23-36-52.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 226: ‎[01/11/26, 23:36:30] ~ Astro Vetro: Garnet butterfly ₹1333 ‎<attached: 00003212-PHOTO-2026-11-01-23-36-30.jpg>\r...; Line 280: ‎[01/11/26, 23:36:52] ~ Astro Vetro: Garnet butterfly ₹1333 ‎<attached: 00003266-PHOTO-2026-11-01-23-36-52.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "garnet-butterfly",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 25,
+      "name": "Amethys cross pendant",
+      "description": "Amethys cross pendant",
+      "price": 999,
+      "priceFormatted": "₹999",
+      "currency": "INR",
+      "images": [
+        "00003214-PHOTO-2026-11-01-23-36-31.jpg",
+        "00003268-PHOTO-2026-11-01-23-36-52.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 228: ‎[01/11/26, 23:36:31] ~ Astro Vetro: Amethys cross pendant ₹999 ‎<attached: 00003214-PHOTO-2026-11-01-23-36-31.jpg>\r...; Line 282: ‎[01/11/26, 23:36:52] ~ Astro Vetro: Amethys cross pendant ₹999 ‎<attached: 00003268-PHOTO-2026-11-01-23-36-52.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "amethys-cross-pendant",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 26,
+      "name": "Multi tourmaline cross pendant",
+      "description": "Multi tourmaline cross pendant",
+      "price": 1555,
+      "priceFormatted": "₹1555",
+      "currency": "INR",
+      "images": [
+        "00003216-PHOTO-2026-11-01-23-36-31.jpg",
+        "00003270-PHOTO-2026-11-01-23-36-53.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 230: ‎[01/11/26, 23:36:31] ~ Astro Vetro: Multi tourmaline cross pendant ₹1555 ‎<attached: 00003216-PHOTO-2026-11-01-23-36-31.jpg>\r...; Line 284: ‎[01/11/26, 23:36:53] ~ Astro Vetro: Multi tourmaline cross pendant ₹1555 ‎<attached: 00003270-PHOTO-2026-11-01-23-36-53.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "multi-tourmaline-cross-pendant",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 27,
+      "name": "Multi tourmaline butterfly",
+      "description": "Multi tourmaline butterfly",
+      "price": 1666,
+      "priceFormatted": "₹1666",
+      "currency": "INR",
+      "images": [
+        "00003217-PHOTO-2026-11-01-23-36-32.jpg",
+        "00003271-PHOTO-2026-11-01-23-36-54.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 231: ‎[01/11/26, 23:36:32] ~ Astro Vetro: Multi tourmaline butterfly ₹1666 ‎<attached: 00003217-PHOTO-2026-11-01-23-36-32.jpg>\r...; Line 285: ‎[01/11/26, 23:36:54] ~ Astro Vetro: Multi tourmaline butterfly ₹1666 ‎<attached: 00003271-PHOTO-2026-11-01-23-36-54.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "multi-tourmaline-butterfly",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 28,
+      "name": "Labradorite cross pendant",
+      "description": "Labradorite cross pendant",
+      "price": 1444,
+      "priceFormatted": "₹1444",
+      "currency": "INR",
+      "images": [
+        "00003220-PHOTO-2026-11-01-23-36-33.jpg",
+        "00003274-PHOTO-2026-11-01-23-36-55.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 234: ‎[01/11/26, 23:36:33] ~ Astro Vetro: Labradorite cross pendant ₹1444 ‎<attached: 00003220-PHOTO-2026-11-01-23-36-33.jpg>\r...; Line 288: ‎[01/11/26, 23:36:55] ~ Astro Vetro: Labradorite cross pendant ₹1444 ‎<attached: 00003274-PHOTO-2026-11-01-23-36-55.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "labradorite-cross-pendant",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 29,
+      "name": "Blue topaz flower pendant",
+      "description": "Blue topaz flower pendant",
+      "price": 1333,
+      "priceFormatted": "₹1333",
+      "currency": "INR",
+      "images": [
+        "00003222-PHOTO-2026-11-01-23-36-34.jpg",
+        "00003276-PHOTO-2026-11-01-23-36-55.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 236: ‎[01/11/26, 23:36:34] ~ Astro Vetro: Blue topaz flower pendant ₹1333 ‎<attached: 00003222-PHOTO-2026-11-01-23-36-34.jpg>\r...; Line 290: ‎[01/11/26, 23:36:55] ~ Astro Vetro: Blue topaz flower pendant ₹1333 ‎<attached: 00003276-PHOTO-2026-11-01-23-36-55.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "blue-topaz-flower-pendant",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 30,
+      "name": "Abalone oval ring free size",
+      "description": "Abalone oval ring free size",
+      "price": 888,
+      "priceFormatted": "₹888",
+      "currency": "INR",
+      "images": [
+        "00003231-PHOTO-2026-11-01-23-36-37.jpg",
+        "00003285-PHOTO-2026-11-01-23-36-59.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 245: ‎[01/11/26, 23:36:37] ~ Astro Vetro: Abalone oval ring free size ₹888 ‎<attached: 00003231-PHOTO-2026-11-01-23-36-37.jpg>\r...; Line 299: ‎[01/11/26, 23:36:59] ~ Astro Vetro: Abalone oval ring free size ₹888 ‎<attached: 00003285-PHOTO-2026-11-01-23-36-59.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "abalone-oval-ring-free-size",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 31,
+      "name": "Moonstone square ring not free size",
+      "description": "Moonstone square ring not free size",
+      "price": 666,
+      "priceFormatted": "₹666",
+      "currency": "INR",
+      "images": [
+        "00003234-PHOTO-2026-11-01-23-36-38.jpg",
+        "00003288-PHOTO-2026-11-01-23-37-00.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 248: ‎[01/11/26, 23:36:38] ~ Astro Vetro: Moonstone square ring not free size ₹666 ‎<attached: 00003234-PHOTO-2026-11-01-23-36-38.jpg>\r...; Line 302: ‎[01/11/26, 23:37:00] ~ Astro Vetro: Moonstone square ring not free size ₹666 ‎<attached: 00003288-PHOTO-2026-11-01-23-37-00.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "moonstone-square-ring-not-free-size",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 32,
+      "name": "Labradorite square ring not free size",
+      "description": "Labradorite square ring not free size",
+      "price": 666,
+      "priceFormatted": "₹666",
+      "currency": "INR",
+      "images": [
+        "00003235-PHOTO-2026-11-01-23-36-39.jpg",
+        "00003289-PHOTO-2026-11-01-23-37-00.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 249: ‎[01/11/26, 23:36:39] ~ Astro Vetro: Labradorite square ring not free size ₹666 ‎<attached: 00003235-PHOTO-2026-11-01-23-36-39.jpg>\r...; Line 303: ‎[01/11/26, 23:37:00] ~ Astro Vetro: Labradorite square ring not free size ₹666 ‎<attached: 00003289-PHOTO-2026-11-01-23-37-00.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "labradorite-square-ring-not-free-size",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 33,
+      "name": "Amethyst rose ring",
+      "description": "Amethyst rose ring",
+      "price": 777,
+      "priceFormatted": "₹777",
+      "currency": "INR",
+      "images": [
+        "00003236-PHOTO-2026-11-01-23-36-39.jpg",
+        "00003290-PHOTO-2026-11-01-23-37-01.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 250: ‎[01/11/26, 23:36:39] ~ Astro Vetro: Amethyst rose ring ₹777 ‎<attached: 00003236-PHOTO-2026-11-01-23-36-39.jpg>\r...; Line 304: ‎[01/11/26, 23:37:01] ~ Astro Vetro: Amethyst rose ring ₹777 ‎<attached: 00003290-PHOTO-2026-11-01-23-37-01.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "amethyst-rose-ring",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 34,
+      "name": "Rose quartz rose ring",
+      "description": "Rose quartz rose ring",
+      "price": 777,
+      "priceFormatted": "₹777",
+      "currency": "INR",
+      "images": [
+        "00003237-PHOTO-2026-11-01-23-36-40.jpg",
+        "00003291-PHOTO-2026-11-01-23-37-01.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 251: ‎[01/11/26, 23:36:40] ~ Astro Vetro: Rose quartz rose ring ₹777 ‎<attached: 00003237-PHOTO-2026-11-01-23-36-40.jpg>\r...; Line 305: ‎[01/11/26, 23:37:01] ~ Astro Vetro: Rose quartz rose ring ₹777 ‎<attached: 00003291-PHOTO-2026-11-01-23-37-01.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "rose-quartz-rose-ring",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 35,
+      "name": "Peridot cross",
+      "description": "Peridot cross",
+      "price": 1333,
+      "priceFormatted": "₹1333",
+      "currency": "INR",
+      "images": [
+        "00003238-PHOTO-2026-11-01-23-36-40.jpg",
+        "00003292-PHOTO-2026-11-01-23-37-01.jpg"
+      ],
+      "category": "jewellery",
+      "sourceReference": "Line 252: ‎[01/11/26, 23:36:40] ~ Astro Vetro: Peridot cross ₹1333 ‎<attached: 00003238-PHOTO-2026-11-01-23-36-40.jpg>\r...; Line 306: ‎[01/11/26, 23:37:01] ~ Astro Vetro: Peridot cross ₹1333 ‎<attached: 00003292-PHOTO-2026-11-01-23-37-01.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "peridot-cross",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 36,
+      "name": "Abalone and mother of pearl mermaid tails",
+      "description": "Abalone and mother of pearl mermaid tails",
+      "price": 555,
+      "priceFormatted": "₹555",
+      "currency": "INR",
+      "images": [
+        "00003239-PHOTO-2026-11-01-23-36-40.jpg",
+        "00003293-PHOTO-2026-11-01-23-37-02.jpg"
+      ],
+      "category": "carved",
+      "sourceReference": "Line 253: ‎[01/11/26, 23:36:40] ~ Astro Vetro: Abalone and mother of pearl mermaid tails ₹555 ‎<attached: 00003239-PHOTO-2026-11-01-23-36-40.jpg>\r...; Line 307: ‎[01/11/26, 23:37:02] ~ Astro Vetro: Abalone and mother of pearl mermaid tails ₹555 ‎<attached: 00003293-PHOTO-2026-11-01-23-37-02.jpg>\r...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "abalone-and-mother-of-pearl-mermaid-tails",
+      "duplicateOf": null,
+      "verified": false
+    },
+    {
+      "id": 37,
+      "name": "Black agate, clear quartz with rainbow, lapis lazuli and carnelian",
+      "description": "Black agate, clear quartz with rainbow, lapis lazuli and carnelian",
+      "price": 444,
+      "priceFormatted": "₹444",
+      "currency": "INR",
+      "images": [
+        "00003241-PHOTO-2026-11-01-23-36-41.jpg",
+        "00003295-PHOTO-2026-11-01-23-37-02.jpg"
+      ],
+      "category": "crystal",
+      "sourceReference": "Line 255: ‎[01/11/26, 23:36:41] ~ Astro Vetro: Black agate, clear quartz with rainbow, lapis lazuli and carnelian ₹444 ‎<attached: 00003241-PHOTO-2026-11-01-23-...; Line 309: ‎[01/11/26, 23:37:02] ~ Astro Vetro: Black agate, clear quartz with rainbow, lapis lazuli and carnelian ₹444 ‎<attached: 00003295-PHOTO-2026-11-01-23-...",
+      "confidence": "high",
+      "status": "draft",
+      "slug": "black-agate-clear-quartz-with-rainbow-lapis-lazuli-and-carnelian",
+      "duplicateOf": null,
+      "verified": false
+    }
+  ]
 }

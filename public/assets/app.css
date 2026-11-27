@@ -295,12 +295,39 @@
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid var(--line);
-  min-width: 240px;
+  min-width: 0;
+  width: 100%;
+  max-width: 400px;
+  flex: 1;
 }
 .search-field input {
   flex: 1;
   min-width: 0;
   border: 0;
+}
+@media (min-width: 561px) {
+  .search-field {
+    min-width: 240px;
+    width: auto;
+    max-width: none;
+    flex: 0 1 auto;
+  }
+}
+/* Mobile: stack search input and button vertically */
+@media (max-width: 560px) {
+  .search-field {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    max-width: none;
+  }
+  .search-field input {
+    width: 100%;
+  }
+  .search-field .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 .pager {
   display: flex;

@@ -84,6 +84,21 @@ button,input,textarea {
   letter-spacing:.14em;
   text-transform:uppercase;
   white-space:nowrap;
+  display:inline-flex;
+  align-items:center;
+}
+.logo img {
+  height:auto;
+  max-height:48px;
+  width:auto;
+}
+.text-wordmark {
+  font:400 29px 'Cormorant Garamond';
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  color:var(--white);
+  line-height:1;
 }
 nav {
   display:flex;

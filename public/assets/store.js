@@ -10,10 +10,11 @@ window.AV = window.AV || {};
   /* ──────────────────────────────────────────────────────────────────────────
      Brand Assets — Centralized Logo System
      ──────────────────────────────────────────────────────────────────────────
-     Two logo variants:
+     Logo variants:
      - Wordmark (astrovetro-wordmark.png): Full "Astro Vetro" wordmark for primary branding
      - Symbol (astrovetro-symbol.png): Compact symbol for icon-only placements
      Both are transparent PNGs with preserved aspect ratios.
+     White variants are generated via CSS filter on the base images.
      ────────────────────────────────────────────────────────────────────────── */
   const BRAND = {
     wordmark: '/assets/img/brand/astrovetro-wordmark.png',
@@ -24,12 +25,20 @@ window.AV = window.AV || {};
       mobile: { wordmark: 120, symbol: 28 },
       footer: { wordmark: 140, symbol: 32 },
     },
-    /* Generate logo HTML for different contexts */
+    /* Generate logo HTML for different contexts.
+       White variants use CSS filter to invert the base image to white. */
     logo: function (variant, size) {
-      const src = this[variant] || this.wordmark;
-      const width = this.widths[size]?.[variant] || this.widths.desktop[variant];
-      const height = Math.round(width * (variant === 'symbol' ? 1 : 0.5)); // wordmark ~2:1, symbol ~1:1
-      return `<img src="${AV.esc(src)}" alt="${AV.esc(this.alt)}" width="${width}" height="${height}" loading="lazy" decoding="async" style="width:${width}px;height:${height}px;object-fit:contain;">`;
+      const isWhite = variant.endsWith('White');
+      const baseVariant = variant.replace('White', '');
+      const src = this[baseVariant] || this.wordmark;
+      const width = this.widths[size]?.[baseVariant] || this.widths.desktop[baseVariant];
+      const height = Math.round(width * (baseVariant === 'symbol' ? 1 : 0.5)); // wordmark ~2:1, symbol ~1:1
+      const filterStyle = isWhite ? 'filter:brightness(0) invert(1);' : '';
+      return `<img src="${AV.esc(src)}" alt="${AV.esc(this.alt)}" width="${width}" height="${height}" loading="lazy" decoding="async" style="width:${width}px;height:${height}px;object-fit:contain;${filterStyle}">`;
+    },
+    /* Generate text-based wordmark for homepage header */
+    textWordmark: function () {
+      return `<span class="text-wordmark" aria-label="Astro Vetro">ASTROVETRO</span>`;
     },
   };
   BRAND.alt = 'Astro Vetro';
@@ -99,7 +108,11 @@ window.AV = window.AV || {};
     const initial = AV.user?.name?.[0] ?? AV.user?.email?.[0] ?? null;
     /* .header-inner carries the same max-width and padding as the page body,
        so the logo starts on the same vertical line as every page heading. */
-    const logoHTML = BRAND.logo('wordmark', 'desktop');
+    // Use text-based wordmark for homepage header, graphical logo (white variant) for other pages
+    const isHomepage = page('home.html') || page('index.html');
+    const logoHTML = isHomepage
+      ? BRAND.textWordmark()
+      : BRAND.logo('wordmarkWhite', 'desktop');
     return `
 <div class="header-inner">
 <a href="/home.html" class="logo" aria-label="Astro Vetro — Home">${logoHTML}</a>
