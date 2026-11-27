@@ -125,51 +125,51 @@ window.AV = window.AV || {};
 
   function footerHTML() {
     const y = new Date().getFullYear();
-    /* Every link here is a real route. "Your bookings" pointed at an account
-       view that no longer exists and led nowhere, so it is gone rather than
-       left as a dead promise. */
+    /* Every link here is a real route. */
     const footerLogo = BRAND.logo('wordmark', 'footer');
     return `
 <div class="footer-grid">
-  <div>
+  <div class="footer-col footer-brand">
     <a href="/home.html" class="footer-logo" aria-label="Astro Vetro — Home">${footerLogo}</a>
     <p>Objects, rituals and symbols for coming back to yourself.</p>
   </div>
-  <div>
-    <div class="footer-title">Navigate</div>
-    <a href="/home.html">Home</a>
-    <a href="/readings.html">Rituals</a>
-    <a href="/shop.html">Shop</a>
-    <a href="/journal.html">Journal</a>
-    <a href="/about.html">About</a>
-    <a href="/contact.html">Contact</a>
+  <div class="footer-col">
+    <div class="footer-title">Explore</div>
+    <ul class="footer-links">
+      <li><a href="/shop.html">Shop All</a></li>
+      <li><a href="/shop.html">New Arrivals</a></li>
+      <li><a href="/shop.html">Categories</a></li>
+      <li><a href="/shop.html">Collections</a></li>
+    </ul>
   </div>
-  <div>
-    <div class="footer-title">Customer</div>
-    <a href="/legal.html#shipping">Shipping</a>
-    <a href="/legal.html#returns">Returns</a>
-    <a href="/legal.html#faq">FAQ</a>
-    <a href="/legal.html#privacy">Privacy</a>
-    <a href="/legal.html#terms">Terms</a>
+  <div class="footer-col">
+    <div class="footer-title">Customer Support</div>
+    <ul class="footer-links">
+      <li><a href="/contact.html">Contact Us</a></li>
+      <li><a href="/legal.html#faq">FAQs</a></li>
+      <li><a href="/legal.html#shipping">Shipping Information</a></li>
+      <li><a href="/legal.html#returns">Returns & Refunds</a></li>
+      <li><a href="/tracking.html">Order Tracking</a></li>
+    </ul>
   </div>
-  <div>
-    <div class="footer-title">Customer</div>
-    <a href="/cart.html">Your bag</a>
-    <a href="/wishlist.html">Saved pieces</a>
-    <a href="/signin.html">Sign in</a>
-    <a href="/signup.html">Create account</a>
-    <a href="/account.html">Your account</a>
-    <a href="/orders.html">Order history</a>
-    <a href="/account.html?view=addresses">Saved addresses</a>
-  </div>
-  <div>
-    <div class="footer-title">Admin</div>
-    <a href="/admin">Admin</a>
+  <div class="footer-col">
+    <div class="footer-title">Information</div>
+    <ul class="footer-links">
+      <li><a href="/about.html">About Us</a></li>
+      <li><a href="/legal.html#privacy">Privacy Policy</a></li>
+      <li><a href="/legal.html#terms">Terms & Conditions</a></li>
+      <li><a href="/legal.html#cancellation">Cancellation Policy</a></li>
+    </ul>
   </div>
 </div>
 <div class="footer-bottom">
-  <span>&copy; ${y} Astro Vetro</span>
-  <span>Made slowly, in small batches</span>
+  <div class="footer-bottom-left">
+    <span>&copy; ${y} Astro Vetro</span>
+    <span>Made slowly, in small batches</span>
+  </div>
+  <div class="footer-bottom-right">
+    <span class="footer-payment-note">Secure payments</span>
+  </div>
 </div>`;
   }
 

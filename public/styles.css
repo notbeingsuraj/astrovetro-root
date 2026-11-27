@@ -676,23 +676,21 @@ footer {
 }
 .footer-grid {
   display:grid;
-  grid-template-columns:1.2fr .8fr .8fr 1.1fr;
+  grid-template-columns:1.2fr 1fr 1fr 1fr;
   gap:var(--space-xl) var(--space-lg);
-  /* `min-height:300px` was here to make short pages fill the viewport. It did
-     the opposite of what it looked like it did: the tallest column measures
-     136px, so the rule added 164px of empty canvas under the link lists and
-     pushed the divider and the copyright down into it, which is the "footer
-     floating in space" complaint. The footer now takes the height of its own
-     content, and `start` stops the three short link columns being stretched
-     to match the brand column so they all share one baseline. */
   align-items:start;
+}
+.footer-col {
+  display:flex;
+  flex-direction:column;
 }
 .footer-logo {
   font:400 28px 'Cormorant Garamond';
   letter-spacing:.14em;
   text-transform:uppercase;
 }
-footer p,footer a {
+footer p,
+footer a {
   color:var(--sage);
   font-size:13px;
   line-height:1.8;
@@ -704,15 +702,47 @@ footer p,footer a {
   letter-spacing:.18em;
   margin-bottom:18px;
 }
+.footer-links {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.footer-links a {
+  color:var(--sage);
+  font-size:13px;
+  line-height:1.6;
+  transition:color 0.2s ease;
+}
+.footer-links a:hover {
+  color:var(--white);
+}
 .footer-bottom {
   border-top:1px solid var(--line);
   padding-top:22px;
   display:flex;
   justify-content:space-between;
+  align-items:center;
   color:var(--sage);
   font-size:11px;
   text-transform:uppercase;
   letter-spacing:.08em;
+}
+.footer-bottom-left {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.footer-bottom-right {
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.footer-payment-note {
+  font-size:11px;
+  color:var(--sage);
 }
 @media(max-width:900px) {
   nav {
@@ -736,6 +766,19 @@ footer p,footer a {
   }
   .footer-grid {
     grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:640px) {
+  .footer-grid {
+    grid-template-columns:1fr;
+  }
+  .footer-bottom {
+    flex-direction:column;
+    gap:16px;
+    text-align:center;
+  }
+  .footer-bottom-right {
+    justify-content:center;
   }
 }
 @media(max-width:560px) {
@@ -1036,6 +1079,17 @@ footer {
 
 .filter-drawer:not([hidden]) .filter-drawer__panel {
   transform: translateX(0);
+}
+
+/* Remove sliding animation on mobile - prefer instant display */
+@media (max-width: 768px) {
+  .filter-drawer__panel {
+    transform: none;
+    transition: none;
+  }
+  .filter-drawer:not([hidden]) .filter-drawer__panel {
+    transform: none;
+  }
 }
 
 .filter-drawer__backdrop {
