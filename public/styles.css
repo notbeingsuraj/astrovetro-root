@@ -954,3 +954,313 @@ footer {
   border-color: var(--olive);
   background: var(--deep);
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Filter Drawer / Panel
+   ------------------------------------------------------------------------ */
+
+/* Button */
+.filter-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.filter-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  background: var(--clay);
+  color: var(--white);
+  border-radius: 999px;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Filter Drawer / Panel
+   ------------------------------------------------------------------------ */
+.filter-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 38, 31, 0.6);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.filter-drawer:not([hidden]) .filter-drawer__backdrop {
+  opacity: 1;
+}
+
+.filter-drawer__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 100vw;
+  background: var(--deep);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  box-shadow: -24px 0 48px rgba(16, 38, 31, 0.4);
+}
+
+.filter-drawer:not([hidden]) .filter-drawer__panel {
+  transform: translateX(0);
+}
+
+.filter-drawer__backdrop {
+  transition: opacity 0.2s ease;
+}
+
+.filter-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--deep);
+  flex-shrink: 0;
+}
+
+.filter-drawer__header h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 400;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: -.01em;
+  color: var(--white);
+}
+
+.filter-drawer__close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.filter-drawer__close:hover {
+  border-color: var(--sand);
+  color: var(--sand);
+}
+
+.filter-drawer__close:focus-visible {
+  outline: 2px solid var(--sand);
+  outline-offset: 3px;
+}
+
+.filter-drawer__close .icon-glyph {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.filter-drawer__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.filter-section {
+  margin-bottom: 28px;
+}
+
+.filter-section:last-child {
+  margin-bottom: 0;
+}
+
+.filter-section h3 {
+  font-size: var(--text-eyebrow);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--sand);
+  margin-bottom: 16px;
+}
+
+.filter-section select {
+  width: 100%;
+  padding: 12px 16px;
+  font: inherit;
+  font-size: var(--text-body);
+  color: var(--white);
+  background: rgba(250, 248, 241, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d9cbb5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 40px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.filter-section select:focus {
+  border-color: var(--sage);
+  outline: none;
+}
+
+.filter-section select:hover {
+  border-color: var(--sage);
+}
+
+.filter-section select option {
+  background: var(--deep);
+  color: var(--white);
+}
+
+.filter-drawer__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--deep);
+  flex-shrink: 0;
+}
+
+.filter-drawer__footer .btn {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Mobile styles for filter drawer */
+@media (max-width: 768px) {
+  .filter-drawer__panel {
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  .filter-drawer__footer {
+    flex-direction: column;
+  }
+  
+  .filter-drawer__footer .btn {
+    width: 100%;
+  }
+}
+
+/* Filter count badge on button */
+.filter-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  background: var(--clay);
+  color: var(--white);
+  border-radius: 999px;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.filter-count[style*="inline-flex"],
+.filter-count[style*="inline-flex"] {
+  display: inline-flex !important;
+}
+
+/* Filter button active state */
+.filter-btn[aria-expanded="true"] {
+  background: rgba(83, 107, 78, 0.15);
+  border-color: var(--sage);
+}
+
+.filter-btn[aria-expanded="true"] .icon-glyph {
+  stroke: var(--sage);
+}
+
+/* Drawer intention chips */
+#drawerIntentionChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#drawerIntentionChips .chip {
+  font-size: 13px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  background: rgba(250, 248, 241, 0.04);
+  color: var(--white);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+#drawerIntentionChips .chip:hover {
+  border-color: var(--sage);
+  background: rgba(135, 148, 123, 0.1);
+}
+
+#drawerIntentionChips .chip.on {
+  border-color: var(--sage);
+  background: var(--sage);
+  color: var(--deep);
+}
+
+#drawerIntentionChips .chip:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 560px) {
+  .filter-drawer__panel {
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  .filter-drawer__footer {
+    flex-direction: column;
+  }
+  
+  .filter-drawer__footer .btn {
+    width: 100%;
+  }
+  
+  .filter-drawer__content {
+    padding: 20px;
+  }
+  
+  .filter-drawer__header {
+    padding: 16px 20px;
+  }
+}

@@ -43,22 +43,59 @@
           <input type="search" id="searchInput" placeholder="Search the collection">
           <button class="btn btn-ghost btn-sm" type="submit">Search</button>
         </form>
-        <select id="catSelect" aria-label="Category">
+        <button class="btn btn-ghost btn-sm filter-btn" id="filterBtn" aria-label="Filter" aria-expanded="false" aria-controls="filterDrawer">
+          <svg class="icon-glyph" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          <span class="filter-count" id="filterCount" aria-hidden="true"></span>
+        </button>
+      </div>
+      <span class="meta-count" id="resultCount"></span>
+    </div>
+  </div>
+</header>
+
+<!-- Filter Drawer -->
+<div class="filter-drawer" id="filterDrawer" role="dialog" aria-label="Filters" aria-modal="true" hidden>
+  <div class="filter-drawer__backdrop" id="filterBackdrop" tabindex="-1"></div>
+  <div class="filter-drawer__panel" role="document">
+    <header class="filter-drawer__header">
+      <h2>Filters</h2>
+      <button class="icon filter-drawer__close" id="filterClose" aria-label="Close filters">
+        <svg class="icon-glyph" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </header>
+    <div class="filter-drawer__content">
+      <section class="filter-section">
+        <h3>Categories</h3>
+        <select id="drawerCatSelect" aria-label="Category">
           <option value="">All categories</option>
         </select>
-        <select id="sortSelect" aria-label="Sort">
+      </section>
+      <section class="filter-section">
+        <h3>Shop by intention</h3>
+        <div class="intention-chips" id="drawerIntentionChips"></div>
+      </section>
+      <section class="filter-section">
+        <h3>Sorting</h3>
+        <select id="drawerSortSelect" aria-label="Sort">
           <option value="createdAt:desc">Newest</option>
           <option value="price:asc">Price · low to high</option>
           <option value="price:desc">Price · high to low</option>
           <option value="rating:desc">Top rated</option>
           <option value="name:asc">Name</option>
         </select>
-      </div>
-      <span class="meta-count" id="resultCount"></span>
+      </section>
     </div>
-    <div class="intention-chips" id="intentionChips"></div>
+    <footer class="filter-drawer__footer">
+      <button class="btn btn-ghost btn-sm" id="filterClear">Clear All</button>
+      <button class="btn btn-dark" id="filterApply">Apply Filters</button>
+      <button class="btn btn-ghost btn-sm" id="filterCloseBottom">Close</button>
+    </footer>
   </div>
-</header>
+</div>
 
 <main id="main">
   <div class="page">
@@ -295,21 +332,275 @@ AV.qs('#searchForm').addEventListener('submit', (e) => {
   refetch();
 });
 
-AV.qs('#catSelect').addEventListener('change', (e) => {
-  if (e.target.value) params.set('category', e.target.value);
-  else params.delete('category');
-  AV.qsa('#intentionChips .chip').forEach((c) => c.classList.remove('on'));
+/* Filter Drawer */
+const filterBtn = AV.qs('#filterBtn');
+const filterDrawer = AV.qs('#filterDrawer');
+const filterBackdrop = AV.qs('#filterBackdrop');
+const filterClose = AV.qs('#filterClose');
+const filterCloseBottom = AV.qs('#filterCloseBottom');
+const filterApply = AV.qs('#filterApply');
+const filterClear = AV.qs('#filterClear');
+const drawerCatSelect = AV.qs('#drawerCatSelect');
+const drawerSortSelect = AV.qs('#drawerSortSelect');
+const drawerIntentionChips = AV.qs('#drawerIntentionChips');
+
+function openFilterDrawer() {
+  filterDrawer.hidden = false;
+  filterBtn.setAttribute('aria-expanded', 'true');
+  filterDrawer.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  filterClose.focus();
+}
+
+function closeFilterDrawer() {
+  filterDrawer.hidden = true;
+  filterBtn.setAttribute('aria-expanded', 'false');
+  filterDrawer.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  filterBtn.focus();
+}
+
+filterBtn.addEventListener('click', openFilterDrawer);
+filterClose.addEventListener('click', closeFilterDrawer);
+filterCloseBottom.addEventListener('click', closeFilterDrawer);
+filterBackdrop.addEventListener('click', closeFilterDrawer);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !filterDrawer.hidden) {
+    closeFilterDrawer();
+  }
+});
+
+filterApply.addEventListener('click', () => {
+  closeFilterDrawer();
   refetch();
 });
 
-AV.qs('#sortSelect').addEventListener('change', (e) => {
-  /* Option values carry an explicit direction ("price:asc") so the select and
-     the URL cannot disagree about which way "price" is being sorted. */
+filterClear.addEventListener('click', () => {
+  params.delete('search');
+  params.delete('category');
+  params.delete('intention');
+  params.delete('collection');
+  params.set('sort', 'createdAt');
+  params.set('order', 'desc');
+  AV.qs('#searchInput').value = '';
+  drawerCatSelect.value = '';
+  drawerSortSelect.value = 'createdAt:desc';
+  AV.qsa('#drawerIntentionChips .chip').forEach((c) => c.classList.remove('on'));
+  refetch();
+});
+
+drawerCatSelect.addEventListener('change', (e) => {
+  if (e.target.value) params.set('category', e.target.value);
+  else params.delete('category');
+});
+
+drawerSortSelect.addEventListener('change', (e) => {
   const [sort, order = 'asc'] = e.target.value.split(':');
   params.set('sort', sort);
   params.set('order', order);
+});
+
+/* Filter Drawer Intention Chips */
+async function initDrawerIntentions() {
+  try {
+    const env = await AV.api.get('/api/products/intentions');
+    const intentions = Array.isArray(env.data) ? env.data : (env.data || []);
+    const chips = AV.qs('#drawerIntentionChips');
+    [['', 'All']].concat(intentions.map((x) => [x.name || x, x.name || x])).forEach(([val, label]) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.textContent = label;
+      chip.dataset.intention = val;
+      chip.addEventListener('click', () => {
+        const same = params.get('intention')?.toLowerCase() === String(val).toLowerCase();
+        params.delete('category');
+        params.delete('search');
+        if (!same) params.set('intention', val);
+        else params.delete('intention');
+        AV.qs('#searchInput').value = '';
+        AV.qsa('#drawerIntentionChips .chip').forEach((c) => {
+          c.classList.toggle('on', !same && c.dataset.intention === val);
+        });
+        // Don't refetch here - wait for Apply
+      });
+      chips.appendChild(chip);
+    });
+  } catch (_e) { /* filters are optional */ }
+}
+
+/* Update filter count badge */
+function updateFilterCount() {
+  const s = state();
+  let count = 0;
+  if (s.search) count++;
+  if (s.intention) count++;
+  if (s.category) count++;
+  if (s.collection) count++;
+  if (s.sort !== 'createdAt' || s.order !== 'desc') count++;
+  const countEl = AV.qs('#filterCount');
+  if (count) {
+    countEl.textContent = count;
+    countEl.style.display = 'inline-flex';
+  } else {
+    countEl.style.display = 'none';
+  }
+}
+
+/* Update initFilters to initialize drawer elements */
+async function initFilters() {
+  const s = state();
+  AV.qs('#searchInput').value = s.search || '';
+  /* Reflect the URL in the control; fall back to Newest for anything the
+     select does not offer so it can never display a stale, mismatched value. */
+  const sortEl = AV.qs('#drawerSortSelect');
+  const wanted = `${s.sort}:${s.order}`;
+  sortEl.value = [...sortEl.options].some((o) => o.value === wanted)
+    ? wanted
+    : ([...sortEl.options].some((o) => o.value === s.sort) ? s.sort : 'createdAt:desc');
+
+  try {
+    const env = await AV.api.get('/api/products/intentions');
+    const intentions = Array.isArray(env.data) ? env.data : (env.data || []);
+    const chips = AV.qs('#drawerIntentionChips');
+    [['', 'All']].concat(intentions.map((x) => [x.name || x, x.name || x])).forEach(([val, label]) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip' + (s.intention && s.intention.toLowerCase() === String(val).toLowerCase() ? ' on' : '');
+      chip.textContent = label;
+      chip.dataset.intention = val;
+      chip.addEventListener('click', () => {
+        const same = params.get('intention')?.toLowerCase() === String(val).toLowerCase();
+        params.delete('category');
+        params.delete('search');
+        if (!same) params.set('intention', val);
+        else params.delete('intention');
+        AV.qs('#searchInput').value = '';
+        AV.qsa('#drawerIntentionChips .chip').forEach((c) => {
+          c.classList.toggle('on', !same && c.dataset.intention === val);
+        });
+        // Don't refetch here - wait for Apply
+      });
+      chips.appendChild(chip);
+    });
+  } catch (_e) { /* filters are optional */ }
+
+  try {
+    const all = await AV.api.get('/api/products?limit=50');
+    const cats = [...new Set((all.data || []).map((p) => p.category).filter(Boolean))];
+    const sel = AV.qs('#drawerCatSelect');
+    cats.forEach((c) => {
+      const o = document.createElement('option');
+      o.value = c;
+      o.textContent = c[0].toUpperCase() + c.slice(1);
+      sel.appendChild(o);
+    });
+    sel.value = s.category || '';
+  } catch (_e) { /* optional */ }
+  
+  updateFilterCount();
+}
+
+function updateFilterCount() {
+  const s = state();
+  let count = 0;
+  if (s.search) count++;
+  if (s.intention) count++;
+  if (s.category) count++;
+  if (s.collection) count++;
+  if (s.sort !== 'createdAt' || s.order !== 'desc') count++;
+  const countEl = AV.qs('#filterCount');
+  if (count) {
+    countEl.textContent = count;
+    countEl.style.display = 'inline-flex';
+  } else {
+    countEl.style.display = 'none';
+  }
+}
+
+AV.qs('#searchForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const v = AV.qs('#searchInput').value.trim();
+  if (v) params.set('search', v);
+  else params.delete('search');
   refetch();
 });
+
+/* Update refetch to sync drawer elements and filter count */
+async function load() {
+  const token = ++loadToken;
+  const s = state();
+  const q = new URLSearchParams({
+    page: String(page),
+    limit: '12',
+    sort: s.sort,
+    order: s.order,
+  });
+  if (s.search) q.set('search', s.search);
+  if (s.intention) q.set('intention', s.intention);
+  if (s.category) q.set('category', s.category);
+  if (s.collection) q.set('collection', s.collection);
+
+  /* Keep the previous results on screen while refetching; only show
+     skeletons on a cold first paint. */
+  if (!grid.children.length) {
+    grid.innerHTML = AV.skeletonCards(8);
+    AV.reveal(grid);
+  }
+  grid.setAttribute('aria-busy', 'true');
+
+  try {
+    const env = await AV.api.get(`/api/products?${q.toString()}`);
+    if (token !== loadToken) return;
+    const items = env.data || [];
+    const total = env.meta?.total ?? items.length;
+
+    countEl.textContent = `${total} ${total === 1 ? 'piece' : 'pieces'}`;
+    grid.innerHTML = items.length
+      ? items.map((p, i) => AV.productCard(p, i)).join('')
+      : `<div class="empty">Nothing matches that search — try a different intention or filter.<br><button class="btn btn-ghost" data-reset-filters>Clear filters</button></div>`;
+    AV.markInCart();
+
+    const meta = env.meta || {};
+    page = meta.page || page;
+    pagerEl.innerHTML = `
+      ${page > 1 ? '<button class="btn btn-ghost" data-page="' + (page - 1) + '">← Prev</button>' : ''}
+      <span class="meta-count">Page ${meta.page || page} of ${meta.totalPages || 1}</span>
+      ${meta.hasMore ? '<button class="btn btn-ghost" data-page="' + (page + 1) + '">Next →</button>' : ''}`;
+    pagerEl.querySelectorAll('[data-page]').forEach((b) =>
+      b.addEventListener('click', () => {
+        page = Number(b.dataset.page);
+        syncUrl();
+        load();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+    );
+
+    loadFeatured();
+  } catch (e) {
+    if (token !== loadToken) return;
+    /* Distinguish "the shop is down" from "no matches", so the visitor knows
+       whether to wait or to change their filters. */
+    grid.innerHTML = `<div class="empty">The collection could not be loaded just now.<br>
+      <span class="muted">${AV.esc(AV.firstErr(e))}</span><br>
+      <button class="btn btn-ghost" data-retry>Try again</button></div>`;
+    countEl.textContent = '';
+    pagerEl.innerHTML = '';
+    AV.qs('#featuredRail').hidden = true;
+  } finally {
+    if (token === loadToken) grid.removeAttribute('aria-busy');
+  }
+  
+  updateFilterCount();
+}
+
+/* Reloads in place. A full navigation would throw away the page, reset scroll
+   and replay the boot sequence on every chip or dropdown change. */
+function refetch({ resetPage = true, scroll = false } = {}) {
+  if (resetPage) page = 1;
+  syncUrl();
+  load();
+  if (scroll) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 initFilters();
 load();

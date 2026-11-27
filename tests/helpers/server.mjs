@@ -100,6 +100,17 @@ export async function startServer({ port, databaseUrl, disableRateLimit = false 
   return { base, logs, child, stop };
 }
 
+/**
+ * Find an available port on localhost.
+ */
+export async function findAvailablePort(startPort = 5000, maxAttempts = 100) {
+  for (let port = startPort; port < startPort + maxAttempts; port++) {
+    const available = await tcpUp('127.0.0.1', port, 100);
+    if (available) return port;
+  }
+  throw new Error(`No available port found in range ${startPort}-${startPort + maxAttempts}`);
+}
+
 /** The session cookie (name=value pair) from a login response, or null. */
 export function sessionCookie(res, name = 'av_token') {
   const all = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
@@ -173,4 +184,26 @@ export async function dropDatabase(uri) {
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 4000 });
   await mongoose.connection.dropDatabase();
   await mongoose.disconnect();
+}
+
+/**
+ * Creates a test server with isolated lifecycle management.
+ * Each call creates a completely independent server instance.
+ */
+export async function createTestServer({ port, databaseUrl, disableRateLimit = false } = {}) {
+  // If no port specified, find an available one
+  const actualPort = port || await findAvailablePort(5000);
+  
+  const serverInfo = await startServer({ port: actualPort, databaseUrl, disableRateLimit: true });
+  
+  // Return enhanced server info with proper cleanup
+  return {
+    base: serverInfo.base,
+    port: actualPort,
+    logs: serverInfo.logs,
+    child: serverInfo.child,
+    async stop() {
+      await serverInfo.stop();
+    }
+  };
 }

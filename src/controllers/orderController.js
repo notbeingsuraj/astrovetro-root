@@ -610,7 +610,8 @@ async function handleCashfreeWebhook(req, res) {
   }
 
   console.log('[handleCashfreeWebhook] Signature verified, parsing event');
-  const event = JSON.parse(rawBody.toString('utf8'));
+  const rawBodyStr = rawBody.toString('utf8').trim();
+  const event = JSON.parse(rawBodyStr);
   console.log('[handleCashfreeWebhook] Event parsed, normalizing');
   const normalized = payments.normalizeWebhookEvent(event, 'cashfree');
   console.log('[handleCashfreeWebhook] Normalized:', normalized ? 'yes' : 'no');
@@ -799,14 +800,10 @@ async function getInventoryState(orderId) {
 
 /** Common settlement logic for normalized webhook events. */
 async function handleNormalizedWebhook(req, res, normalized) {
-  console.log('[handleNormalizedWebhook] Starting');
   const { providerOrderId, providerPaymentId, paymentStatus, paymentAmount, paymentCurrency, paymentTime, eventType } = normalized;
-  console.log('[handleNormalizedWebhook] Normalized data:', { providerOrderId, providerPaymentId, paymentStatus, paymentAmount, paymentCurrency, paymentTime, eventType });
 
   // Validate amount matches (in paise) - do this before any DB writes
-  console.log('[handleNormalizedWebhook] Finding order by providerOrderId:', providerOrderId);
   const orderForAmountCheck = await Order.findOne({ 'payment.providerOrderId': providerOrderId });
-  console.log('[handleNormalizedWebhook] Order found:', orderForAmountCheck ? 'yes' : 'no');
   if (!orderForAmountCheck) return res.json({ success: true, data: { ignored: 'no matching order' } });
 
   const expectedAmount = orderForAmountCheck.payment?.amount;
@@ -814,7 +811,6 @@ async function handleNormalizedWebhook(req, res, normalized) {
   const currencyMatches = paymentCurrency === 'INR';
 
   const succeeded = paymentStatus === 'SUCCESS' && amountMatches && currencyMatches;
-  console.log('[handleNormalizedWebhook] Validation:', { succeeded, amountMatches, currencyMatches, expectedAmount, paymentAmount, paymentCurrency });
 
   if (!succeeded) {
     if (paymentStatus === 'FAILED') {
@@ -832,9 +828,7 @@ async function handleNormalizedWebhook(req, res, normalized) {
   }
 
   // STEP 1: Atomically claim settlement AND inventory processing (only one webhook can succeed)
-  console.log('[handleNormalizedWebhook] Calling claimSettlement');
   let order = await claimSettlement(providerOrderId, providerPaymentId, paymentAmount, paymentTime);
-  console.log('[handleNormalizedWebhook] claimSettlement returned:', order ? 'order' : 'null');
 
   if (!order) {
     // Settlement already claimed by another webhook delivery

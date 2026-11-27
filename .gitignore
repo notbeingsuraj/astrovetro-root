@@ -34,3 +34,4 @@ pnpm-debug.log*
 .vercel
 .env*
 secret-files/*.zip
+cookies.txt
